@@ -167,8 +167,8 @@ export PATH=$KERNEL/scripts/dtc:$PATH
 ############################################
 # Hardware and hardware dependant software #
 ############################################
-export SECBUS=<some-path>
-export DESIGN=$SECBUS/vhdl/hsm/src/axi_register
+export SIMPLEREGISTER4ZYNQ=<some-path>
+export DESIGN=$SIMPLEREGISTER4ZYNQ/src/axi_register
 cd $DESIGN
 cp $UBOOT/build/u-boot u-boot.elf
 make syn
