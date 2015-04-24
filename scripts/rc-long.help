@@ -1,0 +1,146 @@
+--------------------------------------------------------------------------------
+Cadence RC-related make targets:
+
+  rc-help:
+
+    Print Cadence RC-related help.
+
+  rc-lib-help:
+
+    Print target libraries help
+
+  rc-tests:
+
+    Run the Cadence RC synthesis regression tests: each design unit listed in
+    the RC-SYN-TESTS make variable is synthesized and the result is logged in
+    the rc-tests.log logfile; failing synthesis have individual F.rc-tests.log
+    logfiles.
+
+  rc-ultraclean:
+
+    Delete all synthesis results subdirectories.
+
+  rc-logclean:
+
+    Delete all regression test logfiles.
+
+  F.rsyn:
+
+    Synthesize a top level entity defined in the F.vhd source file. The name of
+    the top level entity is given by the RC_SYN_TOPENTITY environment variable
+    if it is defined, else the top level entity name is F.
+
+    If F.vhd depends on other synthesizable source files in the same module or
+    other modules, they are loaded too (assuming these dependencies are properly
+    declared in the dependencies.txt file).
+
+    The synthesis results are stored in a subdirectory named F.rc-syn.T where T
+    is time in seconds since epoch; the symlink F.rc-syn always points to the
+    most recent F.rc-syn.T directory. By default the synthesis script applies
+    the following options:
+
+      Name           Type     Default value
+      period         integer  1000 (ps)
+      clockportname  string   clk
+      inputdelay     real     period / 4
+      outputdelay    real     period / 4
+      drivingcell    string   *_AND2X4
+      drivingpin     string   Z
+      opcond         string   _nominal_
+      wiremode       string   top
+      library        string   CORE65LPHVT_nom_1.20V_25C.lib
+      generics       list     {}
+
+    There are several ways to alter the default behaviour. The first one, that
+    takes immediate precedence over the default is to define environment
+    variables which name is the uppercase name of the option, prepended with
+    "RC_SYN_" and with the expected option value. Example:
+
+      RC_SYN_TOPENTITY=foo RC_SYN_PERIOD=10000 make F.rsyn
+
+    will synthesize entity foo of source file F.vhd (instead of the default
+    entity F), with a 10000 ps target clock period instead of the default. The
+    second way consists in creating a TCL script named F.rsyn.tcl in the source
+    directory. If such a script exists it is sourced before any other TCL
+    command is executed. If the script defines a TCL variable which name is an
+    option name, prepended with "rc_syn_", its value is used instead of the
+    default. TCL variables take precedence over environment variables. If the
+    F.rsyn.tcl TCL script contains:
+
+      set rc_syn_topentity foo
+      set rc_syn_period 2000
+
+    then
+
+      make F.rsyn
+
+    will syntyhesize entity foo of source file F.vhd (instead of the default
+    entity F), with a 2000 ps target clock period instead of the default. If the
+    RC_SYN_TOPENTITY or the RC_SYN_PERIOD environment variable are defined they
+    are ignored. Finally, in some specific circumstances, these two mechanisms
+    are not powerful or flexible enough.  Four synthesis hooks are provided that
+    can be used to alter the default behaviour in more complex ways. They are
+    based on four different TCL procedures named preLoad, postLoad, preSynthesis
+    and postSynthesis. If the F.rsyn.tcl TCL script exists and defines one or
+    several of them they are evaluated:
+
+      - preLoad just before loading the HDL source files,
+      - postLoad just after loading the HDL source files and before elaboration,
+      - preSynthesis just before synthesis,
+      - postSynthesis just after synthesis.
+
+    The sequence of operations is:
+
+       1) source F.rsyn.tcl, if exists
+       2) compute synthesis options (priority TCL variables > environment variables > default)
+       3) applies synthesis options "library", "hdl_parameter_naming_style"
+       4) preLoad, if defined
+       5) load HDL source files
+       6) postLoad, if defined
+       7) applies synthesis option "generics"
+       8) elaborate
+       9) applies synthesis options: "external_driver", "driving_cell", "driving_pin",
+          "period", "input_delay", "output_delay", "operating_conditions",
+          "wireload_mode"
+      10) preSynthesis, if defined
+      11) synthesize
+      12) postSynthesis, if defined
+      13) write results and reports
+
+    Note that the hook procedures cannot be used to set the rc_syn_xxx TCL
+    variables because these variables are taken into account before the first
+    hook procedure is evaluated. Putting:
+
+      set ::rc_syn_period 2000
+
+    in the preLoad procedure has no effect on the synthesis result because this
+    TCL variable is taken into account at stage 2) of the flow while the preLoad
+    procedure is evaluated at stage 3). In order to influence the synthesis flow
+    the hook procedures must thus directly use the relevant low level Cadence RC
+    commands. If the F.rsyn.tcl TCL script, for example, contains:
+
+      proc postSynthesis {} {
+        set clk1 [ define_clock -name virtual_clock -period 2000 -design F clk ]
+      }
+
+    then
+
+      make F.rsyn
+
+    will synthesize with a 2000 ps target clock period for clock port clk
+    instead of the default. If the RC_SYN_PERIOD environment variable or the
+    rc_syn_period TCL variable are defined they are ignored for clock port clk.
+
+    By default no generic parameter is specified. The RC_SYN_GENERICS
+    environment variable and the rc_syn_generics TCL variable offer a way to set
+    the generic parameters of the top level, if any:
+
+      RC_SYN_GENERICS="{ { x 7 } { y true } }" make F.rsyn
+
+    will synthesize with generic parameters x and y set to 7 and true
+    respectively. Defining the TCL variable rc_syn_generics in F.rsyn.tcl:
+
+      set rc_syn_generics "{ { x 7 } { y true } }"
+
+    has the same effect. Please see the rc.tcl TCL script for more information.
+--------------------------------------------------------------------------------

@@ -1,0 +1,182 @@
+--------------------------------------------------------------------------------
+Precision RTL-related make targets:
+
+  pr-help:
+
+    Print Precision RTL-related help.
+
+  pr-tests:
+
+    Run the Precision RTL synthesis regression tests: each design unit listed in
+    the PR-SYN-TESTS make variable is synthesized and the result is logged in
+    the pr-tests.log logfile; failing synthesis have individual F.pr-tests.log
+    logfiles.
+
+  pr-ultraclean:
+
+    Delete all synthesis results subdirectories.
+
+  pr-logclean:
+
+    Delete all regression test logfiles.
+
+  F.edf or F.psyn:
+
+    Synthesize a top level entity defined in the F.vhd source file. The name of
+    the top level entity is given by the PR_SYN_TOPENTITY environment variable
+    if it is defined, else the top level entity name is F.
+
+    If F.vhd depends on other synthesizable source files in the same module or
+    other modules, they are loaded too (assuming these dependencies are properly
+    declared in the dependencies.txt file).
+
+    The synthesis results are stored in a subdirectory named F.pr-syn.T where T
+    is time in seconds since epoch; the symlink F.pr-syn always points to the
+    most recent F.pr-syn.T directory. By default the synthesis script applies
+    the following options:
+
+      addio				true
+      auto_resource_allocation_ram	true
+      bottom_up_flow			false
+      compile_for_timing		true
+      dsp_across_hier			true
+      edif				true
+      family				Zynq
+      generics				{}
+      hdl				vhdl_2002
+      ignore_ram_rw_collision		true
+      input_delay			2500 (ps)
+      manufacturer			Xilinx
+      max_fanout			16
+      max_fanout_strategy		AUTO
+      output_delay			2500 (ps)
+      part				7Z045FBG676
+      period				5000 (ps)
+      resource_sharing			false
+      speed				1
+
+    There are several ways to alter the default behaviour. The first one, that
+    takes immediate precedence over the default is to define environment
+    variables which name is the uppercase name of the option, prepended with
+    "PR_SYN_" and with the expected option value. Example:
+
+      PR_SYN_TOPENTITY=foo PR_SYN_PERIOD=10000 make F.psyn
+
+    will synthesize entity foo of source file F.vhd (instead of the default
+    entity F), with a 10000 ps target clock period instead of the default. The
+    second way consists in creating a TCL script named F.psyn.tcl in the source
+    directory. If such a script exists it is sourced before any other TCL
+    command is executed. If the script defines a TCL variable which name is an
+    option name, prepended with "pr_syn_", its value is used instead of the
+    default. TCL variables take precedence over environment variables. If the
+    F.psyn.tcl TCL script contains:
+
+      set pr_syn_topentity foo
+      set pr_syn_period 2000
+
+    then
+
+      make F.psyn
+
+    will syntyhesize entity foo of source file F.vhd (instead of the default
+    entity F), with a 2000 ps target clock period instead of the default. If the
+    PR_SYN_TOPENTITY or the PR_SYN_PERIOD environment variable are defined they
+    are ignored. Finally, in some specific circumstances, these two mechanisms
+    are not powerful or flexible enough.  Four synthesis hooks are provided that
+    can be used to alter the default behaviour in more complex ways. They are
+    based on four different TCL procedures named preLoad, postLoad, postCompile
+    and postSynthesis. If the F.psyn.tcl TCL script exists and defines one or
+    several of them they are evaluated:
+
+      - preLoad just before loading the HDL source files,
+      - postLoad just after loading the HDL source files and before compilation,
+      - postCompile just after compilation and before synthesis,
+      - postSynthesis just after synthesis.
+
+    The sequence of operations is:
+
+       1) source F.psyn.tcl, if exists
+       2) compute synthesis options (priority TCL variables > environment variables > default)
+       3) preLoad, if defined
+       4) load HDL source files
+       5) applie all synthesis options, defines the top level entity
+       6) postLoad, if defined
+       7) compile
+       8) postCompile, if defined
+       9) synthesize
+      10) postSynthesis, if defined
+      11) write results and reports
+
+    Note that the hook procedures cannot be used to set the pr_syn_xxx TCL
+    variables because these variables are taken into account before the first
+    hook procedure is evaluated. Putting:
+
+      set ::pr_syn_period 2000
+
+    in the preLoad procedure has no effect on the synthesis result because
+    this TCL variable is taken into account at stage 2) of the flow while the
+    preLoad procedure is evaluated at stage 3). In order to influence the
+    synthesis flow the hook procedures must thus directly use the relevant low
+    level Precision RTL commands. If the F.psyn.tcl TCL script, for example,
+    contains:
+
+      proc postLoad {} {
+        setup_design -frequency=400
+      }
+
+    then
+
+      make F.psyn
+
+    will syntyhesize with a 2500 ps target clock period instead of the default.
+    If the PR_SYN_PERIOD environment variable or the pr_syn_period TCL variable
+    are defined they are ignored. The TCL commands corresponding to the default
+    options are:
+
+      setup_design -addio=true
+      setup_design -auto_resource_allocation_ram=true
+      setup_design -bottom_up_flow=false
+      setup_design -compile_for_timing=true
+      setup_design -dsp_across_hier=true
+      setup_design -edif=true
+      setup_design -manufacturer=Xilinx -family=Zynq -part=7Z045FBG676 -speed=1
+      setup_design -overrides {}
+      setup_design -frequency=200
+      setup_design -hdl=vhdl_2008
+      setup_design -ignore_ram_rw_collision=true
+      setup_design -input_delay=2.5
+      setup_design -max_fanout=16
+      setup_design -max_fanout_strategy=AUTO
+      setup_design -output_delay=2.5
+      setup_design -resource_sharing=false
+
+    By default no generic parameter is specified. The PR_SYN_GENERICS
+    environment variable and the pr_syn_generics TCL variable offer a way to
+    set the generic parameters of the top level, if any:
+
+      PR_SYN_GENERICS="{ { x 7 } { y true } }" make F.psyn
+
+    will synthesize with generic parameters x and y set to 7 and true
+    respectively. Defining the TCL variable pr_syn_generics in F.psyn.tcl:
+
+      set pr_syn_generics "{ { x 7 } { y true } }"
+
+    has the same effect. Putting:
+
+      proc postLoad {} {
+        setup_design -overrides { { x 7 } { y true } }
+      }
+
+    in F.psyn.tcl also has the same effect. Please see the pr.tcl TCL script and
+    the Precision RTL documentation for more information.
+--------------------------------------------------------------------------------
+Some usefull Xilinx targets:
+Manufacturer  Family    Part      Package  Speed
+Xilinx        VIRTEX-5  5VLX330   FF1760   2      (ExpressMIMO LX330)
+Xilinx        VIRTEX-5  5VLX110T  FF1136   2      (ExpressMIMO LX110T)
+Xilinx        SPARTAN6  6SLX150T  FGG900   2      (ExpressMIMO-2 Spartan6)
+Xilinx        KINTEX-7  7K410T    FGG900   2      (Kintex7 FPGA)
+Xilinx        ARTIX-7   7A100T    CSG324   1      (Artix7 FPGA)
+Xilinx        Zynq      7Z045     FBG676   1      (Zynq FPGA of SYMPA board)
+Xilinx        Zynq      7Z020     CLG484   1      (Zynq FPGA of ZedBoard)
+--------------------------------------------------------------------------------

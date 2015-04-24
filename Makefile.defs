@@ -1,0 +1,105 @@
+#####################################################
+######## Don't change anything in this file #########
+#####################################################
+
+# Common Makefile. This Makefile is included in others and depends on the proper
+# definition of variable ROOTDIR which should contain the absolute or relative
+# path to the directory containing this Makefile. Example of syntax of a
+# Makefile including this one:
+#
+# ROOTDIR	= ../..
+# include $(ROOTDIR)/Makefile.defs
+
+SHELL	= /bin/bash
+
+ifeq (,$(filter-out 3.80 3.80.%,$(MAKE_VERSION)))
+fullpath=$(shell cd $(1); pwd)
+else
+fullpath=$(realpath $(1))
+endif
+
+## Ignore file name
+IGNOREFILENAME	= ignore
+
+## Directory definitions
+## Absolute path of root directory
+rootdir		= $(call fullpath,$(ROOTDIR))
+## Scripts directory
+SCRIPTSDIR	= scripts
+scriptsdir	= $(rootdir)/$(SCRIPTSDIR)
+## Bitfields description directory
+BITFIELDSDIR	= bitfields
+bitfieldsdir	= $(rootdir)/$(BITFIELDSDIR)
+## Source root directory
+SRCROOTDIR	= src
+srcrootdir	= $(rootdir)/$(SRCROOTDIR)
+
+## Target technologies
+ASIC		= 0
+VIRTEX5		= 1
+SPARTAN6	= 2
+KINTEX7		= 3
+ARTIX7 		= 4
+
+.NOTPARALLEL:
+
+.PHONY: help clean ultraclean
+
+## List of modules
+ALLMODS	= $(notdir $(wildcard $(srcrootdir)/*))
+IGNORES	= $(notdir $(patsubst %/$(IGNOREFILENAME),%,$(wildcard $(srcrootdir)/*/$(IGNOREFILENAME))))
+MODULES = $(filter-out $(IGNORES),$(ALLMODS))
+LIBS		= $(patsubst %,%_lib,$(MODULES))
+IGNORELIBS	= $(patsubst %,%_lib,$(IGNORES))
+NOIGNORELIBS	= $(filter-out $(IGNORELIBS),$(LIBS))
+NOIGNOREMODULES	= $(patsubst %_lib,%,$(NOIGNORELIBS))
+
+## Bitfield definitions
+BITFIELDNAMES	= $(patsubst %.bitfield,%,$(notdir $(wildcard $(bitfieldsdir)/*.bitfield)))
+
+ifeq ($(call fullpath,.),$(rootdir))
+
+help:
+	@echo '--------------------------------------------------------------------------------'
+	@echo '"make doc-help": print documentation-related help'
+	@echo '"make ms-help": print Modelsim-related help'
+	@echo '"make pr-help": print Precision RTL-related help'
+	@echo '"make rc-help": print Cadence RC-related help'
+	@echo '"make vv-help": print Xilinx Vivado-related help'
+	@echo '"make clean": clean a bit'
+	@echo '"make ultraclean": clean as much as possible'
+	@echo '--------------------------------------------------------------------------------'
+
+clean ultraclean:
+	@for m in $(MODULES); do $(MAKE) -C $(srcrootdir)/$$m $@; done
+
+else
+
+help:
+	@echo '--------------------------------------------------------------------------------'
+	@echo '"make ms-help": print Modelsim-related help'
+	@echo '"make pr-help": print Precision RTL-related help'
+	@echo '"make rc-help": print Cadence RC-related help'
+	@echo '"make vv-help": print Xilinx Vivado-related help'
+	@echo '"make tests": runs the non-regression tests'
+	@echo '"make clean": clean a bit'
+	@echo '"make ultraclean": clean as much as possible'
+	@echo '--------------------------------------------------------------------------------'
+
+ifeq ($(wildcard $(IGNOREFILENAME)),$(IGNOREFILENAME))
+
+%:
+	@echo "$@: found an $(IGNOREFILENAME) file"
+
+else
+
+tests: ms-tests ms-sim-tests rc-tests pr-tests
+
+endif
+
+endif
+
+include $(scriptsdir)/ms.mk
+include $(scriptsdir)/pr.mk
+include $(scriptsdir)/rc.mk
+include $(scriptsdir)/vv.mk

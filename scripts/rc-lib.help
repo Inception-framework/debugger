@@ -1,0 +1,96 @@
+--------------------------------------------------------------------------------
+Target technology libraries
+
+In 65 nm node, the libraries are named according the following syntax:
+
+  CORE65xxyyy_ccc_vvvV_tttC.lib or CORE65xxyyy_ccc_vvvV_tttC_10y.lib
+
+where:
+
+- xx = GP or LP, for General Purpose or Low Power. GP is faster than LP but has
+  a higher dynamic power consumption.
+- yyy = HVT or SVT or LVT, for High, Standard and Low Voltage Threshold. The
+  higher the voltage threshold, the lower the static power but the slower the
+  library.
+- ccc = bc or nom or wc, for Best Case, NOMinal or Worst Case, 3 different
+  characterization corners for 3 different manufacturing qualities. After
+  manufacturing the samples are characterized and fall in one of these three
+  classes. Best case chips are the fastest and worst case are the slowest.
+- vvv = the power supply voltage used for characterization (in volts). The
+  higher the voltage, the fastest the library but the higher the dynamic power.
+- ttt = the temperature used for characterization (in Celsius degrees). If the
+  first character in ttt is a 'm', the temperature is negative. The higher the
+  temperature, the slower the library.
+- 10y means characterization after 10 years and takes the NBTI (Negative Bias
+  Temperature Instability) effect into account. The oldest the chip, the
+  slowest.
+
+Which library should I use? This depends on several factors. If you are
+interested in speed more than in dynamic power, use a GP, else use a LP. If you
+do really care about static power (leakage), use a HVT, if you care a bit, use a
+SVT, else use a LVT. The characterization corner (manufacturing quality,
+voltage, temperature, aging) depends on your operating conditions and on your
+business model. If you are ready to drop a large number of samples because they
+are too slow for your need, take a best case corner. If you want to keep as much
+samples as possible, take a worst case corner. Similarily, depending on the
+minimum power supply voltage you want to tolerate, select the voltage corner.
+Same with the maximum operating temperature. Finally, if you want your chips to
+work after 10 years of operation, select the 10y corner.
+
+The following libraries are available (but it could be that they are not
+installed on your network):
+
+CORE65LPHVT_bc_1.30V_m40C.lib
+CORE65LPHVT_bc_1.30V_m40C_10y.lib
+CORE65LPHVT_nom_1.20V_25C.lib
+CORE65LPHVT_wc_1.10V_125C.lib
+CORE65LPHVT_wc_1.10V_125C_10y.lib
+CORE65LPLVT_bc_1.30V_m40C.lib
+CORE65LPLVT_bc_1.30V_m40C_10y.lib
+CORE65LPLVT_nom_1.20V_25C.lib
+CORE65LPLVT_wc_1.10V_125C.lib
+CORE65LPLVT_wc_1.10V_125C_10y.lib
+CORE65LPSVT_bc_1.30V_m40C.lib
+CORE65LPSVT_bc_1.30V_m40C_10y.lib
+CORE65LPSVT_nom_1.20V_25C.lib
+CORE65LPSVT_wc_1.10V_125C.lib
+CORE65LPSVT_wc_1.10V_125C_10y.lib
+CORE65GPHVT_bc_1.10V_m40C.lib
+CORE65GPHVT_bc_1.10V_m40C_10y.lib
+CORE65GPHVT_nom_1.00V_25C.lib
+CORE65GPHVT_wc_0.90V_125C.lib
+CORE65GPHVT_wc_0.90V_125C_10y.lib
+CORE65GPLVT_bc_1.10V_m40C.lib
+CORE65GPLVT_bc_1.10V_m40C_10y.lib
+CORE65GPLVT_nom_1.00V_25C.lib
+CORE65GPLVT_wc_0.90V_125C.lib
+CORE65GPLVT_wc_0.90V_125C_10y.lib
+CORE65GPSVT_bc_1.10V_m40C.lib
+CORE65GPSVT_bc_1.10V_m40C_10y.lib
+CORE65GPSVT_nom_1.00V_25C.lib
+CORE65GPSVT_wc_0.90V_125C.lib
+CORE65GPSVT_wc_0.90V_125C_10y.lib
+
+Example:
+
+My product should operate normally under a 1.0 Volts power supply or more (the
+voltage regulator is reasonably good and will never go below). I want it to
+still operate at temperatures up to 125 C° (it will be enclosed in a compact
+container, without fan). I want it to be still working after 10 years (it will
+be embedded in a satellite). I do care about leakage (it will frequently be in
+idle state while battery-powered) but not really about dynamic power (when
+required to work full speed, it will be supplied by a high energy photovoltaic
+module). I do not want to drop too many samples after manufacturing but I can
+drop some (small volume production, high price product). And finally, my speed
+constraints are really tough (real time video processing on high definition
+images). The library I should use is thus CORE65GPHVT_nom_1.00V_125C_10y.lib; as
+it does not exist I will take the closest one, which is
+CORE65GPHVT_wc_0.90V_125C_10y.lib. As a consequence the silicon area will
+probably be larger (the optimizer works in a more difficult corner, both in
+terms of voltage and manufacturing quality). On the other hand, my chip will be
+more tolerant to low voltage operation and I will probably get a better ratio of
+good/dropped samples after manufacturing. It could be, however that the
+optimizer cannot reach my target speed in this corner. In this case I will use
+the CORE65GPHVT_nom_1.00V_25C.lib library but I will have to take some speed
+margin to account the 25 C° (instead of 125) and the missing 10 years aging.
+--------------------------------------------------------------------------------

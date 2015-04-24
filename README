@@ -1,0 +1,86 @@
+SimpleRegister4Zynq - This file is part of SimpleRegister4Zynq
+Copyright (C) 2015 - Telecom ParisTech
+
+This file must be used under the terms of the CeCILL.
+This source file is licensed as described in the file COPYING, which
+you should have received as part of this distribution.  The terms
+are also available at
+http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.txt
+
+This directory and its sub-directories contain the VHDL source code, VHDL simulation environment, simulation and synthesis scripts of a simple register example
+for the Xilinx Zynq core.
+
+Content
+-------
+
+Makefile:
+  The main Makefile. Type 'make' to see the available targets.
+
+Makefile.defs:
+  The common Makefile, included by all other Makefiles. Defines all available targets.
+
+README:
+  This file.
+
+scripts:
+  Contains all simulation and synthesis scripts.
+
+src:
+  Contains one sub-directory per VHDL module. Each module 'm' corresponds to VHDL library 'm_lib'.
+
+src/<m>:
+  Directory of module 'm', corresponding to VHDL library 'm_lib'. Must contain a Makefile which minimum content is:
+
+  ROOTDIR	= ../..
+  include $(ROOTDIR)/Makefile.defs
+
+  Must also contain a file named 'dependencies.txt' in make format where intra and inter-module dependencies are expressed as:
+
+  .NOSYN: g h # g.vhd and h.vhd are not for synthesis
+  a: b        # Intra module dependency: a.vhd depends on b.vhd. For simulation, b.vhd must be compiled before a.vhd. For synthesis b.vhd must be loaded before a.vhd.
+  c: d_lib.e  # Inter-module dependency: c.vhd depends on ../d/e.vhd.
+
+  By convention a VHDL source file named foo.vhd contains entity foo and its architecture(s); file foo_pkg.vhd contains package foo and its package body if any.
+  Configurations and component instantiations are not used. Hierarchical design is based on entity instantiation. Compilation, simulation and synthesis scripts
+  rely on the local src/<m>/'dependencies.txt' and src/<m>/'Makefile' files. They MUST absolutely be maintained up to date.
+
+  To see available local make targets, type 'make' in a module's directory.
+
+VHDL coding style
+-----------------
+
+Lower case for user identifiers and reserved keywords. Upper case is allowed only in comments and upper case literals.
+
+Except in the 'sandbox' module where it is optional (but encouraged), each source file MUST start with a comment header:
+
+--* @brief <short, one line description of content> (mandatory)
+--* @author <First name> <Last name> (<e-mail>) (mandatory)
+--* @date <YYYY-MM-DD> (mandatory)
+--*
+--* <Long description> (optional)
+--*
+--* Behaviour (mandatory for entities optional for packages):
+--* <Detailed description of the different modes of operation: combinations of input control signals and corresponding computed function>
+--*
+--* Primary inputs (for entities only, mandatory):
+--* <List of primary inputs with their role and a clear explanation of the interface protocol they are involved in>
+--*
+--* Primary outputs (for entities only, mandatory):
+--* <List of primary outputs with their role and a clear explanation of the interface protocol they are involved in>
+
+The source code MUST also be commented, but with '--' comments instead of '--*'. VHDL statements MUST be commented on the same line if the comment is short
+enough or on pure comment lines just before the statement if the comment is too long.
+
+Lines SHALL not be too long. 160 characters is a reasonable target.
+
+Identing: no tabs, spaces only, with 2 spaces per indentation level.
+
+Resets are preferably synchronous and active low. Their names MUST be 'Xrstn' for active low resets and 'Xrst' for active high resets, where 'X' is 'a' for
+asynchronous or 's' for synchronous.
+
+When feasible, synchronous modules SHALL be equipped with a chip enable input named 'ce' that freezes all internal registers when low. When there is both a
+reset and a chip enable, the chip enable MUST have lower priority than reset.
+
+All types can be used. Sophisticated types (records, etc.) are encouraged. Single bits SHALL be std_ulogic. Vectors SHALL be std_ulogic_vectors. Resolved types
+are strictly FORBIDDEN except in anavoidable multiple drive situations. Unsigned, signed and all IEEE.NUMERIC_STD types and operators MUST be replaced by their
+GLOBAL_LIB.NUMERIC_STD unresolved equivalents.

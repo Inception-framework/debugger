@@ -1,0 +1,30 @@
+#
+# SimpleRegister4Zynq - This file is part of SimpleRegister4Zynq
+# Copyright (C) 2015 - Telecom ParisTech
+#
+# This file must be used under the terms of the CeCILL.
+# This source file is licensed as described in the file COPYING, which
+# you should have received as part of this distribution.  The terms
+# are also available at
+# http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.txt
+#
+
+global: \
+	random_lib.rnd \
+	numeric_std
+
+sim_utils: \
+	random_lib.rnd \
+	numeric_std \
+	global \
+	utils
+
+sim_utils_sim: \
+	random_lib.rnd \
+	numeric_std \
+	global \
+	sim_utils
+
+utils: \
+	numeric_std \
+	global
