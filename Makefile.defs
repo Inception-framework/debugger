@@ -1,3 +1,13 @@
+#
+# Copyright (C) Telecom ParisTech
+#
+# This file must be used under the terms of the CeCILL.
+# This source file is licensed as described in the file COPYING, which
+# you should have received as part of this distribution.  The terms
+# are also available at
+# http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.txt
+#
+
 #####################################################
 ######## Don't change anything in this file #########
 #####################################################
@@ -27,19 +37,9 @@ rootdir		= $(call fullpath,$(ROOTDIR))
 ## Scripts directory
 SCRIPTSDIR	= scripts
 scriptsdir	= $(rootdir)/$(SCRIPTSDIR)
-## Bitfields description directory
-BITFIELDSDIR	= bitfields
-bitfieldsdir	= $(rootdir)/$(BITFIELDSDIR)
 ## Source root directory
 SRCROOTDIR	= src
 srcrootdir	= $(rootdir)/$(SRCROOTDIR)
-
-## Target technologies
-ASIC		= 0
-VIRTEX5		= 1
-SPARTAN6	= 2
-KINTEX7		= 3
-ARTIX7 		= 4
 
 .NOTPARALLEL:
 
@@ -54,14 +54,11 @@ IGNORELIBS	= $(patsubst %,%_lib,$(IGNORES))
 NOIGNORELIBS	= $(filter-out $(IGNORELIBS),$(LIBS))
 NOIGNOREMODULES	= $(patsubst %_lib,%,$(NOIGNORELIBS))
 
-## Bitfield definitions
-BITFIELDNAMES	= $(patsubst %.bitfield,%,$(notdir $(wildcard $(bitfieldsdir)/*.bitfield)))
-
 ifeq ($(call fullpath,.),$(rootdir))
 
 help:
 	@echo '--------------------------------------------------------------------------------'
-	@echo '"make doc-help": print documentation-related help'
+	@echo '"make module": create a new, empty module'
 	@echo '"make ms-help": print Modelsim-related help'
 	@echo '"make pr-help": print Precision RTL-related help'
 	@echo '"make rc-help": print Cadence RC-related help'
@@ -69,6 +66,21 @@ help:
 	@echo '"make clean": clean a bit'
 	@echo '"make ultraclean": clean as much as possible'
 	@echo '--------------------------------------------------------------------------------'
+
+module:
+	@echo -n "Module name: "; \
+	read m; \
+	if [ -d $(srcrootdir)/$$m ]; then \
+		echo "Module $$m already exists."; \
+	else \
+		mkdir $(srcrootdir)/$$m; \
+		cp $(scriptsdir)/Makefile.module.template $(srcrootdir)/$$m/Makefile; \
+		cp $(scriptsdir)/dependencies.module.template $(srcrootdir)/$$m/dependencies.txt; \
+		echo "Module $$m created. Please define its intra- and inter-dependencies in:"; \
+		echo "  $(srcrootdir)/$$m/dependencies.txt"; \
+		echo "and append its specific make rules to:"; \
+		echo "  $(srcrootdir)/$$m/Makefile"; \
+	fi
 
 clean ultraclean:
 	@for m in $(MODULES); do $(MAKE) -C $(srcrootdir)/$$m $@; done

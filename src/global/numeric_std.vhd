@@ -1,6 +1,5 @@
 --
--- SimpleRegister4Zynq - This file is part of SimpleRegister4Zynq
--- Copyright (C) 2015 - Telecom ParisTech
+-- Copyright (C) Telecom ParisTech
 --
 -- This file must be used under the terms of the CeCILL.
 -- This source file is licensed as described in the file COPYING, which
