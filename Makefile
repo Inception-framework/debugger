@@ -13,9 +13,9 @@
 ##############################################################
 
 ## Root directory of the project.
-ROOTDIR	= ../..
+ROOTDIR	?= .
 
-include $(ROOTDIR)/Makefile
+include $(ROOTDIR)/hwprj/main.mk
 
 ##############################################################
 ################# End of part HWPrj relies on ################

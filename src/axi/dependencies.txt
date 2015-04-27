@@ -8,4 +8,39 @@
 # http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.txt
 #
 
-
+# Dependencies are expressed as make rules without action of the form:
+#   <TARGET>: <PREREQUISITE1> <PREREQUISITE2> ... <PREREQUISITEN>
+# indicating that <TARGET> can be processed only after <PREREQUISITE1>
+# <PREREQUISITE2> ... <PREREQUISITEN>.
+#
+# Targets and prerequisites can have one of three forms:
+#   X
+# if X.vhd is a source file in the current module, or:
+#   A_LIB.X
+# if ../A/X.vhd is a source file in module A (source directory ../A) or:
+#   EXTERN.X
+# if X is an external VHDL library. Each external VHDL library found in a
+# dependencies.txt file must have a definition in $(rootdir)/externs.mk. Please
+# see $(rootdir)/hwprj/externs.mk.template for an example externs.mk.
+#
+# .NOSYN is a special target indicating that its prerequisites are not
+# synthesizable (typically simulation environments).
+#
+# Example: with the following declarations
+#
+#   .NOSYN: T
+#   X: Y B_LIB.Z EXTERN.E
+#   T: EXTERN.E X
+#
+# - T.vhd, X.vhd and Y.vhd are source files of the curent module.
+# - Z.vhd is a source files of module B which source directory is ../B.
+# - T.vhd is not synthesizable.
+# - Y.vhd and ../B/Z.vhd must be processed before X.vhd.
+# - X.vhd and T.vhd can be processed only if the external library E exists and
+#   is properly declared in $(rootdir)/externs.mk.
+# - X.vhd must be processed before T.vhd.
+#
+# Only direct dependencies must be expressed. Indirect dependencies are
+# automatically computed. In the preceeding example the indirect dependency:
+#   T: Y
+# is computed from the others.

@@ -8,9 +8,18 @@
 # http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.txt
 #
 
+##############################################################
+######## Do not change this part, HWPrj relies on it #########
+##############################################################
+
+## Root directory of the project.
 ROOTDIR	= ../..
 
 include $(ROOTDIR)/Makefile
+
+##############################################################
+################# End of part HWPrj relies on ################
+##############################################################
 
 TOP		= axi_register_wrapper
 BIT		= $(TOP).vv-syn/top.runs/impl_1/top_wrapper.bit
