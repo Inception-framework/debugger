@@ -10,7 +10,7 @@
 
 ROOTDIR	= ../..
 
-include $(ROOTDIR)/Makefile.defs
+include $(ROOTDIR)/Makefile
 
 TOP		= axi_register_wrapper
 BIT		= $(TOP).vv-syn/top.runs/impl_1/top_wrapper.bit

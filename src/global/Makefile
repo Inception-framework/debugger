@@ -10,7 +10,7 @@
 
 ROOTDIR	= ../..
 
-include $(ROOTDIR)/Makefile.defs
+include $(ROOTDIR)/Makefile
 
 MS-SIM-TESTS	= sim_utils_sim
 
