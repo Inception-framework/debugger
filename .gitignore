@@ -6,3 +6,9 @@ ms-sim-tests.log
 pr-tests.log
 rc-tests.log
 vv-tests.log
+/src/*/*.pr-syn
+/src/*/*.pr-syn.*/
+/src/*/*.rc-syn
+/src/*/*.rc-syn.*/
+/src/*/*.vv-syn
+/src/*/*.vv-syn.*/
