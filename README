@@ -97,7 +97,7 @@ export SIMPLEREGISTER4ZYNQ=$DISTRIB/simpleregister4zynq
 export UBOOT=$DISTRIB/u-boot-xlnx
 export KERNEL=$DISTRIB/linux-xlnx
 export DEVICETREEXLNX=$DISTRIB/device-tree-xlnx
-git clone --recursive git@gitlab.eurecom.fr:renaud.pacalet/hwprj.git $SIMPLEREGISTER4ZYNQ
+git clone --recursive git@gitlab.eurecom.fr:renaud.pacalet/simpleregister4zynq.git $SIMPLEREGISTER4ZYNQ
 git clone http://github.com/Xilinx/u-boot-xlnx.git $UBOOT
 git clone http://github.com/Xilinx/linux-xlnx.git $KERNEL
 git clone http://github.com/Xilinx/device-tree-xlnx.git $DEVICETREEXLNX
