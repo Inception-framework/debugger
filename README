@@ -33,18 +33,18 @@ hwprj:
   simpleregister4zynq follows the HWPrj infrastructure and organization. Please
   see hwprj/README for explanations about the HWPrj.
 
-src/axi:
+hdl/axi:
   The axi module (library axi_lib). Contains the axi_pkg package with
   all AXI-related declarations.
 
-src/axi_register:
+hdl/axi_register:
   The axi_register module (library axi_register_lib). The simple register and
   its wrapper. 
 
-src/global:
+hdl/global:
   The global module (library global_lib). Several general purpose packages.
 
-src/random:
+hdl/random:
   The random module (library random_lib). Random generators for simulation.
 
 2) Short description
@@ -144,7 +144,7 @@ export PATH=$KERNEL/scripts/dtc:$PATH
 ############################################
 # Hardware and hardware dependant software #
 ############################################
-export DESIGN=$SIMPLEREGISTER4ZYNQ/src/axi_register
+export DESIGN=$SIMPLEREGISTER4ZYNQ/hdl/axi_register
 cd $DESIGN
 cp $UBOOT/build/u-boot u-boot.elf
 make syn
