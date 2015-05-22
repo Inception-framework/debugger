@@ -12,3 +12,4 @@ vv-tests.log
 /src/*/*.rc-syn.*/
 /src/*/*.vv-syn
 /src/*/*.vv-syn.*/
+/hwprj

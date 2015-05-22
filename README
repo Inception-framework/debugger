@@ -14,24 +14,57 @@ This directory and its sub-directories contain the VHDL source code, VHDL
 simulation environment, simulation and synthesis scripts of a simple register
 example for the Xilinx Zynq core.
 
+Important note: the Makefiles and synthesis scripts rely on the HWPrj
+infrastructure. Please download the HWPrj archive and unpack in the
+simpleregister4zynq directory:
+
+cd simpleregister4zynq
+wget http://soc.eurecom.fr/EDC/hwprj.tgz
+tar zxf hwprj.tgz
+
+Alternately you can also fetch HWPrj from its git repository:
+
+cd simpleregister4zynq
+git submodule add git@gitlab.eurecom.fr:renaud.pacalet/hwprj.git
+
+Please see hwprj/README for explanations about HWPrj.
+
 1) Content
 ----------
 
-COPYING:
-COPYING-FR:
-COPYRIGHT:
-  Copyright notice and licences.
-
-Makefile:
-  The main Makefile. Type 'make' to see the available targets.
-
-README:
-  This file.
-
-hwprj:
-  The HWPrj git submodule. Contains all simulation and synthesis scripts.
-  simpleregister4zynq follows the HWPrj infrastructure and organization. Please
-  see hwprj/README for explanations about the HWPrj.
+.
+├── COPYING		(Copyright notice and licences)
+├── COPYING-FR		(Copyright notice and licences)
+├── COPYRIGHT		(Copyright notice and licences)
+├── hdl			(HDL source files, scripts)
+│   ├── axi		(AXI protocol)
+│   │   ├── axi_pkg.vhd
+│   │   ├── dependencies.txt
+│   │   └── Makefile
+│   ├── axi_register	(The simple register)
+│   │   ├── axi_register.vhd
+│   │   ├── axi_register_wrapper.vhd
+│   │   ├── axi_register_wrapper.vsyn.tcl
+│   │   ├── boot.bif
+│   │   ├── dependencies.txt
+│   │   ├── dts.hsi.tcl
+│   │   ├── fsbl.hsi.tcl
+│   │   └── Makefile
+│   ├── global		(Common utilities)
+│   │   ├── dependencies.txt
+│   │   ├── global.vhd
+│   │   ├── Makefile
+│   │   ├── numeric_std.vhd
+│   │   ├── sim_utils_sim.vhd
+│   │   ├── sim_utils.vhd
+│   │   └── utils.vhd
+│   └── random		(Random generators)
+│       ├── dependencies.txt
+│       ├── Makefile
+│       ├── random_pkg.vhd
+│       └── rnd.vhd
+├── Makefile		(The main Makefile. Type 'make' to see the available targets).
+└── README		(This file)
 
 hdl/axi:
   The axi module (library axi_lib). Contains the axi_pkg package with
@@ -50,21 +83,32 @@ hdl/random:
 2) Short description
 --------------------
 
-The PL bitstream is that of a simple AXI register with one slave AXI port,
-an 8-bits general purpose input and an 8 bits general purpose output:
+The PL bitstream is that of a simple AXI-AXI bridge with two slave AXI ports,
+one master AXI port, 8 internal 32-bits registers, an 8-bits general purpose
+input and an 8 bits general purpose output:
 
----------+     +-------------------+
-   PS    |     |  SIMPLE REGISTER  |
-         |     |                   |
-M_AXI_GP0|<--->|S_AXI<-->REGs      |
----------+     |                   |
+                                                         +---+
+                                                         |DDR|
+                                                         +---+
+                                                           ^
+                                                           |
+---------+     +-------------------+     +-----------------|---
+   PS    |     |  SIMPLE REGISTER  |     |   PS            v
+         |     |                   |     |             +------+
+M_AXI_GP1|<--->|S1_AXI<----->M_AXI |<--->|S_AXI_HP0<-->| DDR  |
+         |     |                   |     |             | Ctrl |
+M_AXI_GP0|<--->|S0_AXI<-->REGs     |     |             +------+
+---------+     |                   |     +---------------------
                |                   |
  Switches ---->|GPI             GPO|----> LEDs
                +-------------------+
 
-The S_AXI AXI slave port is used to access the registers. GPI and GPO are
-general purpose 8 bits inputs and outputs. GPI is connected to the switches and
-GPO to the LEDs. The mapping of the S_AXI address space is the following:
+The S1_AXI AXI slave port is forwarded to the M_AXI AXI master port. It is used
+to access the DDR controller from the Processing System (PS) through the FPGA
+fabric. The S0_AXI AXI slave port is used to access the internal registers. GPI
+and GPO are general purpose 8 bits inputs and outputs. They are used for
+debugging. GPI is typically connected to switches and GPO to LEDs. The mapping
+of the S0_AXI address space is the following:
 
              +------------+
   0x40000000 |  GPIR (ro) | General purpose input register (8 LSBs only, 24 MSBs reserved)
@@ -85,6 +129,17 @@ GPIR (and thus GPI):
 +-------+-------------------------------------------------+
 | other | 0x55                                            |
 +-------+-------------------------------------------------+
+
+Important note: thanks to the S1_AXI to M_AXI bridge the complete 1GB address
+space 0x00000000 - 0x3FFFFFFF is also mapped to 0x80000000 - 0xBFFFFFFF. On
+Zynq-based boards that do not map this entire GB (like, for instance, the
+ZedBoard with only 512 MB of DDR), the unmapped region in 0x20000000 -
+0x3FFFFFFF has a corresponding unmapped region in 0xA0000000 - 0xBFFFFFFF.
+Accessing one or the other will raise errors. Moreover, depending on the
+configuration, some Zynq systems have a reserved low addresses range that cannot
+be accessed from the AXI_HP ports. In these systems this low range can be
+accessed in the 0x00000000 - 0x3FFFFFFF range but not in the
+0x80000000 - 0xBFFFFFFF range.
 
 3) Building the whole example from scratch
 ------------------------------------------
@@ -204,6 +259,9 @@ zynq> devmem 0x40000000 32
 
 # Illuminating the 8 LEDs (first set the switches to 0x00):
 zynq> devmem 0x40000004 32 0xFF
+
+# Reading in the external memory through the FPGA fabric:
+zynq> devmem 0x90000000 32
 
 # Power off
 zynq> poweroff

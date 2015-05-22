@@ -21,14 +21,20 @@ use axi_lib.axi_pkg.all;
 -- See the README file for a detailed description of the AXI register
 
 entity axi_register is
-  generic(na1: natural := 30;   -- Number of significant bits in S_AXI addresses (12 bits => 4kB address space)
-          nr1: natural := 2);   -- Number of 32-bits registers in S_AXI address space; addresses are 0 to 4*(nr1-1)
+  generic(na1: natural := 30;   -- Number of significant bits in S0_AXI addresses (12 bits => 4kB address space)
+          nr1: natural := 2);   -- Number of 32-bits registers in S0_AXI address space; addresses are 0 to 4*(nr1-1)
   port(
     aclk:       in std_ulogic;
     aresetn:    in std_ulogic;
     -- AXI lite slave port
-    s_axi_m2s:  in  axilite_gp_m2s;
-    s_axi_s2m:  out axilite_gp_s2m;
+    s0_axi_m2s: in  axilite_gp_m2s;
+    s0_axi_s2m: out axilite_gp_s2m;
+    -- AXI slave port
+    s1_axi_m2s: in  axi_gp_m2s;
+    s1_axi_s2m: out axi_gp_s2m;
+    -- AXI master port
+    m_axi_m2s:  out axi_gp_m2s;
+    m_axi_s2m:  in  axi_gp_s2m;
     -- GPIO
     gpi:        in  std_ulogic_vector(7 downto 0);
     gpo:        out std_ulogic_vector(7 downto 0)
@@ -49,7 +55,16 @@ architecture rtl of axi_register is
   signal regs: reg_array;
 
 begin
-    
+
+  s1_axi_to_m_axi: process(s1_axi_m2s, m_axi_s2m)
+
+  begin
+    m_axi_m2s <= s1_axi_m2s;
+    m_axi_m2s.araddr(31 downto 30) <= "00";
+    m_axi_m2s.awaddr(31 downto 30) <= "00";
+    s1_axi_s2m <= m_axi_s2m; 
+  end process s1_axi_to_m_axi;
+
   regs_pr: process(aclk)
     -- idle: waiting for AXI master requests: when receiving write address and data valid (higher priority than read), perform the write, assert write address
     --       ready, write data ready and bvalid, go to w1, else, when receiving address read valid, perform the read, assert read address ready, read data valid
@@ -64,58 +79,58 @@ begin
     if rising_edge(aclk) then
       if aresetn = '0' then
         regs <= (others => (others => '0'));
-        s_axi_s2m <= (rdata => (others => '0'), rresp => axi_resp_okay, bresp => axi_resp_okay, others => '0');
+        s0_axi_s2m <= (rdata => (others => '0'), rresp => axi_resp_okay, bresp => axi_resp_okay, others => '0');
         state := idle;
       else
         regs(gpir_idx) <= X"000000" & gpi; -- General purpose inputs
 
         -- Addresses ranges
-        widx := to_integer(unsigned(s_axi_m2s.awaddr(l2nr1 + 1 downto 2)));
-        ridx := to_integer(unsigned(s_axi_m2s.araddr(l2nr1 + 1 downto 2)));
+        widx := to_integer(unsigned(s0_axi_m2s.awaddr(l2nr1 + 1 downto 2)));
+        ridx := to_integer(unsigned(s0_axi_m2s.araddr(l2nr1 + 1 downto 2)));
 
-        -- S_AXI write and read
+        -- s0_axi write and read
         case state is
           when idle =>
-            if s_axi_m2s.awvalid = '1' and s_axi_m2s.wvalid = '1' then -- Write address and data
-              if or_reduce(s_axi_m2s.awaddr(na1 - 1 downto l2nr1 + 2)) /= '0' or widx >= nr1 then -- If unmapped address
-                s_axi_s2m.bresp <= axi_resp_decerr;
+            if s0_axi_m2s.awvalid = '1' and s0_axi_m2s.wvalid = '1' then -- Write address and data
+              if or_reduce(s0_axi_m2s.awaddr(na1 - 1 downto l2nr1 + 2)) /= '0' or widx >= nr1 then -- If unmapped address
+                s0_axi_s2m.bresp <= axi_resp_decerr;
               elsif roreg(widx) = '1' then -- If read-only register
-                s_axi_s2m.bresp <= axi_resp_slverr;
+                s0_axi_s2m.bresp <= axi_resp_slverr;
               else
                 for i in 0 to 3 loop
-                  if s_axi_m2s.wstrb(i) = '1' then
-                    regs(widx)(8 * i + 7 downto 8 * i) <= s_axi_m2s.wdata(8 * i + 7 downto 8 * i);
+                  if s0_axi_m2s.wstrb(i) = '1' then
+                    regs(widx)(8 * i + 7 downto 8 * i) <= s0_axi_m2s.wdata(8 * i + 7 downto 8 * i);
                   end if;
                 end loop;
               end if;
-              s_axi_s2m.awready <= '1';
-              s_axi_s2m.wready <= '1';
-              s_axi_s2m.bvalid <= '1';
+              s0_axi_s2m.awready <= '1';
+              s0_axi_s2m.wready <= '1';
+              s0_axi_s2m.bvalid <= '1';
               state := w1;
-            elsif s_axi_m2s.arvalid = '1' then
-              if or_reduce(s_axi_m2s.araddr(na1 - 1 downto l2nr1 + 2)) /= '0' or ridx >= nr1 then -- If unmapped address
-                s_axi_s2m.rdata <= (others => '0');
-                s_axi_s2m.rresp <= axi_resp_decerr;
+            elsif s0_axi_m2s.arvalid = '1' then
+              if or_reduce(s0_axi_m2s.araddr(na1 - 1 downto l2nr1 + 2)) /= '0' or ridx >= nr1 then -- If unmapped address
+                s0_axi_s2m.rdata <= (others => '0');
+                s0_axi_s2m.rresp <= axi_resp_decerr;
               else
-                s_axi_s2m.rdata <= regs(ridx);
+                s0_axi_s2m.rdata <= regs(ridx);
               end if;
-              s_axi_s2m.arready <= '1';
-              s_axi_s2m.rvalid <= '1';
+              s0_axi_s2m.arready <= '1';
+              s0_axi_s2m.rvalid <= '1';
               state := r1;
             end if;
           when w1 =>
-            s_axi_s2m.awready <= '0';
-            s_axi_s2m.wready <= '0';
-            if s_axi_m2s.bready = '1' then
-              s_axi_s2m.bvalid <= '0';
-              s_axi_s2m.bresp <= axi_resp_okay;
+            s0_axi_s2m.awready <= '0';
+            s0_axi_s2m.wready <= '0';
+            if s0_axi_m2s.bready = '1' then
+              s0_axi_s2m.bvalid <= '0';
+              s0_axi_s2m.bresp <= axi_resp_okay;
               state := idle;
             end if;
           when r1 =>
-            s_axi_s2m.arready <= '0';
-            if s_axi_m2s.rready = '1' then
-              s_axi_s2m.rvalid <= '0';
-              s_axi_s2m.rresp <= axi_resp_okay;
+            s0_axi_s2m.arready <= '0';
+            if s0_axi_m2s.rready = '1' then
+              s0_axi_s2m.rvalid <= '0';
+              s0_axi_s2m.rresp <= axi_resp_okay;
               state := idle;
             end if;
         end case;
