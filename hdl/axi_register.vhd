@@ -8,29 +8,36 @@
 -- http://www.cecill.info/licences/Licence_CeCILL_V1.1-US.txt
 --
 
+-- See the README.md file for a detailed description of the AXI register
+
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
-library axi_lib;
-use axi_lib.axi_pkg.all;
+use work.utils.all;
+use work.axi_pkg.all;
 
-entity axi_register_wrapper is
+entity axi_register is
   port(
-    aclk:       in std_logic;
-    aresetn:    in std_logic;
+    aclk:       in std_logic;  -- Clock
+    aresetn:    in std_logic;  -- Synchronous, active low, reset
+    btn:        in std_logic;  -- Command button
+    sw:         in  std_logic_vector(3 downto 0); -- Slide switches
+    led:        out std_logic_vector(3 downto 0); -- LEDs
+
     --------------------------------
     -- AXI lite slave port s0_axi --
     --------------------------------
     -- Inputs (master to slave) --
     ------------------------------
     -- Read address channel
-    s0_axi_araddr:  in  std_logic_vector(11 downto 0);
+    s0_axi_araddr:  in  std_logic_vector(29 downto 0);
     s0_axi_arprot:  in  std_logic_vector(2 downto 0);
     s0_axi_arvalid: in  std_logic;
     -- Read data channel
     s0_axi_rready:  in  std_logic;
     -- Write address channel
-    s0_axi_awaddr:  in  std_logic_vector(11 downto 0);
+    s0_axi_awaddr:  in  std_logic_vector(29 downto 0);
     s0_axi_awprot:  in  std_logic_vector(2 downto 0);
     s0_axi_awvalid: in  std_logic;
     -- Write data channel
@@ -169,48 +176,216 @@ entity axi_register_wrapper is
     -- Write response channel
     m_axi_bvalid:  in  std_logic;
     m_axi_bid:     in  std_logic_vector(5 downto 0);
-    m_axi_bresp:   in  std_logic_vector(1 downto 0);
-
-    -- GPIO
-    gpi:        in  std_logic_vector(7 downto 0);
-    gpo:        out std_logic_vector(7 downto 0)
+    m_axi_bresp:   in  std_logic_vector(1 downto 0)
   );
-end entity axi_register_wrapper;
+end entity axi_register;
 
-architecture rtl of axi_register_wrapper is
+architecture rtl of axi_register is
 
-    signal s0_axi_m2s: axilite_gp_m2s;
-    signal s0_axi_s2m: axilite_gp_s2m;
-    signal s1_axi_m2s: axi_gp_m2s;
-    signal s1_axi_s2m: axi_gp_s2m;
-    signal m_axi_m2s: axi_gp_m2s;
-    signal m_axi_s2m: axi_gp_s2m;
-    signal gpi_local: std_ulogic_vector(7 downto 0);
-    signal gpo_local: std_ulogic_vector(7 downto 0);
+  -- Record versions of AXI signals
+  signal s0_axi_m2s: axilite_gp_m2s;
+  signal s0_axi_s2m: axilite_gp_s2m;
+  signal s1_axi_m2s: axi_gp_m2s;
+  signal s1_axi_s2m: axi_gp_s2m;
+  signal m_axi_m2s: axi_gp_m2s;
+  signal m_axi_s2m: axi_gp_s2m;
+
+  -- Debounced and re-synchronized BTN
+  signal tick: std_ulogic;
+  signal rtick: std_ulogic;
+
+  -- STATUS register
+  signal status: std_ulogic_vector(31 downto 0);
+
+  alias life:    std_ulogic_vector(3 downto 0) is status(3 downto 0);
+  alias cnt:     std_ulogic_vector(3 downto 0) is status(7 downto 4);
+  alias arcnt:   std_ulogic_vector(3 downto 0) is status(11 downto 8);
+  alias rcnt:    std_ulogic_vector(3 downto 0) is status(15 downto 12);
+  alias awcnt:   std_ulogic_vector(3 downto 0) is status(19 downto 16);
+  alias wcnt:    std_ulogic_vector(3 downto 0) is status(23 downto 20);
+  alias bcnt:    std_ulogic_vector(3 downto 0) is status(27 downto 24);
+
+  -- R register
+  signal r: std_ulogic_vector(31 downto 0);
 
 begin
 
-  i_axi_register: entity work.axi_register
+  -- BTN debouncer
+  i_btn_deb: entity work.debouncer(rtl)
   port map(
-    aclk       => aclk,
-    aresetn    => aresetn,
-    s0_axi_m2s => s0_axi_m2s,
-    s0_axi_s2m => s0_axi_s2m,
-    s1_axi_m2s => s1_axi_m2s,
-    s1_axi_s2m => s1_axi_s2m,
-    m_axi_m2s  => m_axi_m2s,
-    m_axi_s2m  => m_axi_s2m,
-    gpi        => gpi_local,
-    gpo        => gpo_local
+    clk   => aclk,
+    srstn => aresetn,
+    d     => btn,
+    q     => tick,
+    r     => rtick,
+    f     => open,
+    a     => open
   );
 
-  s0_axi_m2s.araddr  <= std_ulogic_vector(X"00000" & s0_axi_araddr);
+  -- LED outputs
+  process(status, r, tick)
+    variable m0: std_ulogic_vector(63 downto 0);
+    variable m1: std_ulogic_vector(31 downto 0);
+    variable m2: std_ulogic_vector(15 downto 0);
+    variable m3: std_ulogic_vector(7 downto 0);
+    variable m4: std_ulogic_vector(3 downto 0);
+  begin
+    m0 := r & status;
+    if cnt(3) = '1' then
+      m1 := m0(63 downto 32);
+    else
+      m1 := m0(31 downto 0);
+    end if;
+    if cnt(2) = '1' then
+      m2 := m1(31 downto 16);
+    else
+      m2 := m1(15 downto 0);
+    end if;
+    if cnt(1) = '1' then
+      m3 := m2(15 downto 8);
+    else
+      m3 := m2(7 downto 0);
+    end if;
+    if cnt(0) = '1' then
+      m4 := m3(7 downto 4);
+    else
+      m4 := m3(3 downto 0);
+    end if;
+    if tick = '1' then
+      m4 := cnt;
+    end if;
+    led <= std_logic_vector(m4);
+  end process;
+
+  -- Status register
+  process(aclk)
+    variable cnt27: unsigned(26 downto 0); -- Life monitor counter
+  begin
+    if rising_edge(aclk) then
+      if aresetn = '0' then
+        status <= (0 => '1', others => '0');
+        cnt27 := (others => '0');
+      else
+        -- Life monitor
+        cnt27 := cnt27 + 1;
+        if cnt27(26) = '1' then
+          cnt27(26) := '0';
+          life <= life(2 downto 0) & life(3);
+        end if;
+        -- BTN event counter
+        if rtick = '1' then
+          cnt <= std_ulogic_vector(unsigned(cnt) + 1);
+        end if;
+        -- S1_AXI address read transactions counter
+        if s1_axi_m2s.arvalid = '1' and s1_axi_s2m.arready = '1' then
+          arcnt <= std_ulogic_vector(unsigned(arcnt) + 1);
+        end if;
+        -- S1_AXI data read transactions counter
+        if s1_axi_m2s.arvalid = '1' and s1_axi_s2m.arready = '1' then
+          rcnt <= std_ulogic_vector(unsigned(rcnt) + 1);
+        end if;
+        -- S1_AXI address write transactions counter
+        if s1_axi_m2s.arvalid = '1' and s1_axi_s2m.arready = '1' then
+          awcnt <= std_ulogic_vector(unsigned(awcnt) + 1);
+        end if;
+        -- S1_AXI data write transactions counter
+        if s1_axi_m2s.arvalid = '1' and s1_axi_s2m.arready = '1' then
+          wcnt <= std_ulogic_vector(unsigned(wcnt) + 1);
+        end if;
+        -- S1_AXI write response transactions counter
+        if s1_axi_m2s.arvalid = '1' and s1_axi_s2m.arready = '1' then
+          bcnt <= std_ulogic_vector(unsigned(bcnt) + 1);
+        end if;
+        -- Slide switches
+        status(31 downto 28) <= std_ulogic_vector(sw);
+      end if;
+    end if;
+  end process;
+
+  -- Forwarding of S1_AXI read-write requests to M_AXI and of M_AXI responses to S1_AXI
+  s1_axi_to_m_axi: process(s1_axi_m2s, m_axi_s2m)
+  begin
+    m_axi_m2s <= s1_axi_m2s;
+    m_axi_m2s.araddr(31 downto 30) <= "00";
+    m_axi_m2s.awaddr(31 downto 30) <= "00";
+    s1_axi_s2m <= m_axi_s2m; 
+  end process s1_axi_to_m_axi;
+
+  -- S0_AXI read-write requests
+  s0_axi_pr: process(aclk)
+    -- idle: waiting for AXI master requests: when receiving write address and data valid (higher priority than read), perform the write, assert write address
+    --       ready, write data ready and bvalid, go to w1, else, when receiving address read valid, perform the read, assert read address ready, read data valid
+    --       and go to r1
+    -- w1:   deassert write address ready and write data ready, wait for write response ready: when receiving it, deassert write response valid, go to idle
+    -- r1:   deassert read address ready, wait for read response ready: when receiving it, deassert read data valid, go to idle
+    type state_type is (idle, w1, r1);
+    variable state: state_type;
+  begin
+    if rising_edge(aclk) then
+      if aresetn = '0' then
+        s0_axi_s2m <= (rdata => (others => '0'), rresp => axi_resp_okay, bresp => axi_resp_okay, others => '0');
+        state := idle;
+      else
+        -- s0_axi write and read
+        case state is
+          when idle =>
+            if s0_axi_m2s.awvalid = '1' and s0_axi_m2s.wvalid = '1' then -- Write address and data
+              if or_reduce(s0_axi_m2s.awaddr(31 downto 3)) /= '0' then -- If unmapped address
+                s0_axi_s2m.bresp <= axi_resp_decerr;
+              elsif s0_axi_m2s.awaddr(2) = '0' then -- If read-only status register
+                s0_axi_s2m.bresp <= axi_resp_slverr;
+              else
+                for i in 0 to 3 loop
+                  if s0_axi_m2s.wstrb(i) = '1' then
+                    r(8 * i + 7 downto 8 * i) <= s0_axi_m2s.wdata(8 * i + 7 downto 8 * i);
+                  end if;
+                end loop;
+              end if;
+              s0_axi_s2m.awready <= '1';
+              s0_axi_s2m.wready <= '1';
+              s0_axi_s2m.bvalid <= '1';
+              state := w1;
+            elsif s0_axi_m2s.arvalid = '1' then
+              if or_reduce(s0_axi_m2s.awaddr(31 downto 3)) /= '0' then -- If unmapped address
+                s0_axi_s2m.rdata <= (others => '0');
+                s0_axi_s2m.rresp <= axi_resp_decerr;
+              elsif s0_axi_m2s.awaddr(2) = '0' then -- If status register
+                s0_axi_s2m.rdata <= status;
+              else
+                s0_axi_s2m.rdata <= r;
+              end if;
+              s0_axi_s2m.arready <= '1';
+              s0_axi_s2m.rvalid <= '1';
+              state := r1;
+            end if;
+          when w1 =>
+            s0_axi_s2m.awready <= '0';
+            s0_axi_s2m.wready <= '0';
+            if s0_axi_m2s.bready = '1' then
+              s0_axi_s2m.bvalid <= '0';
+              s0_axi_s2m.bresp <= axi_resp_okay;
+              state := idle;
+            end if;
+          when r1 =>
+            s0_axi_s2m.arready <= '0';
+            if s0_axi_m2s.rready = '1' then
+              s0_axi_s2m.rvalid <= '0';
+              s0_axi_s2m.rresp <= axi_resp_okay;
+              state := idle;
+            end if;
+        end case;
+      end if;
+    end if;
+  end process s0_axi_pr;
+
+  -- Record types to flat signals
+  s0_axi_m2s.araddr  <= std_ulogic_vector("00" & s0_axi_araddr);
   s0_axi_m2s.arprot  <= std_ulogic_vector(s0_axi_arprot);
   s0_axi_m2s.arvalid <= s0_axi_arvalid;
 
   s0_axi_m2s.rready  <= s0_axi_rready;
 
-  s0_axi_m2s.awaddr  <= std_ulogic_vector(X"00000" & s0_axi_awaddr);
+  s0_axi_m2s.awaddr  <= std_ulogic_vector("00" & s0_axi_awaddr);
   s0_axi_m2s.awprot  <= std_ulogic_vector(s0_axi_awprot);
   s0_axi_m2s.awvalid <= s0_axi_awvalid;
 
@@ -328,8 +503,5 @@ begin
   m_axi_s2m.bvalid   <= m_axi_bvalid;
   m_axi_s2m.bid      <= std_ulogic_vector(m_axi_bid);
   m_axi_s2m.bresp    <= std_ulogic_vector(m_axi_bresp);
-
-  gpi_local         <= std_ulogic_vector(gpi);
-  gpo               <= std_logic_vector(gpo_local);
 
 end architecture rtl;

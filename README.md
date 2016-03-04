@@ -11,23 +11,9 @@ SIMPLE REGISTER DESIGN FILES
 ----------------------------
 
 This directory and its sub-directories contain the VHDL source code, VHDL
-simulation environment, simulation and synthesis scripts of a simple register
-example for the Xilinx Zynq core.
-
-Important note: the Makefiles and synthesis scripts rely on the HWPrj
-infrastructure. Please download the HWPrj archive and unpack in the
-simpleregister4zynq directory:
-
-cd simpleregister4zynq
-wget http://soc.eurecom.fr/EDC/hwprj.tgz
-tar zxf hwprj.tgz
-
-Alternately you can also fetch HWPrj from its git repository:
-
-cd simpleregister4zynq
-git submodule add git@gitlab.eurecom.fr:renaud.pacalet/hwprj.git
-
-Please see hwprj/README for explanations about HWPrj.
+simulation environment, simulation and synthesis scripts of a simple design
+example for the Xilinx Zynq core. It can be ported on any board based on Xilinx
+Zynq cores but has been specifically designed for the Zybo board by Digilent.
 
 1) Content
 ----------
@@ -83,9 +69,10 @@ hdl/random:
 2) Short description
 --------------------
 
-The PL bitstream is that of a simple AXI-AXI bridge with two slave AXI ports,
-one master AXI port, 8 internal 32-bits registers, an 8-bits general purpose
-input and an 8 bits general purpose output:
+This design is a simple AXI-AXI bridge with two slave AXI ports, one master AXI
+port, several internal registers, a 4-bits input connected to the 4
+slide-switches, a 4-bits output connected to the 4 LEDs and a one bit command
+input connected to the leftmost push-button (BTN0):
 
                                                          +---+
                                                          |DDR|
@@ -100,46 +87,61 @@ M_AXI_GP1|<--->|S1_AXI<----->M_AXI |<--->|S_AXI_HP0<-->| DDR  |
 M_AXI_GP0|<--->|S0_AXI<-->REGs     |     |             +------+
 ---------+     |                   |     +---------------------
                |                   |
- Switches ---->|GPI             GPO|----> LEDs
+     BTN0 ---->|BTN                |
+               |                   |
+ Switches ---->|SW              LED|----> LEDs
                +-------------------+
 
 The S1_AXI AXI slave port is forwarded to the M_AXI AXI master port. It is used
 to access the DDR controller from the Processing System (PS) through the FPGA
-fabric. The S0_AXI AXI slave port is used to access the internal registers. GPI
-and GPO are general purpose 8 bits inputs and outputs. They are used for
-debugging. GPI is typically connected to switches and GPO to LEDs. The mapping
-of the S0_AXI address space is the following:
+fabric. The S0_AXI AXI slave port is used to access the internal registers. The
+mapping of the S0_AXI address space is the following:
 
-             +------------+
-  0x40000000 |  GPIR (ro) | General purpose input register (8 LSBs only, 24 MSBs reserved)
-             +------------+
-  0x40000004 |  GPOR (rw) | General purpose output register (8 LSBs only, 24 MSBs reserved)
-             +------------+
+             +--------------+
+  0x40000000 |  STATUS (ro) | 32 bits read-only status register
+             +--------------+
+  0x40000004 |  R      (rw) | 32 bits general purpose read-write register
+             +--------------+
+  0x40000008 |      .       |
+             |      .       | Unmapped
+  0x7ffffffc |      .       |
+             +--------------+
 
-Reserved bits read as zeroes and writing them has no effect. Writing a read-only
-(ro) register returns a SLVERR response. Accessing an unmapped address returns a
-DECERR response. The value of GPIR least significant byte is always equal to the
-GPI input. The value of least significant byte of GPO depends on the value of
-GPIR (and thus GPI):
+The organization of the status register is the following:
 
-+-------+-------------------------------------------------+
-| GPIR  | GPO                                             |
-+-------+-------------------------------------------------+
-| 0x00  | GPOR                                            |
-+-------+-------------------------------------------------+
-| other | 0x55                                            |
-+-------+-------------------------------------------------+
++--------+-----------------------------------------------------+
+| Bits   | Role                                                |
++--------+-----------------------------------------------------+
+|  3...0 | LIFE, rotating bit (life monitor)                   |
+|  7...4 | CNT, counter of BTN events                          |
+| 11...8 | ARCNT, counter of S1_AXI address-read transactions  |
+| 15..12 | RCNT, counter of S1_AXI date-read transactions      |
+| 19..16 | AWCNT, counter of S1_AXI address-write transactions |
+| 23..20 | WCNT, counter of S1_AXI data-write transactions     |
+| 27..24 | BCNT, counter of S1_AXI write-response transactions |
+| 31..28 | SW, current value                                   |
++--------+-----------------------------------------------------+
 
-Important note: thanks to the S1_AXI to M_AXI bridge the complete 1GB address
-space 0x00000000 - 0x3FFFFFFF is also mapped to 0x80000000 - 0xBFFFFFFF. On
-Zynq-based boards that do not map this entire GB (like, for instance, the
-ZedBoard with only 512 MB of DDR), the unmapped region in 0x20000000 -
-0x3FFFFFFF has a corresponding unmapped region in 0xA0000000 - 0xBFFFFFFF.
-Accessing one or the other will raise errors. Moreover, depending on the
-configuration, some Zynq systems have a reserved low addresses range that cannot
-be accessed from the AXI_HP ports. In these systems this low range can be
-accessed in the 0x00000000 - 0x3FFFFFFF range but not in the
-0x80000000 - 0xBFFFFFFF range.
+The BTN input is filtered by a debouncer-resynchronizer. The counter of BTN
+events is initialized to zero after reset. Each time the BTN push-button is
+pressed, the counter is incremented modulus 16 and its value is sent to LED
+until the button is released. When the button is released the current value CNT
+of the counter selects which 4-bits slice of which internal register is sent to
+LED: bits 4*CNT+3..4*CNT of STATUS register when 0<=CNT<=7, else bits
+4*(CNT-8)+3..4*(CNT-8) of R register.
+
+Thanks to the S1_AXI to M_AXI bridge the complete 1GB address space
+[0x00000000..0x40000000[ is also mapped to [0x80000000..0xc0000000[. Note that
+the Zybo board has only 512 MB of DDR and accesses above the DDR limit either
+fall back in the low half (aliasing) or raise errors. Accesses in the unmapped
+region of the S0_AXI [0x40000008..0x80000000[ address space will raise DECERR
+AXI errors. Write accesses to the read-only status register will raise SLVERR
+AXI errors.
+
+Moreover, depending on the configuration, Zynq-based systems have a reserved low
+addresses range that cannot be accessed from the AXI_HP ports. In these systems
+this low range can be accessed in the [0x00000000..0x40000000[ range but not in
+the [0x80000000..0xc0000000[ range.
 
 3) Building the whole example from scratch
 ------------------------------------------

@@ -1,6 +1,0 @@
-image:
-{
-  [bootloader]axi_register_wrapper.vv-syn/top.sdk/fsbl/executable.elf
-  axi_register_wrapper.vv-syn/top.runs/impl_1/top_wrapper.bit
-  u-boot.elf
-}
