@@ -1,3 +1,8 @@
+| header 1 | header 2 |
+| -------- | -------- |
+| cell 1   | cell 2   |
+| cell 3   | cell 4   |
+
 This repository and its sub-directories contain the VHDL source code, VHDL simulation environment, simulation and synthesis scripts of a simple design example for the Xilinx Zynq core. It can be ported on any board based on Xilinx Zynq cores but has been specifically designed for the Zybo board by Digilent.
 
 # Table of content
@@ -72,7 +77,7 @@ M_AXI_GP0|<--->|S0_AXI<-->REGs     |     |             +------+
 The S1_AXI AXI slave port is forwarded to the M_AXI AXI master port. It is used to access the DDR controller from the Processing System (PS) through the FPGA fabric. The S0_AXI AXI slave port is used to access the internal registers. The mapping of the S0_AXI address space is the following:
 
  | Address      | Mapped resource   | Description                                 | 
- |:------------ |:----------------- |:------------------------------------------- | 
+ | ------------ | ----------------- | ------------------------------------------- | 
  | `0x40000000` | STATUS (ro)       | 32 bits read-only status register           | 
  | `0x40000004` | R      (rw)       | 32 bits general purpose read-write register | 
  | `0x40000008` |                   |                                             | 
