@@ -75,16 +75,14 @@ The S1_AXI AXI slave port is forwarded to the M_AXI AXI master port. It is used 
 | ------------ | ----------------- | ------------------------------------------- | 
 | `0x40000000` | STATUS (ro)       | 32 bits read-only status register           | 
 | `0x40000004` | R      (rw)       | 32 bits general purpose read-write register | 
-| `0x40000008` |                   |                                             | 
+| `0x40000008` | Unmapped          |                                             | 
 | ...          | Unmapped          |                                             | 
-| `0x7ffffffc` |                   |                                             | 
+| `0x7ffffffc` | Unmapped          |                                             | 
 
 The organization of the status register is the following:
 
-```
-+--------+-----------------------------------------------------+
 | Bits   | Role                                                |
-+--------+-----------------------------------------------------+
+|--------|-----------------------------------------------------|
 |  3...0 | LIFE, rotating bit (life monitor)                   |
 |  7...4 | CNT, counter of BTN events                          |
 | 11...8 | ARCNT, counter of S1_AXI address-read transactions  |
@@ -93,21 +91,17 @@ The organization of the status register is the following:
 | 23..20 | WCNT, counter of S1_AXI data-write transactions     |
 | 27..24 | BCNT, counter of S1_AXI write-response transactions |
 | 31..28 | SW, current value                                   |
-+--------+-----------------------------------------------------+
-```
 
 The BTN input is filtered by a debouncer-resynchronizer. The counter of BTN events is initialized to zero after reset. Each time the BTN push-button is pressed, the counter is incremented modulus 16 and its value is sent to LED until the button is released. When the button is released the current value CNT of the counter selects which 4-bits slice of which internal register is sent to LED: bits 4*CNT+3..4*CNT of STATUS register when 0<=CNT<=7, else bits 4*(CNT-8)+3..4*(CNT-8) of R register.
 
-Thanks to the S1_AXI to M_AXI bridge the complete 1GB address space [0x00000000..0x40000000[ is also mapped to [0x80000000..0xc0000000[. Note that the Zybo board has only 512 MB of DDR and accesses above the DDR limit either fall back in the low half (aliasing) or raise errors. Accesses in the unmapped region of the S0_AXI [0x40000008..0x80000000[ address space will raise DECERR AXI errors. Write accesses to the read-only status register will raise SLVERR AXI errors.
+Thanks to the S1_AXI to M_AXI bridge the complete 1GB address space `[0x00000000..0x40000000[` is also mapped to `[0x80000000..0xc0000000[`. Note that the Zybo board has only 512 MB of DDR and accesses above the DDR limit either fall back in the low half (aliasing) or raise errors. Accesses in the unmapped region of the S0_AXI `[0x40000008..0x80000000[` address space will raise DECERR AXI errors. Write accesses to the read-only status register will raise SLVERR AXI errors.
 
-Moreover, depending on the configuration, Zynq-based systems have a reserved low addresses range that cannot be accessed from the AXI_HP ports. In these systems this low range can be accessed in the [0x00000000..0x40000000[ range but not in the [0x80000000..0xc0000000[ range.
+Moreover, depending on the configuration, Zynq-based systems have a reserved low addresses range that cannot be accessed from the AXI_HP ports. In these systems this low range can be accessed in the `[0x00000000..0x40000000[` range but not in the `[0x80000000..0xc0000000[` range.
 
 # <a name="Building"></a>Building the whole example from scratch
 
+Fetch sources (if not already done, else simply git pull to get the latest versions)
 ```
-#############################################################
-# Fetch sources (if not already done, else simply git pull) #
-#############################################################
 export DISTRIB=<some-path>
 export SIMPLEREGISTER4ZYNQ=$DISTRIB/simpleregister4zynq
 export UBOOT=$DISTRIB/u-boot-xlnx
