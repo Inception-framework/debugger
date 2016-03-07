@@ -72,12 +72,12 @@ M_AXI_GP0|<--->|S0_AXI<-->REGs     |     |             +------+
 The S1_AXI AXI slave port is forwarded to the M_AXI AXI master port. It is used to access the DDR controller from the Processing System (PS) through the FPGA fabric. The S0_AXI AXI slave port is used to access the internal registers. The mapping of the S0_AXI address space is the following:
 
  | Address      | Mapped resource   | Description                                 | 
- | ------------ | ----------------- | -------------                               | 
- | 0x40000000   | STATUS (ro)       | 32 bits read-only status register           | 
- | 0x40000004   | R      (rw)       | 32 bits general purpose read-write register | 
- | 0x40000008   |                   |                                             | 
+ |--------------|-------------------|---------------------------------------------| 
+ | `0x40000000` | STATUS (ro)       | 32 bits read-only status register           | 
+ | `0x40000004` | R      (rw)       | 32 bits general purpose read-write register | 
+ | `0x40000008` |                   |                                             | 
  | ...          | Unmapped          |                                             | 
- | 0x7ffffffc   |                   |                                             | 
+ | `0x7ffffffc` |                   |                                             | 
 
 The organization of the status register is the following:
 
