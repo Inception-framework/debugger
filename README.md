@@ -81,16 +81,16 @@ The S1_AXI AXI slave port is forwarded to the M_AXI AXI master port. It is used 
 
 The organization of the status register is the following:
 
-| Bits   | Role                                                |
-|--------|-----------------------------------------------------|
-|  3...0 | LIFE, rotating bit (life monitor)                   |
-|  7...4 | CNT, counter of BTN events                          |
-| 11...8 | ARCNT, counter of S1_AXI address-read transactions  |
-| 15..12 | RCNT, counter of S1_AXI date-read transactions      |
-| 19..16 | AWCNT, counter of S1_AXI address-write transactions |
-| 23..20 | WCNT, counter of S1_AXI data-write transactions     |
-| 27..24 | BCNT, counter of S1_AXI write-response transactions |
-| 31..28 | SW, current value                                   |
+| Bits     | Role                                                |
+|----------|-----------------------------------------------------|
+|  `3...0` | LIFE, rotating bit (life monitor)                   |
+|  `7...4` | CNT, counter of BTN events                          |
+| `11...8` | ARCNT, counter of S1_AXI address-read transactions  |
+| `15..12` | RCNT, counter of S1_AXI date-read transactions      |
+| `19..16` | AWCNT, counter of S1_AXI address-write transactions |
+| `23..20` | WCNT, counter of S1_AXI data-write transactions     |
+| `27..24` | BCNT, counter of S1_AXI write-response transactions |
+| `31..28` | SW, current value                                   |
 
 The BTN input is filtered by a debouncer-resynchronizer. The counter of BTN events is initialized to zero after reset. Each time the BTN push-button is pressed, the counter is incremented modulus 16 and its value is sent to LED until the button is released. When the button is released the current value CNT of the counter selects which 4-bits slice of which internal register is sent to LED: bits 4*CNT+3..4*CNT of STATUS register when 0<=CNT<=7, else bits 4*(CNT-8)+3..4*(CNT-8) of R register.
 
