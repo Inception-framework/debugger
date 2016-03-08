@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 void main(void) {
-  printf("Hello simpleregister4zynq\n");
+  printf("Hello SAB4Z\n");
   sleep(2);
-  printf("Bye! simpleregister4zynq\n");
+  printf("Bye! SAB4Z\n");
 }

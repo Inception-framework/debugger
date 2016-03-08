@@ -24,9 +24,9 @@ set HDLRELPATH $VVRELPATH/$HDLDIR
 # Create IP with all VHDL source files #
 ########################################
 create_project ip . -part xc7z010clg400-1
-add_files $HDLRELPATH/axi_pkg.vhd $HDLRELPATH/debouncer.vhd $HDLRELPATH/utils.vhd $HDLRELPATH/axi_register.vhd
+add_files $HDLRELPATH/axi_pkg.vhd $HDLRELPATH/debouncer.vhd $HDLRELPATH/utils.vhd $HDLRELPATH/sab4z.vhd
 import_files -force -norecurse
-ipx::package_project -root_dir . -vendor www.telecom-paristech.fr -library AxiRegister
+ipx::package_project -root_dir . -vendor www.telecom-paristech.fr -library SAB4Z
 close_project
 
 ############################
@@ -37,7 +37,7 @@ set_property board_part digilentinc.com:zybo:part0:1.0 [current_project]
 set_property ip_repo_paths . [current_fileset]
 update_ip_catalog
 create_bd_design "top"
-set ar [create_bd_cell -type ip -vlnv www.telecom-paristech.fr:AxiRegister:axi_register:1.0 axiregister]
+set ar [create_bd_cell -type ip -vlnv www.telecom-paristech.fr:SAB4Z:sab4z:1.0 sab4z]
 set ps7 [create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 ps7]
 apply_bd_automation -rule xilinx.com:bd_rule:processing_system7 -config {make_external "FIXED_IO, DDR" apply_board_preset "1" Master "Disable" Slave "Disable" } $ps7
 set_property -dict [list CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {50.000000}] $ps7
@@ -51,23 +51,23 @@ set_property -dict [list CONFIG.PCW_S_AXI_HP0_DATA_WIDTH {32}] $ps7
 # Interconnections
 # Primary IOs
 create_bd_port -dir O -from 3 -to 0 led
-connect_bd_net [get_bd_pins /axiregister/led] [get_bd_ports led]
+connect_bd_net [get_bd_pins /sab4z/led] [get_bd_ports led]
 create_bd_port -dir I -from 3 -to 0 sw
-connect_bd_net [get_bd_pins /axiregister/sw] [get_bd_ports sw]
+connect_bd_net [get_bd_pins /sab4z/sw] [get_bd_ports sw]
 create_bd_port -dir I btn
-connect_bd_net [get_bd_pins /axiregister/btn] [get_bd_ports btn]
+connect_bd_net [get_bd_pins /sab4z/btn] [get_bd_ports btn]
 # ps7 - ip
-apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/ps7/M_AXI_GP0" Clk "Auto" }  [get_bd_intf_pins axiregister/s0_axi]
-apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/ps7/M_AXI_GP1" Clk "Auto" }  [get_bd_intf_pins axiregister/s1_axi]
-apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/axiregister/m_axi" Clk "Auto" }  [get_bd_intf_pins ps7/S_AXI_HP0]
+apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/ps7/M_AXI_GP0" Clk "Auto" }  [get_bd_intf_pins sab4z/s0_axi]
+apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/ps7/M_AXI_GP1" Clk "Auto" }  [get_bd_intf_pins sab4z/s1_axi]
+apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/sab4z/m_axi" Clk "Auto" }  [get_bd_intf_pins ps7/S_AXI_HP0]
 
 # Addresses ranges
-set_property offset 0x40000000 [get_bd_addr_segs ps7/Data/SEG_axiregister_reg0]
-set_property range 1G [get_bd_addr_segs ps7/Data/SEG_axiregister_reg0]
-set_property offset 0x80000000 [get_bd_addr_segs ps7/Data/SEG_axiregister_reg01]
-set_property range 1G [get_bd_addr_segs {ps7/Data/SEG_axiregister_reg01}]
-set_property offset 0x00000000 [get_bd_addr_segs [list axiregister/m_axi/SEG_ps7_HP0_DDR_LOWOCM]]
-set_property range 1G [get_bd_addr_segs [list axiregister/m_axi/SEG_ps7_HP0_DDR_LOWOCM]]
+set_property offset 0x40000000 [get_bd_addr_segs ps7/Data/SEG_sab4z_reg0]
+set_property range 1G [get_bd_addr_segs ps7/Data/SEG_sab4z_reg0]
+set_property offset 0x80000000 [get_bd_addr_segs ps7/Data/SEG_sab4z_reg01]
+set_property range 1G [get_bd_addr_segs {ps7/Data/SEG_sab4z_reg01}]
+set_property offset 0x00000000 [get_bd_addr_segs [list sab4z/m_axi/SEG_ps7_HP0_DDR_LOWOCM]]
+set_property range 1G [get_bd_addr_segs [list sab4z/m_axi/SEG_ps7_HP0_DDR_LOWOCM]]
 
 # Synthesis flow
 validate_bd_design

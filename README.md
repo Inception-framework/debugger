@@ -33,7 +33,7 @@ http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.txt
     |-- README.md
     |-- hdl/
     |   |-- axi_pkg.vhd
-    |   |-- axi_register.vhd
+    |   |-- sab4z.vhd
     |   |-- debouncer.vhd
     |   |-- utils.vhd
     +-- scripts/
@@ -45,7 +45,7 @@ http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.txt
 
 # <a name="Description"></a>Description
 
-This design is a simple AXI-AXI bridge with two slave AXI ports, one master AXI port, two several internal registers, a 4-bits input connected to the 4 slide-switches, a 4-bits output connected to the 4 LEDs and a one bit command input connected to the rightmost push-button (BTN0):
+This design is a simple AXI-to-AXI bridge for Zynq cores (`sab4z`) with two slave AXI ports, one master AXI port, two internal registers, a 4-bits input connected to the 4 slide-switches, a 4-bits output connected to the 4 LEDs and a one bit command input connected to the rightmost push-button (BTN0):
 
                                                              +---+
                                                              |DDR|
@@ -53,7 +53,7 @@ This design is a simple AXI-AXI bridge with two slave AXI ports, one master AXI 
                                                                ^
                                                                |
     ---------+     +-------------------+     +-----------------|---
-       PS    |     |  SIMPLE REGISTER  |     |   PS            v
+       PS    |     |       SAB4Z       |     |   PS            v
              |     |                   |     |             +------+
     M_AXI_GP1|<--->|S1_AXI<----->M_AXI |<--->|S_AXI_HP0<-->| DDR  |
              |     |                   |     |             | Ctrl |
@@ -96,13 +96,13 @@ Thanks to the S1_AXI to M_AXI bridge the complete 1GB address space `[0x00000000
 
 Insert a micro SD card in your card reader and unpack the provided `sdcard.tgz` archive to it:
 
-    cd simpleregister4zynq
+    cd sab4z
     tar -C <path-to-mounted-sd-card> sdcard.tgz
     sync
 
 Unmount the micro SD card.
 
-# <a name="Running"></a>Using the simple register on the Zybo
+# <a name="Running"></a>Using SAB4Z on the Zybo
 
 * Plug the micro SD card in the Zybo and connect the USB cable.
 * Check the position of the jumper that selects the power source (USB or power adapter).
@@ -117,7 +117,7 @@ Unmount the micro SD card.
   * No port locking
   * Connected to the `/dev/ttyUSB1` device (if needed use `dmesg` to check the device name)
   * e.g. `picocom -b115200 -fn -pn -d8 -r -l /dev/ttyUSB1`
-* Wait until Linux boots, log in as root and start interacting with the simple register (with `devmem`, for instance).
+* Wait until Linux boots, log in as root and start interacting with SAB4Z (with `devmem`, for instance).
 
 # <a name="Building"></a>Building the whole example from scratch
 
@@ -132,7 +132,7 @@ To build the project you will need the Xilinx tools (Vivado and its companion SD
     git clone https://github.com/Xilinx/u-boot-xlnx.git $XUBOOT
     git clone http://github.com/Xilinx/device-tree-xlnx.git $XDTS
     export SR4Z=<some-path>
-    git clone https://gitlab.eurecom.fr/renaud.pacalet/simpleregister4zynq.git $SR4Z
+    git clone https://gitlab.eurecom.fr/renaud.pacalet/sab4z.git $SR4Z
     export BUILDROOT=<some-path>
     git clone http://git.buildroot.net/git/buildroot.git $BUILDROOT
 
@@ -313,15 +313,15 @@ Unmount the micro SD card.
 
 TODO
 
-## Accessing the simple register from a software application
+## Accessing SAB4Z from a software application
 
 TODO
 
-## Adding a Linux driver for the simple register
+## Adding a Linux driver for SAB4Z
 
 TODO
 
-## Booting and running Linux through the PL
+## Booting Linux across SAB4Z
 
 TODO
 

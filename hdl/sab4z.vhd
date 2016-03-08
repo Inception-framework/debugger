@@ -8,7 +8,7 @@
 -- http://www.cecill.info/licences/Licence_CeCILL_V1.1-US.txt
 --
 
--- See the README.md file for a detailed description of the AXI register
+-- See the README.md file for a detailed description of SAB4Z
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -17,7 +17,7 @@ use ieee.numeric_std.all;
 use work.utils.all;
 use work.axi_pkg.all;
 
-entity axi_register is
+entity sab4z is
   port(
     aclk:       in std_logic;  -- Clock
     aresetn:    in std_logic;  -- Synchronous, active low, reset
@@ -178,9 +178,9 @@ entity axi_register is
     m_axi_bid:     in  std_logic_vector(5 downto 0);
     m_axi_bresp:   in  std_logic_vector(1 downto 0)
   );
-end entity axi_register;
+end entity sab4z;
 
-architecture rtl of axi_register is
+architecture rtl of sab4z is
 
   -- Record versions of AXI signals
   signal s0_axi_m2s: axilite_gp_m2s;
