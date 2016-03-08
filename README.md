@@ -4,9 +4,10 @@ This repository and its sub-directories contain the VHDL source code, VHDL simul
 1. [License](#license)
 1. [Content](#Content)
 1. [Description](#Description)
-1. [Building](#Building)
+1. [Installing from the archive](#Archive)
 1. [Running](#Running)
-1. [Examples](#Building)
+1. [Building from scratch](#Building)
+1. [Going further](#Further)
 
 # <a name="License"></a>License
 
@@ -22,54 +23,49 @@ http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.txt
 
 # <a name="Content"></a>Content
 
-```
-.
-|-- C/
-|   |-- hello_world.c
-|-- COPYING
-|-- COPYING-FR
-|-- COPYRIGHT
-|-- HEADER.#
-|-- HEADER.--
-|-- Makefile			
-|-- README.md
-|-- hdl/
-|   |-- axi_pkg.vhd
-|   |-- axi_register.vhd
-|   |-- debouncer.vhd
-|   |-- utils.vhd
-+-- scripts/
-    |-- boot.bif
-    |-- dts.tcl
-    |-- fsbl.tcl
-    |-- vvsyn.tcl
-```
+    .
+    |-- C/
+    |   |-- hello_world.c
+    |-- COPYING
+    |-- COPYING-FR
+    |-- COPYRIGHT
+    |-- Makefile			
+    |-- README.md
+    |-- hdl/
+    |   |-- axi_pkg.vhd
+    |   |-- axi_register.vhd
+    |   |-- debouncer.vhd
+    |   |-- utils.vhd
+    +-- scripts/
+    |   |-- boot.bif
+    |   |-- dts.tcl
+    |   |-- fsbl.tcl
+    |   |-- vvsyn.tcl
+    +-- sdcard.tgz
 
 # <a name="Description"></a>Description
 
-This design is a simple AXI-AXI bridge with two slave AXI ports, one master AXI port, several internal registers, a 4-bits input connected to the 4 slide-switches, a 4-bits output connected to the 4 LEDs and a one bit command input connected to the leftmost push-button (BTN0):
+This design is a simple AXI-AXI bridge with two slave AXI ports, one master AXI port, two several internal registers, a 4-bits input connected to the 4 slide-switches, a 4-bits output connected to the 4 LEDs and a one bit command input connected to the rightmost push-button (BTN0):
 
-```
-                                                         +---+
-                                                         |DDR|
-                                                         +---+
-                                                           ^
-                                                           |
----------+     +-------------------+     +-----------------|---
-   PS    |     |  SIMPLE REGISTER  |     |   PS            v
-         |     |                   |     |             +------+
-M_AXI_GP1|<--->|S1_AXI<----->M_AXI |<--->|S_AXI_HP0<-->| DDR  |
-         |     |                   |     |             | Ctrl |
-M_AXI_GP0|<--->|S0_AXI<-->REGs     |     |             +------+
----------+     |                   |     +---------------------
-               |                   |
-     BTN0 ---->|BTN                |
-               |                   |
- Switches ---->|SW              LED|----> LEDs
-               +-------------------+
-```
+                                                             +---+
+                                                             |DDR|
+                                                             +---+
+                                                               ^
+                                                               |
+    ---------+     +-------------------+     +-----------------|---
+       PS    |     |  SIMPLE REGISTER  |     |   PS            v
+             |     |                   |     |             +------+
+    M_AXI_GP1|<--->|S1_AXI<----->M_AXI |<--->|S_AXI_HP0<-->| DDR  |
+             |     |                   |     |             | Ctrl |
+    M_AXI_GP0|<--->|S0_AXI<-->REGs     |     |             +------+
+    ---------+     |                   |     +---------------------
+                   |                   |
+         BTN0 ---->|BTN                |
+                   |                   |
+     Switches ---->|SW              LED|----> LEDs
+                   +-------------------+
 
-The S1_AXI AXI slave port is forwarded to the M_AXI AXI master port. It is used to access the DDR controller from the Processing System (PS) through the FPGA fabric. The S0_AXI AXI slave port is used to access the internal registers. The mapping of the S0_AXI address space is the following:
+The requests from the S1_AXI AXI slave port are forwarded to the M_AXI AXI master port and the responses from the M_AXI AXI master port are forwarded to the S1_AXI AXI slave port. S1_AXI is used to access the DDR controller from the Processing System (PS) through the FPGA fabric. The S0_AXI AXI slave port is used to access the internal registers. The mapping of the S0_AXI address space is the following:
 
 | Address      | Mapped resource   | Description                                 | 
 | ------------ | ----------------- | ------------------------------------------- | 
@@ -92,131 +88,240 @@ The organization of the status register is the following:
 | `27..24` | BCNT, counter of S1_AXI write-response transactions |
 | `31..28` | SW, current value                                   |
 
-The BTN input is filtered by a debouncer-resynchronizer. The counter of BTN events is initialized to zero after reset. Each time the BTN push-button is pressed, the counter is incremented modulus 16 and its value is sent to LED until the button is released. When the button is released the current value CNT of the counter selects which 4-bits slice of which internal register is sent to LED: bits 4*CNT+3..4*CNT of STATUS register when 0<=CNT<=7, else bits 4*(CNT-8)+3..4*(CNT-8) of R register.
+The BTN input is filtered by a debouncer-resynchronizer. The counter of BTN events CNT is initialized to zero after reset. Each time the BTN push-button is pressed, CNT is incremented (modulus 16) and its value is sent to LED until the button is released. When the button is released the current value of CNT selects which 4-bits slice of which internal register is sent to LED: bits 4*CNT+3..4*CNT of STATUS register when 0<=CNT<=7, else bits 4*(CNT-8)+3..4*(CNT-8) of R register. Accesses to the unmapped region of the S0_AXI `[0x40000008..0x80000000[` address space will raise DECERR AXI errors. Write accesses to the read-only status register will raise SLVERR AXI errors.
 
-Thanks to the S1_AXI to M_AXI bridge the complete 1GB address space `[0x00000000..0x40000000[` is also mapped to `[0x80000000..0xc0000000[`. Note that the Zybo board has only 512 MB of DDR and accesses above the DDR limit either fall back in the low half (aliasing) or raise errors. Accesses in the unmapped region of the S0_AXI `[0x40000008..0x80000000[` address space will raise DECERR AXI errors. Write accesses to the read-only status register will raise SLVERR AXI errors.
+Thanks to the S1_AXI to M_AXI bridge the complete 1GB address space `[0x00000000..0x40000000[` is also mapped to `[0x80000000..0xc0000000[`. Note that the Zybo board has only 512 MB of DDR and accesses above the DDR limit either fall back in the low half (aliasing) or raise errors. Moreover, depending on the configuration, Zynq-based systems have a reserved low addresses range that cannot be accessed from the PL. In these systems this low range can be accessed in the `[0x00000000..0x40000000[` range but not in the `[0x80000000..0xc0000000[` range where errors are raised. Last but not least, randomly modifying the content of the memory using the `[0x80000000..0xc0000000[` range can crash the running software stack or lead to unexpected behaviours if the modified region is currently in use.
 
-Moreover, depending on the configuration, Zynq-based systems have a reserved low addresses range that cannot be accessed from the AXI_HP ports. In these systems this low range can be accessed in the `[0x00000000..0x40000000[` range but not in the `[0x80000000..0xc0000000[` range.
+# <a name="Archive"></a>Installing from the archive
+
+Insert a micro SD card in your card reader and unpack the provided `sdcard.tgz` archive to it:
+
+    cd simpleregister4zynq
+    tar -C <path-to-mounted-sd-card> sdcard.tgz
+    sync
+
+Unmount the micro SD card.
+
+# <a name="Running"></a>Using the simple register on the Zybo
+
+* Plug the micro SD card in the Zybo and connect the USB cable.
+* Check the position of the jumper that selects the power source (USB or power adapter).
+* Check the position of the jumper that selects the boot medium (SD card).
+* Power on.
+* Launch a terminal emulator (minicom, picocom...) with the following configuration:
+  * Baudrate 115200
+  * No flow control
+  * No paritys
+  * 8 bits characters
+  * No port reset
+  * No port locking
+  * Connected to the `/dev/ttyUSB1` device (if needed use `dmesg` to check the device name)
+  * e.g. `picocom -b115200 -fn -pn -d8 -r -l /dev/ttyUSB1`
+* Wait until Linux boots, log in as root and start interacting with the simple register (with `devmem`, for instance).
 
 # <a name="Building"></a>Building the whole example from scratch
 
-Fetch sources (if not already done, else simply git pull to get the latest versions)
-```
-export DISTRIB=<some-path>
-export SIMPLEREGISTER4ZYNQ=$DISTRIB/simpleregister4zynq
-export UBOOT=$DISTRIB/u-boot-xlnx
-export KERNEL=$DISTRIB/linux-xlnx
-export DEVICETREEXLNX=$DISTRIB/device-tree-xlnx
-git clone --recursive git@gitlab.eurecom.fr:renaud.pacalet/simpleregister4zynq.git $SIMPLEREGISTER4ZYNQ
-git clone http://github.com/Xilinx/u-boot-xlnx.git $UBOOT
-git clone http://github.com/Xilinx/linux-xlnx.git $KERNEL
-git clone http://github.com/Xilinx/device-tree-xlnx.git $DEVICETREEXLNX
-cd $DISTRIB
-wget http://www.wiki.xilinx.com/file/view/arm_ramdisk.image.gz
+To build the project you will need the Xilinx tools (Vivado and its companion SDK). In the following we assume that they are properly installed and in your PATH. You will also need to download several tools, configure and build them. Some steps can be run in parallel because they do not depend on the results of other steps. Let us first clone all components from their respective Git repositories.
 
-##########
-# U-Boot #
-##########
-cd $UBOOT
-git pull
-export CROSS_COMPILE=arm-xilinx-linux-gnueabi-
-make distclean
-rm -rf build
-make O=build zynq_zed_config all
-export PATH=$PATH:$UBOOT/build/tools
+## Downloads
 
-##########
-# rootfs #
-##########
-# Note: to modify the root file system before building the image:
-# cd $DISTRIB
-# gunzip ramdisk.image.gz
-# chmod u+rwx ramdisk.image
-# mkdir tmp_mnt/
-# sudo mount -o loop ramdisk.image tmp_mnt/
-## Modify tmp_mnt/
-# sudo umount tmp_mnt/
-# gzip ramdisk.image
-mkimage -A arm -T ramdisk -C gzip -d arm_ramdisk.image.gz uramdisk.image.gz
+    export XLINUX=<some-path>/linux-xlnx
+    export XUBOOT=<some-path>/u-boot-xlnx
+    export XDTS=<some-path>/device-tree-xlnx
+    git clone https://github.com/Xilinx/linux-xlnx.git $XLINUX
+    git clone https://github.com/Xilinx/u-boot-xlnx.git $XUBOOT
+    git clone http://github.com/Xilinx/device-tree-xlnx.git $XDTS
+    export SR4Z=<some-path>
+    git clone https://gitlab.eurecom.fr/renaud.pacalet/simpleregister4zynq.git $SR4Z
+    export BUILDROOT=<some-path>
+    git clone http://git.buildroot.net/git/buildroot.git $BUILDROOT
 
-################
-# Linux kernel #
-################
-cd $KERNEL
-git pull
-export CROSS_COMPILE=arm-xilinx-linux-gnueabi-
-make distclean
-make ARCH=arm xilinx_zynq_defconfig
-make ARCH=arm menuconfig
-make ARCH=arm UIMAGE_LOADADDR=0x8000 uImage
-export PATH=$KERNEL/scripts/dtc:$PATH
+## Hardware synthesis
 
-############################################
-# Hardware and hardware dependant software #
-############################################
-export DESIGN=$SIMPLEREGISTER4ZYNQ/hdl/axi_register
-cd $DESIGN
-cp $UBOOT/build/u-boot u-boot.elf
-make syn
-make fsbl dtb bin
-mkdir sdcard
-cp axi_register_wrapper.vv-syn/top.sdk/dts/system.dtb sdcard
-cp $KERNEL/arch/arm/boot/uImage sdcard
-cp $DISTRIB/uramdisk.image.gz sdcard
-cp boot.bin sdcard
-```
+    cd $SR4Z
+    make vv-all
 
-# <a name="Running"></a>Using the simple register on the ZedBoard
+The bitstream `top_wrapper.bit` is at:
 
-* Copy the provided files on a SD card:
-```
-cp boot.bin system.dtb uImage uramdisk.image.gz /media/SDCARD
-sync
-```
-* To avoid strange bugs, please cross-check the result of the copy:
-  * compute the md5sum of the provided files,
-  * copy the files on the SD card
-  * sync and un-mount the SD card
-  * mount the SD card again
-  * compute the md5sum of the SD card files and compare with the originals
-* Configure the ZedBoard jumpers to boot from SD card (set MIO4 and MIO5, unset MIO2, MIO3 and MIO6), insert the SD card, plug the power and console USB cable and power on.
-* Launch a terminal emulator like minicom (minicom -D /dev/ttyACM0) and stop U-Boot by hitting the keyboard.
-* Set the following U-Boot environment variables:
-```
-     setenv bootcmd 'run $modeboot'
-     setenv modeboot 'sdboot'
-     setenv sdboot 'fatload mmc 0 0x3000000 uImage && fatload mmc 0 0x2000000 uramdisk.image.gz && fatload mmc 0 0x2a00000 system.dtb && bootm 0x3000000 0x2000000 0x2a00000'
-```
-   and save them on the QSPI flash:
-```
-     saveenv
-```
-   so that U-Boot remembers them for the next time.
-* Continue the boot sequence (boot), wait until Linux boots and start interacting with the register (with devmem, for instance).
+    $SR4Z/build/vv/top.runs/impl_1
 
-# <a name="Example"></a>Example experiments
+## Configure and build the Linux kernel
 
-```
-# First test the design in the PL by setting the switches to any configuration
-# other than 0x00 (e.g. 0x02) and looking at the LEDs: if the LEDs illuminate in
-# the 0x55 configuration things are probably OK, else the PL does not work as
-# expected.
+    export CROSS_COMPILE=arm-xilinx-linux-gnueabi- # (note the trailing '-')
+    export PATH=$PATH:<path-to-xilinx-sdk>/gnu/arm/lin/bin
+    ${CROSS_COMPILE}gcc --version
 
-# Reading the current status of the 8 switches:
-zynq> devmem 0x40000000 32
-0x00000002
+Note the toolchain version (result of the last command), we will need it later.
 
-# Illuminating the 8 LEDs (first set the switches to 0x00):
-zynq> devmem 0x40000004 32 0xFF
+    cd $XLINUX
+    make mrproper
+    make O=build ARCH=arm xilinx_zynq_defconfig
+    make -j8 O=build ARCH=arm zImage
 
-# Reading in the external memory through the FPGA fabric:
-zynq> devmem 0x90000000 32
+Adapt the `make` -j option to your host system. The generated compressed Linux kernel image is at:
 
-# Power off
-zynq> poweroff
-The system is going down NOW!
-Sent SIGTERM to all processes
-Sent SIGKILL to all processes
-Requesting system poweroff
-reboot: System halted
-```
+    $XLINUX/build/arch/arm/boot/zImage
+
+Note: if needed the configuration of the kernel can be tuned by running:
+
+    make O=build ARCH=arm menuconfig
+
+before building the kernel.
+
+## Configure and build U-Boot, the second stage boot loader
+
+To build U-Boot we need the Device Tree Compiler (dtc), which is built at the same time as the Linux kernel and can be found at:
+
+    $XLINUX/build/scripts/dtc/dtc
+
+Unless you have another dtc binary somewhere, wait until the Linux kernel is built before building U-Boot.
+
+    export PATH=$PATH:$XLINUX/build/scripts/dtc
+    cd $XUBOOT
+    make mrproper
+    make O=build zynq_zybo_defconfig
+    make -j8 O=build
+
+Adapt the `make` -j option to your host system. The generated ELF of U-Boot is at:
+
+    $XUBOOT/build/u-boot
+
+Note: if needed the configuration of U-Boot can be tuned by running:
+
+    make O=build menuconfig
+
+before building U-Boot.
+
+## Configure and build a root file system
+
+There is no buildroot configuration file for the Zybo board but the ZedBoard configuration should work also for the Zybo:
+
+cd $BUILDROOT
+make O=build zedboard_defconfig
+make O=build menuconfig
+
+In the buildroot configuration menus change the following options:
+
+    Build options -> Location to save buildroot config -> ./build/buildroot.config
+    Build options -> Enable compiler cache -> yes (faster build)
+    Toolchain -> Toolchain type -> External toolchain
+    Toolchain -> Toolchain -> Custom toolchain
+    Toolchain -> Toolchain path -> <path-to-xilinx-sdk/gnu/arm/lin
+    Toolchain -> Toolchain prefix -> arm-xilinx-linux-gnueabi # (no trailing '-')
+    Toolchain -> External toolchain gcc version -> <the-toolchain-version-you-noted>
+    Toolchain -> External toolchain C library -> glibc/eglibc
+    Toolchain -> Toolchain has RPC support? -> yes
+    System configuration -> System hostname -> sr4z
+    System configuration -> System banner -> Welcome to SR4Z (c) Telecom ParisTech
+    Kernel -> Linux Kernel -> no
+    Bootloaders -> U-Boot -> no
+
+Quit with saving. Save the buildroot configuration and build the root file system:
+
+    make O=build savedefconfig
+    make O=build
+
+If you get an error:
+
+    Incorrect selection of kernel headers: expected x.x.x, got y.y.y
+
+note the `y.y.y` and run again the buildroot configuration:
+
+    make O=build menuconfig
+
+change:
+
+    Toolchain -> External toolchain kernel headers series -> the-kernel-headers-version-you-noted
+
+quit with saving, save again the configuration and build:
+
+    make O=build savedefconfig
+    make O=build
+
+The compressed archive of the root filesystem is at:
+
+    $BUILDROOT/build/images/rootfs.cpio.gz
+
+## Generate and build the hardware dependant software
+
+### Linux kernel device tree
+
+Generate the device tree sources:
+
+    cd $SR4Z
+    make dts
+
+The sources are at `build/dts`. If needed, edit them before compiling the device tree blob:
+
+    make dtb
+
+The device tree blob is at:
+
+    build/devicetree.dtb
+
+### First Stage Boot Loader (FSBL)
+
+Generate the FSBL sources
+
+    make fsbl
+
+The sources are at `build/fsbl`. If needed, edit them before compiling the FSBL:
+
+    make fsblelf
+
+The binary of the FSBL is at:
+
+    build/fsbl/executable.elf
+
+### Zyqnq boot image
+
+We are ready to generate the Zynq boot image. First copy the U-Boot ELF:
+
+    cp $XUBOOT/build/u-boot build/u-boot.elf
+
+and generate the image:
+
+    bootgen -w -image scripts/boot.bif -o build/boot.bin
+
+The boot image is at:
+
+    build/boot.bin
+
+### U-Boot formatted images of Linux kernel and root file system
+
+Add the U-Boot tools directory to your PATH and format the compressed Linux kernel image and the root file system for U-Boot:
+
+    export PATH=$PATH:$XUBOOT/build/tools
+    ZIMAGE=$XLINUX/build/arch/arm/boot/zImage
+    ROOTFS=$BUILDROOT/build/images/rootfs.cpio.gz
+    mkimage -A arm -O linux -C none -T kernel -a 0x8000 -e 0x8000 -d $ZIMAGE build/uImage
+    mkimage -A arm -T ramdisk -C gzip -d $ROOTFS build/uramdisk.image.gz
+
+### Preparing the micro SD card
+
+Finally, copy the different components to the micro SD card:
+
+    cd build
+    cp boot.bin devicetree.dtb uImage uramdisk.image.gz <path-to-mounted-sd-card>
+    sync
+
+Unmount the micro SD card.
+
+# <a name="Further"></a>Going further
+
+## Creating, compiling and running a software application
+
+TODO
+
+## Accessing the simple register from a software application
+
+TODO
+
+## Adding a Linux driver for the simple register
+
+TODO
+
+## Booting and running Linux through the PL
+
+TODO
+
