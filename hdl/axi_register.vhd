@@ -335,6 +335,7 @@ begin
               elsif s0_axi_m2s.awaddr(2) = '0' then -- If read-only status register
                 s0_axi_s2m.bresp <= axi_resp_slverr;
               else
+                s0_axi_s2m.bresp <= axi_resp_okay;
                 for i in 0 to 3 loop
                   if s0_axi_m2s.wstrb(i) = '1' then
                     r(8 * i + 7 downto 8 * i) <= s0_axi_m2s.wdata(8 * i + 7 downto 8 * i);
@@ -346,13 +347,16 @@ begin
               s0_axi_s2m.bvalid <= '1';
               state := w1;
             elsif s0_axi_m2s.arvalid = '1' then
-              if or_reduce(s0_axi_m2s.awaddr(31 downto 3)) /= '0' then -- If unmapped address
+              if or_reduce(s0_axi_m2s.araddr(31 downto 3)) /= '0' then -- If unmapped address
                 s0_axi_s2m.rdata <= (others => '0');
                 s0_axi_s2m.rresp <= axi_resp_decerr;
-              elsif s0_axi_m2s.awaddr(2) = '0' then -- If status register
-                s0_axi_s2m.rdata <= status;
               else
-                s0_axi_s2m.rdata <= r;
+                s0_axi_s2m.rresp <= axi_resp_okay;
+                if s0_axi_m2s.araddr(2) = '0' then -- If status register
+                  s0_axi_s2m.rdata <= status;
+                else
+                  s0_axi_s2m.rdata <= r;
+                end if;
               end if;
               s0_axi_s2m.arready <= '1';
               s0_axi_s2m.rvalid <= '1';
@@ -363,14 +367,12 @@ begin
             s0_axi_s2m.wready <= '0';
             if s0_axi_m2s.bready = '1' then
               s0_axi_s2m.bvalid <= '0';
-              s0_axi_s2m.bresp <= axi_resp_okay;
               state := idle;
             end if;
           when r1 =>
             s0_axi_s2m.arready <= '0';
             if s0_axi_m2s.rready = '1' then
               s0_axi_s2m.rvalid <= '0';
-              s0_axi_s2m.rresp <= axi_resp_okay;
               state := idle;
             end if;
         end case;

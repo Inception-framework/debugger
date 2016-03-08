@@ -14,25 +14,12 @@ use ieee.numeric_std.all;
 
 package utils is
 
-  -- the log2_up function returns the log base 2 of its parameter. the rounding
-  -- is toward infinity (log2_up(3) = log2_up(4) = 2). this function is synthesizable by
-  -- precision RTL when the parameter is a static constant.
-  function log2_up(v: positive) return natural;
-
   -- returns the or of all bits of the input vector
   function or_reduce(v: std_ulogic_vector) return std_ulogic;
 
 end package utils;
 
 package body utils is
-
-  function log2_up(v: positive) return natural is
-    variable res: natural;
-  begin
-    if v = 1 then return 0;
-    else return 1 + log2_up((v + 1) / 2);
-    end if;
-  end function log2_up;
 
   function or_reduce(v: std_ulogic_vector) return std_ulogic is
     variable tmp: std_ulogic_vector(v'length - 1 downto 0) := v;

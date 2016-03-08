@@ -1,6 +1,6 @@
 image:
 {
-  fsbl.elf
-  bitsream.bit
-  u-boot.elf
+  [bootloader]./build/fsbl/executable.elf
+  ./build/vv/top.runs/impl_1/top_wrapper.bit
+  ./build/u-boot.elf
 }
