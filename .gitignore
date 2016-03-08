@@ -1,15 +1,2 @@
-/Makefile.ms.inc
 /build/
-modelsim.ini
-ms-tests.log
-ms-sim-tests.log
-pr-tests.log
-rc-tests.log
-vv-tests.log
-/src/*/*.pr-syn
-/src/*/*.pr-syn.*/
-/src/*/*.rc-syn
-/src/*/*.rc-syn.*/
-/src/*/*.vv-syn
-/src/*/*.vv-syn.*/
-/hwprj
+/C/hello_world
