@@ -131,19 +131,19 @@ To build the project you will need the Xilinx tools (Vivado and its companion SD
     git clone https://github.com/Xilinx/linux-xlnx.git $XLINUX
     git clone https://github.com/Xilinx/u-boot-xlnx.git $XUBOOT
     git clone http://github.com/Xilinx/device-tree-xlnx.git $XDTS
-    export SR4Z=<some-path>
-    git clone https://gitlab.eurecom.fr/renaud.pacalet/sab4z.git $SR4Z
+    export SAB4Z=<some-path>
+    git clone https://gitlab.eurecom.fr/renaud.pacalet/sab4z.git $SAB4Z
     export BUILDROOT=<some-path>
     git clone http://git.buildroot.net/git/buildroot.git $BUILDROOT
 
 ## Hardware synthesis
 
-    cd $SR4Z
+    cd $SAB4Z
     make vv-all
 
 The bitstream `top_wrapper.bit` is at:
 
-    $SR4Z/build/vv/top.runs/impl_1
+    $SAB4Z/build/vv/top.runs/impl_1
 
 ## Configure and build the Linux kernel
 
@@ -196,9 +196,9 @@ before building U-Boot.
 
 There is no buildroot configuration file for the Zybo board but the ZedBoard configuration should work also for the Zybo:
 
-cd $BUILDROOT
-make O=build zedboard_defconfig
-make O=build menuconfig
+    cd $BUILDROOT
+    make O=build zedboard_defconfig
+    make O=build menuconfig
 
 In the buildroot configuration menus change the following options:
 
@@ -211,8 +211,8 @@ In the buildroot configuration menus change the following options:
     Toolchain -> External toolchain gcc version -> <the-toolchain-version-you-noted>
     Toolchain -> External toolchain C library -> glibc/eglibc
     Toolchain -> Toolchain has RPC support? -> yes
-    System configuration -> System hostname -> sr4z
-    System configuration -> System banner -> Welcome to SR4Z (c) Telecom ParisTech
+    System configuration -> System hostname -> sab4z
+    System configuration -> System banner -> Welcome to SAB4Z (c) Telecom ParisTech
     Kernel -> Linux Kernel -> no
     Bootloaders -> U-Boot -> no
 
@@ -248,7 +248,7 @@ The compressed archive of the root filesystem is at:
 
 Generate the device tree sources:
 
-    cd $SR4Z
+    cd $SAB4Z
     make dts
 
 The sources are at `build/dts`. If needed, edit them before compiling the device tree blob:
