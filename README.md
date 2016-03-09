@@ -390,7 +390,7 @@ Unmount the micro SD card.
 
 # <a name="Further"></a>Going further
 
-## Create, compile and run a software application
+## Create, compile and run a software user application
 
 The `C` sub-directory contains a very simple example C code `hello_world.c` that prints a welcome message, waits 2 seconds, prints a good bye message and exits. Cross-compile it on your host PC:
 
@@ -484,7 +484,7 @@ After the transfer completes you can run the application located in `/tmp`. Firs
     Hello SAB4Z
     Bye! SAB4Z
 
-## Access SAB4Z from a software application
+## Access SAB4Z from a software user application
 
 TODO
 
