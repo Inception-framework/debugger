@@ -1,10 +1,10 @@
 --
 -- Copyright (C) Telecom ParisTech
 -- 
--- This file must be used under the terms of the CeCILL.
--- This source file is licensed as described in the file COPYING, which
--- you should have received as part of this distribution.  The terms
--- are also available at    
+-- This file must be used under the terms of the CeCILL. This source
+-- file is licensed as described in the file COPYING, which you should
+-- have received as part of this distribution. The terms are also
+-- available at:
 -- http://www.cecill.info/licences/Licence_CeCILL_V1.1-US.txt
 --
 
@@ -282,7 +282,7 @@ begin
           arcnt <= std_ulogic_vector(unsigned(arcnt) + 1);
         end if;
         -- S1_AXI data read transactions counter
-        if s1_axi_m2s.rvalid = '1' and s1_axi_s2m.rready = '1' then
+        if s1_axi_s2m.rvalid = '1' and s1_axi_m2s.rready = '1' then
           rcnt <= std_ulogic_vector(unsigned(rcnt) + 1);
         end if;
         -- S1_AXI address write transactions counter
@@ -294,7 +294,7 @@ begin
           wcnt <= std_ulogic_vector(unsigned(wcnt) + 1);
         end if;
         -- S1_AXI write response transactions counter
-        if s1_axi_m2s.bvalid = '1' and s1_axi_s2m.bready = '1' then
+        if s1_axi_s2m.bvalid = '1' and s1_axi_m2s.bready = '1' then
           bcnt <= std_ulogic_vector(unsigned(bcnt) + 1);
         end if;
         -- Slide switches
