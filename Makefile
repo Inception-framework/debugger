@@ -54,19 +54,15 @@ VVSCRIPT	:= $(SCRIPTS)/vvsyn.tcl
 # Software Design Kits
 XDTS			?= /opt/xlnx/device-tree-xlnx
 HSI			:= hsi
+SYSDEF			:= $(VVIMPL)/top_wrapper.sysdef
 DTSSCRIPT		:= $(SCRIPTS)/dts.tcl
 DTSFLAGS		:= -mode batch -quiet -notrace -nojournal -nolog -tempDir /tmp
-DTC			:= dtc
-DTCFLAGS		:= -I dts -O dtb
-SYSDEF			:= $(VVIMPL)/top_wrapper.sysdef
 DTSBUILD		:= $(BUILD)/dts
 DTSTOP			:= $(DTSBUILD)/system.dts
-DTB			:= $(BUILD)/devicetree.dtb
 FSBLSCRIPT		:= $(SCRIPTS)/fsbl.tcl
 FSBLFLAGS		:= -mode batch -quiet -notrace -nojournal -nolog -tempDir /tmp
 FSBLBUILD		:= $(BUILD)/fsbl
 FSBLTOP			:= $(FSBLBUILD)/main.c
-FSBLELF			:= $(FSBLBUILD)/executable.elf
 
 # Messages
 define HELP_message
@@ -77,11 +73,11 @@ make targets:
   make vv-all     synthesize design with Vivado ($(VVBUILD))
   make vv-clean   delete all files and directories automatically created by Vivado
   make dts        generate device tree sources ($(DTSBUILD))
-  make dtb        compile device tree blob ($(DTB))
-  make dt-clean   delete device tree sources and blob
+  make dts-clean  delete device tree sources
   make fsbl       generate First Stage Boot Loader (FSBL) sources ($(FSBLBUILD))
-  make fsblelf    compile First Stage Boot Loader (FSBL) ($(FSBLELF))
-  make fs-clean   delete FSBL sources and ELF
+  make fs-clean   delete FSBL sources
+  make doc        generate documentation images
+  make doc-clean  delete generated documentation images
   make clean      delete all automatically created files and directories
 
 directories:
@@ -152,7 +148,6 @@ vv-clean:
 
 # Device tree
 dts: $(DTSTOP)
-dtb: $(DTB)
 
 $(DTSTOP): $(SYSDEF) $(DTSSCRIPT)
 	@if [ ! -d $(XDTS) ]; then \
@@ -162,31 +157,31 @@ $(DTSTOP): $(SYSDEF) $(DTSSCRIPT)
 	echo '[HSI] $< --> $(DTSBUILD)'; \
 	$(HSI) $(DTSFLAGS) -source $(DTSSCRIPT) -tclargs $(SYSDEF) $(XDTS) $(DTSBUILD) $(OUTPUT)
 
-$(DTB): $(DTSTOP)
-	@echo '[DTC] $< --> $@'; \
-	$(DTC) $(DTCFLAGS) -o $@ $(DTSTOP) $(OUTPUT)
-
-dt-clean:
-	@echo '[RM] $(DTSBUILD) $(DTB)'; \
-	rm -rf $(DTSBUILD) $(DTB)
+dts-clean:
+	@echo '[RM] $(DTSBUILD)'; \
+	rm -rf $(DTSBUILD)
 
 # First Stage Boot Loader (FSBL)
 fsbl: $(FSBLTOP)
-fsblelf: $(FSBLELF)
 
 $(FSBLTOP): $(SYSDEF) $(FSBLSCRIPT)
 	@echo '[HSI] $< --> $(FSBLBUILD)'; \
 	$(HSI) $(FSBLFLAGS) -source $(FSBLSCRIPT) -tclargs $(SYSDEF) $(FSBLBUILD) $(OUTPUT)
 
-$(FSBLELF): $(FSBLTOP)
-	@echo '[MAKE] $(FSBLBUILD)'; \
-	$(MAKE) -C $(FSBLBUILD)
-
 fs-clean:
-	@echo '[RM] $(FSBLBUILD) $(FSBLELF)'; \
-	rm -rf $(FSBLBUILD) $(FSBLELF)
+	@echo '[RM] $(FSBLBUILD)'; \
+	rm -rf $(FSBLBUILD)
+
+# Documentation
+FIG2DEV		:= fig2dev
+FIG2DEVFLAGS	:= -Lpng -m2.0 -S4
+
+doc: images/sab4z.png
+
+images/sab4z.png: images/sab4z.fig
+	$(FIG2DEV) $(FIG2DEVFLAGS) $< $@
 
 # Full clean
-clean:
+clean: ms-clean vv-clean dts-clean fsbl-clean doc-clean
 	@echo '[RM] $(BUILD)'; \
 	rm -rf $(BUILD)

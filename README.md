@@ -1,4 +1,4 @@
-This repository and its sub-directories contain the VHDL source code, VHDL simulation environment, simulation and synthesis scripts of a simple design example for the Xilinx Zynq core. It can be ported on any board based on Xilinx Zynq cores but has been specifically designed for the Zybo board by Digilent.
+This repository and its sub-directories contain the VHDL source code, VHDL simulation environment, simulation and synthesis scripts of SAB4Z, a simple design example for the Xilinx Zynq core. It can be ported on any board based on Xilinx Zynq cores but has been specifically designed for the Zybo board by Digilent.
 
 # Table of content
 1. [License](#license)
@@ -24,56 +24,47 @@ http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.txt
 # <a name="Content"></a>Content
 
     .
-    |-- C/
-    |   |-- hello_world.c
-    |-- COPYING
-    |-- COPYING-FR
-    |-- COPYRIGHT
-    |-- Makefile			
-    |-- README.md
-    |-- hdl/
-    |   |-- axi_pkg.vhd
-    |   |-- sab4z.vhd
-    |   |-- debouncer.vhd
-    |   |-- utils.vhd
-    +-- scripts/
-    |   |-- boot.bif
-    |   |-- dts.tcl
-    |   |-- fsbl.tcl
-    |   |-- vvsyn.tcl
-    +-- sdcard.tgz
+    ├── C
+    │   └── hello_world.c
+    ├── COPYING
+    ├── COPYING-FR
+    ├── COPYRIGHT
+    ├── hdl
+    │   ├── axi_pkg.vhd
+    │   ├── debouncer.vhd
+    │   ├── sab4z.vhd
+    │   └── utils.vhd
+    ├── images
+    │   ├── sab4z.fig
+    │   ├── sab4z.png
+    │   └── zybo.png
+    ├── Makefile
+    ├── README.md
+    ├── scripts
+    │   ├── boot.bif
+    │   ├── dts.tcl
+    │   ├── fsbl.tcl
+    │   └── vvsyn.tcl
+    └── sdcard.tgz
 
 # <a name="Description"></a>Description
 
-This design is a simple AXI-to-AXI bridge for Zynq cores (`sab4z`) with two slave AXI ports, one master AXI port, two internal registers, a 4-bits input connected to the 4 slide-switches, a 4-bits output connected to the 4 LEDs and a one bit command input connected to the rightmost push-button (BTN0):
+**SAB4Z** is a **S**imple **A**xi-to-axi **B**ridge **F**or **Z**ynq cores with two slave AXI ports (S0_AXI and S1_AXI), one master AXI port (M_AXI), two internal registers (STATUS and R), a 4-bits input (SW), a 4-bits output (LED) and a one bit command input (BTN). The following figure represents SAB4Z mapped in the Programmable Logic (PL) of the Zynq core of a Zybo board. SAB4Z is connected to the Processing System (PS) of the Zynq core through the 3 AXI ports. When the ARM processor of the PS reads or writes at addresses in the `[0..1G[` range (first giga byte) it accesses the DDR memory of the Zybo (512MB), through the DDR controller. When the addresses fall in the `[1G..2G[` or `[2G..3G[` ranges, it accesses SAB4Z, through its S0_AXI and S1_AXI ports, respectively. SAB4Z can also access the DDR in the `[0..1G[` range, through its M_AXI port. The four slide switches, LEDs and the rightmost push-button (BTN0) of the board are connected to the SW input, the LED output and the BTN input of SAB4Z, respectively.
 
-                                                             +---+
-                                                             |DDR|
-                                                             +---+
-                                                               ^
-                                                               |
-    ---------+     +-------------------+     +-----------------|---
-       PS    |     |       SAB4Z       |     |   PS            v
-             |     |                   |     |             +------+
-    M_AXI_GP1|<--->|S1_AXI<----->M_AXI |<--->|S_AXI_HP0<-->| DDR  |
-             |     |                   |     |             | Ctrl |
-    M_AXI_GP0|<--->|S0_AXI<-->REGs     |     |             +------+
-    ---------+     |                   |     +---------------------
-                   |                   |
-         BTN0 ---->|BTN                |
-                   |                   |
-     Switches ---->|SW              LED|----> LEDs
-                   +-------------------+
+![SAB4Z on a Zybo board](images/sab4z.png)
 
-The requests from the S1_AXI AXI slave port are forwarded to the M_AXI AXI master port and the responses from the M_AXI AXI master port are forwarded to the S1_AXI AXI slave port. S1_AXI is used to access the DDR controller from the Processing System (PS) through the FPGA fabric. The S0_AXI AXI slave port is used to access the internal registers. The mapping of the S0_AXI address space is the following:
+As shown on the figure, the accesses from the PS that fall in the `[2G..3G[` range (S1_AXI) are forwarded to M_AXI with an address shift from `[2G..3G[` to `[0..1G[`. The responses from M_AXI are forwarded back to S1_AXI. This path is thus a second way to access the DDR from the PS, through the PL. From the PS viewpoint each address in the `[0..1G[` range has an equivalent address in the `[2G..3G[` range. Note that the Zybo board has only 512 MB of DDR and accesses above the DDR limit fall back in the low half (aliasing). Each DDR location can thus be accessed with 4 different addresses in the `[0..512M[`, `[512M..1G[`, `[2G..2G+512M[` or `[2G+512M..3G[` ranges. Note that depending on the configuration, Zynq-based systems have a reserved low addresses range that cannot be accessed from the PL. In these systems this low range can be accessed in the `[0..1G[` range but not in the `[2G..3G[` range where errors are raised. Last but not least, randomly modifying the content of the memory using the `[2G..3G[` range can crash the running software stack or lead to unexpected behaviours if the modified region is currently in use.
 
-| Address      | Mapped resource   | Description                                 | 
-| ------------ | ----------------- | ------------------------------------------- | 
-| `0x40000000` | STATUS (ro)       | 32 bits read-only status register           | 
-| `0x40000004` | R      (rw)       | 32 bits general purpose read-write register | 
-| `0x40000008` | Unmapped          |                                             | 
-| ...          | Unmapped          |                                             | 
-| `0x7ffffffc` | Unmapped          |                                             | 
+
+The S0_AXI AXI slave port is used to access the internal registers. The mapping of the S0_AXI address space is the following:
+
+| Address       | Mapped resource   | Description                                 | 
+| ------------- | ----------------- | ------------------------------------------- | 
+| `0x4000_0000` | STATUS (ro)       | 32 bits read-only status register           | 
+| `0x4000_0004` | R      (rw)       | 32 bits general purpose read-write register | 
+| `0x4000_0008` | Unmapped          |                                             | 
+| ...           | Unmapped          |                                             | 
+| `0x7fff_fffc` | Unmapped          |                                             | 
 
 The organization of the status register is the following:
 
@@ -88,9 +79,9 @@ The organization of the status register is the following:
 | `27..24` | BCNT, counter of S1_AXI write-response transactions |
 | `31..28` | SW, current value                                   |
 
-The BTN input is filtered by a debouncer-resynchronizer. The counter of BTN events CNT is initialized to zero after reset. Each time the BTN push-button is pressed, CNT is incremented (modulus 16) and its value is sent to LED until the button is released. When the button is released the current value of CNT selects which 4-bits slice of which internal register is sent to LED: bits 4*CNT+3..4*CNT of STATUS register when 0<=CNT<=7, else bits 4*(CNT-8)+3..4*(CNT-8) of R register. Accesses to the unmapped region of the S0_AXI `[0x40000008..0x80000000[` address space will raise DECERR AXI errors. Write accesses to the read-only status register will raise SLVERR AXI errors.
+The BTN input is filtered by a debouncer-resynchronizer. CNT is a 4-bits counter. It is initialized to zero after reset. Each time the BTN push-button is pressed, CNT is incremented (modulus 16). As long as the button is kept pressed, CNT is sent to LED. When it is released, the current value of CNT selects which 4-bits slice of which internal register is sent to LED: bits 4\*CNT+3..4\*CNT of STATUS register when 0<=CNT<=7, else bits 4\*(CNT-8)+3..4\*(CNT-8) of R register.
 
-Thanks to the S1_AXI to M_AXI bridge the complete 1GB address space `[0x00000000..0x40000000[` is also mapped to `[0x80000000..0xc0000000[`. Note that the Zybo board has only 512 MB of DDR and accesses above the DDR limit either fall back in the low half (aliasing) or raise errors. Moreover, depending on the configuration, Zynq-based systems have a reserved low addresses range that cannot be accessed from the PL. In these systems this low range can be accessed in the `[0x00000000..0x40000000[` range but not in the `[0x80000000..0xc0000000[` range where errors are raised. Last but not least, randomly modifying the content of the memory using the `[0x80000000..0xc0000000[` range can crash the running software stack or lead to unexpected behaviours if the modified region is currently in use.
+Accesses to the unmapped region of the S0_AXI `[0x4000_0008..2G[` address space raise DECERR AXI errors. Write accesses to the read-only status register raise SLVERR AXI errors.
 
 # <a name="Archive"></a>Installing from the archive
 
@@ -158,43 +149,54 @@ Note the toolchain version (result of the last command), we will need it later.
     make O=build ARCH=arm xilinx_zynq_defconfig
     make -j8 O=build ARCH=arm zImage
 
-Adapt the `make` -j option to your host system. The generated compressed Linux kernel image is at:
-
-    $XLINUX/build/arch/arm/boot/zImage
+Adapt the `make` -j option to your host system.
 
 Note: if needed the configuration of the kernel can be tuned by running:
 
     make O=build ARCH=arm menuconfig
 
-before building the kernel.
+before building the kernel. The generated compressed Linux kernel image is:
+
+    ZIMAGE=$XLINUX/build/arch/arm/boot/zImage
+
+The Device Tree Compiler (dtc) is also generated and can be found in:
+
+    $XLINUX/build/scripts/dtc
+
+Add this directory to your PATH, we will need dtc later:
+
+    export PATH=$PATH:$XLINUX/build/scripts/dtc
 
 ## Configure and build U-Boot, the second stage boot loader
 
-To build U-Boot we need the Device Tree Compiler (dtc), which is built at the same time as the Linux kernel and can be found at:
+The U-Boot build process uses dtc. Unless you have another dtc binary somewhere, wait until the Linux kernel is built before building U-Boot.
 
-    $XLINUX/build/scripts/dtc/dtc
-
-Unless you have another dtc binary somewhere, wait until the Linux kernel is built before building U-Boot.
-
-    export PATH=$PATH:$XLINUX/build/scripts/dtc
     cd $XUBOOT
     make mrproper
     make O=build zynq_zybo_defconfig
     make -j8 O=build
 
-Adapt the `make` -j option to your host system. The generated ELF of U-Boot is at:
-
-    $XUBOOT/build/u-boot
+Adapt the `make` -j option to your host system.
 
 Note: if needed the configuration of U-Boot can be tuned by running:
 
     make O=build menuconfig
 
-before building U-Boot.
+before building U-Boot. The generated ELF of U-Boot is:
+
+    UBOOT=$XUBOOT/build/u-boot
+
+The mkimage U-Boot utility is also generated and can be found in:
+
+    $XUBOOT/build/tools
+
+Add this directory to your PATH, we will need mkimage later:
+
+    export PATH=$PATH:$XUBOOT/build/tools
 
 ## Configure and build a root file system
 
-There is no buildroot configuration file for the Zybo board but the ZedBoard configuration should work also for the Zybo:
+Buildroot has no default configuration for the Zybo board but the ZedBoard configuration should work also for the Zybo:
 
     cd $BUILDROOT
     make O=build zedboard_defconfig
@@ -238,9 +240,9 @@ quit with saving, save again the configuration and build:
     make O=build savedefconfig
     make O=build
 
-The compressed archive of the root filesystem is at:
+The compressed archive of the root filesystem is:
 
-    $BUILDROOT/build/images/rootfs.cpio.gz
+    ROOTFS=$BUILDROOT/build/images/rootfs.cpio.gz
 
 ## Generate and build the hardware dependant software
 
@@ -251,11 +253,11 @@ Generate the device tree sources:
     cd $SAB4Z
     make dts
 
-The sources are at `build/dts`. If needed, edit them before compiling the device tree blob:
+The sources are at `build/dts`. If needed, edit them before compiling the device tree blob with dtc:
 
-    make dtb
+    dtc -I dts -O dtb -o build/devicetree.dtb build/dts/system.dts
 
-The device tree blob is at:
+The device tree blob is:
 
     build/devicetree.dtb
 
@@ -265,39 +267,34 @@ Generate the FSBL sources
 
     make fsbl
 
-The sources are at `build/fsbl`. If needed, edit them before compiling the FSBL:
+The sources are in `build/fsbl`. If needed, edit them before compiling the FSBL:
 
-    make fsblelf
+    make -C build/fsbl
 
-The binary of the FSBL is at:
+The binary of the FSBL is:
 
     build/fsbl/executable.elf
 
-### Zyqnq boot image
+### Zynq boot image
 
 We are ready to generate the Zynq boot image. First copy the U-Boot ELF:
 
-    cp $XUBOOT/build/u-boot build/u-boot.elf
+    cp $UBOOT build/u-boot.elf
 
 and generate the image:
 
     bootgen -w -image scripts/boot.bif -o build/boot.bin
 
-The boot image is at:
+The boot image is:
 
     build/boot.bin
 
-### U-Boot formatted images of Linux kernel and root file system
+### Create U-Boot images of the Linux kernel and root file system
 
-Add the U-Boot tools directory to your PATH and format the compressed Linux kernel image and the root file system for U-Boot:
-
-    export PATH=$PATH:$XUBOOT/build/tools
-    ZIMAGE=$XLINUX/build/arch/arm/boot/zImage
-    ROOTFS=$BUILDROOT/build/images/rootfs.cpio.gz
     mkimage -A arm -O linux -C none -T kernel -a 0x8000 -e 0x8000 -d $ZIMAGE build/uImage
     mkimage -A arm -T ramdisk -C gzip -d $ROOTFS build/uramdisk.image.gz
 
-### Preparing the micro SD card
+### Prepare the micro SD card
 
 Finally, copy the different components to the micro SD card:
 
@@ -309,19 +306,19 @@ Unmount the micro SD card.
 
 # <a name="Further"></a>Going further
 
-## Creating, compiling and running a software application
+## Create, compile and run a software application
 
 TODO
 
-## Accessing SAB4Z from a software application
+## Access SAB4Z from a software application
 
 TODO
 
-## Adding a Linux driver for SAB4Z
+## Add a Linux driver for SAB4Z
 
 TODO
 
-## Booting Linux across SAB4Z
+## Boot Linux across SAB4Z
 
 TODO
 
