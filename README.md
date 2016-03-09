@@ -164,7 +164,7 @@ If we press the push-button and do not release it yet, the LEDs display `0001`, 
 
 ## Mount the SD card
 
-By default the SD card is not mounted but it can be. This is a convenient way to import / export data or even custom applications to / from the host PC. Simply add files to the SD card from the host PC and they will show up on the Zybo once the SD card is mounted. Conversely, if you store a file on the mounted SD card from the Zybo, properly unmount the card, remove it from its slot and mount it to your host PC, you will be able to transfer the file to the host PC.
+By default the SD card is not mounted but it can be. This is a convenient way to import / export data or even custom applications to / from the host PC (of course, a network interface is even better). Simply add files to the SD card from the host PC and they will show up on the Zybo once the SD card is mounted. Conversely, if you store a file on the mounted SD card from the Zybo, properly unmount the card, remove it from its slot and mount it to your host PC, you will be able to transfer the file to the host PC.
 
     # mount /dev/mmcblk0p1 /mnt
     # ls /mnt
@@ -295,6 +295,11 @@ In the buildroot configuration menus change the following options:
     System configuration -> System banner -> Welcome to SAB4Z (c) Telecom ParisTech
     Kernel -> Linux Kernel -> no
     Bootloaders -> U-Boot -> no
+
+If you intend to put the Zybo in a network with DHCP server and run a ssh server on the Zybo, also change the following options:
+
+    System configuration -> Network interface to configure through DHCP -> eth0
+    Target packages > Networking applications -> dropbear -> yes
 
 Quit with saving. Save the buildroot configuration and build the root file system:
 
