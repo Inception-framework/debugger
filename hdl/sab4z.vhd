@@ -282,19 +282,19 @@ begin
           arcnt <= std_ulogic_vector(unsigned(arcnt) + 1);
         end if;
         -- S1_AXI data read transactions counter
-        if s1_axi_m2s.arvalid = '1' and s1_axi_s2m.arready = '1' then
+        if s1_axi_m2s.rvalid = '1' and s1_axi_s2m.rready = '1' then
           rcnt <= std_ulogic_vector(unsigned(rcnt) + 1);
         end if;
         -- S1_AXI address write transactions counter
-        if s1_axi_m2s.arvalid = '1' and s1_axi_s2m.arready = '1' then
+        if s1_axi_m2s.awvalid = '1' and s1_axi_s2m.awready = '1' then
           awcnt <= std_ulogic_vector(unsigned(awcnt) + 1);
         end if;
         -- S1_AXI data write transactions counter
-        if s1_axi_m2s.arvalid = '1' and s1_axi_s2m.arready = '1' then
+        if s1_axi_m2s.wvalid = '1' and s1_axi_s2m.wready = '1' then
           wcnt <= std_ulogic_vector(unsigned(wcnt) + 1);
         end if;
         -- S1_AXI write response transactions counter
-        if s1_axi_m2s.arvalid = '1' and s1_axi_s2m.arready = '1' then
+        if s1_axi_m2s.bvalid = '1' and s1_axi_s2m.bready = '1' then
           bcnt <= std_ulogic_vector(unsigned(bcnt) + 1);
         end if;
         -- Slide switches

@@ -1,2 +1,4 @@
 /build/
 /C/hello_world
+/images/*.fig.bak
+.*.swp

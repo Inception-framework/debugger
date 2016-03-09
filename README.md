@@ -49,7 +49,7 @@ http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.txt
 
 # <a name="Description"></a>Description
 
-**SAB4Z** is a **S**imple **A**xi-to-axi **B**ridge **F**or **Z**ynq cores with two slave AXI ports (S0_AXI and S1_AXI), one master AXI port (M_AXI), two internal registers (STATUS and R), a 4-bits input (SW), a 4-bits output (LED) and a one bit command input (BTN). The following figure represents SAB4Z mapped in the Programmable Logic (PL) of the Zynq core of a Zybo board. SAB4Z is connected to the Processing System (PS) of the Zynq core through the 3 AXI ports. When the ARM processor of the PS reads or writes at addresses in the `[0..1G[` range (first giga byte) it accesses the DDR memory of the Zybo (512MB), through the DDR controller. When the addresses fall in the `[1G..2G[` or `[2G..3G[` ranges, it accesses SAB4Z, through its S0_AXI and S1_AXI ports, respectively. SAB4Z can also access the DDR in the `[0..1G[` range, through its M_AXI port. The four slide switches, LEDs and the rightmost push-button (BTN0) of the board are connected to the SW input, the LED output and the BTN input of SAB4Z, respectively.
+**SAB4Z** is a **S**imple **A**xi-to-axi **B**ridge **F**or **Z**ynq cores with two slave AXI ports (S0_AXI and S1_AXI), one master AXI port (M_AXI), two internal registers (STATUS and R), a 4-bits input (SW), a 4-bits output (LED) and a one bit command input (BTN). The following figure represents SAB4Z mapped in the Programmable Logic (PL) of the Zynq core of a Zybo board. SAB4Z is connected to the Processing System (PS) of the Zynq core through the 3 AXI ports. When the ARM processor of the PS reads or writes at addresses in the `[0..1G[` range (first giga byte) it accesses the DDR memory of the Zybo (512MB), directly through the DDR controller. When the addresses fall in the `[1G..2G[` or `[2G..3G[` ranges, it accesses SAB4Z, through its S0_AXI and S1_AXI ports, respectively. SAB4Z can also access the DDR in the `[0..1G[` range, through its M_AXI port. The four slide switches, LEDs and the rightmost push-button (BTN0) of the board are connected to the SW input, the LED output and the BTN input of SAB4Z, respectively.
 
 ![SAB4Z on a Zybo board](images/sab4z.png)
 
@@ -66,7 +66,7 @@ The S0_AXI AXI slave port is used to access the internal registers. The mapping 
 | ...           | Unmapped          |                                             | 
 | `0x7fff_fffc` | Unmapped          |                                             | 
 
-The organization of the status register is the following:
+The organization of the STATUS register is the following:
 
 | Bits     | Role                                                |
 |----------|-----------------------------------------------------|
@@ -81,7 +81,7 @@ The organization of the status register is the following:
 
 The BTN input is filtered by a debouncer-resynchronizer. CNT is a 4-bits counter. It is initialized to zero after reset. Each time the BTN push-button is pressed, CNT is incremented (modulus 16). As long as the button is kept pressed, CNT is sent to LED. When it is released, the current value of CNT selects which 4-bits slice of which internal register is sent to LED: bits 4\*CNT+3..4\*CNT of STATUS register when 0<=CNT<=7, else bits 4\*(CNT-8)+3..4\*(CNT-8) of R register.
 
-Accesses to the unmapped region of the S0_AXI `[0x4000_0008..2G[` address space raise DECERR AXI errors. Write accesses to the read-only status register raise SLVERR AXI errors.
+Accesses to the unmapped region of the S0_AXI `[0x4000_0008..2G[` address space raise DECERR AXI errors. Write accesses to the read-only STATUS register raise SLVERR AXI errors.
 
 # <a name="Archive"></a>Installing from the archive
 
@@ -108,7 +108,85 @@ Unmount the micro SD card.
   * No port locking
   * Connected to the `/dev/ttyUSB1` device (if needed use `dmesg` to check the device name)
   * e.g. `picocom -b115200 -fn -pn -d8 -r -l /dev/ttyUSB1`
-* Wait until Linux boots, log in as root and start interacting with SAB4Z (with `devmem`, for instance).
+* Wait until Linux boots, log in as root and start interacting with SAB4Z with `devmem`, for instance.
+
+`devmem` is a busybox utility that allows to access memory locations with their physical addresses. It is privileged but as we are root...
+
+## Read the STATUS register
+
+    # devmem 0x40000000 32
+    0x00000004
+    # devmem 0x40000000 32
+    0x00000002
+    # devmem 0x40000000 32
+    0x00000008
+
+As can be seen, the content of the STATUS register is all zeroes, except its 4 Least Significant Bits (LSBs), the life monitor, that spin with a period of about half a second and thus take different values depending on the exact time of reading. The CNT counter is zero, so the LEDs are driven by the life monitor. Change the configuration of the 4 slide switches, read again the STATUS register and check that the 4 Most Significant Bits (MSBs) reflect the chosen configuration:
+
+    # devmem 0x40000000 32
+    0x50000002
+
+## Read and write the R register
+
+    # devmem 0x40000004 32
+    0x00000000
+    # devmem 0x40000004 32 0x12345678
+    # devmem 0x40000004 32
+    0x12345678
+
+## Read DDR locations
+
+    # devmem 0x01000000 32
+    0x4D546529
+    # devmem 0x81000000 32
+    0x4D546529
+
+The `0x0100_0000` and `0x8100_0000` are two equivalent addresses for the same DDR location.
+
+## Read the STATUS register
+
+    # devmem 0x40000000 32
+    0x50001104
+
+ARCNT and RCNT, the counters of address read and data read AXI transactions on AXI slave port S1_AXI, have been incremented because we performed a read access to the DDR at `0x8100_0000`. Let us write a DDR location, for instance `0x8200_0000`, but as we do not know whether the equivalent `0x0200_0000` is currently used by the running software stack, let us first read it and overwrite with the same value:
+
+    # devmem 0x82000000 32
+    0xEDFE0DD0
+    # devmem 0x82000000 32 0xEDFE0DD0
+    # devmem 0x40000000 32
+    0x51112204
+
+The read counters have been incremented once more because of the read access to `0x8200_0000`. The 3 write counters (AWCNT, WCNT and BCNT) have also been incremented by the write access to `0x8200_0000`.
+
+## Press the push-button, select LED driver
+
+If we press the push-button and do not release it yet, the LEDs display `0001`, the new value of the incremented CNT. If we release the button the LEDs still display `0001` because when CNT=1 their are driven by... CNT. Press and release the button once more and check that the LEDs display `0010`, the current value of ARCNT. Continue exploring the 16 possible values of CNT and check that the LEDs display what they should.
+
+## Mount the SD card
+
+By default the SD card is not mounted but it can be. This is a convenient way to import / export data or even custom applications to / from the host PC. Simply add files to the SD card from the host PC and they will show up on the Zybo once the SD card is mounted. Conversely, if you store a file on the mounted SD card from the Zybo, properly unmount the card, remove it from its slot and mount it to your host PC, you will be able to transfer the file to the host PC.
+
+    # mount /dev/mmcblk0p1 /mnt
+    # ls /mnt
+    boot.bin           devicetree.dtb     uImage             uramdisk.image.gz
+    # umount /mnt
+
+Do not forget to unmount the card properly before shutting down the Zybo. If you do not there is a risk that its content is damaged.
+
+## Halt the system
+
+Always halt properly before switching the power off:
+
+    # poweroff
+    # Stopping network...Saving random seed... done.
+    Stopping logging: OK
+    umount: devtmpfs busy - remounted read-only
+    umount: can't unmount /: Invalid argument
+    The system is going down NOW!
+    Sent SIGTERM to all processes
+    Sent SIGKILL to all processes
+    Requesting system poweroff
+    reboot: System halted
 
 # <a name="Building"></a>Building the whole example from scratch
 
@@ -132,9 +210,9 @@ To build the project you will need the Xilinx tools (Vivado and its companion SD
     cd $SAB4Z
     make vv-all
 
-The bitstream `top_wrapper.bit` is at:
+The generated bitstream is:
 
-    $SAB4Z/build/vv/top.runs/impl_1
+    $SAB4Z/build/vv/top.runs/impl_1/top_wrapper.bit
 
 ## Configure and build the Linux kernel
 
