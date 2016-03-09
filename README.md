@@ -194,15 +194,15 @@ To build the project you will need the Xilinx tools (Vivado and its companion SD
 
 ## Downloads
 
-    export XLINUX=<some-path>/linux-xlnx
-    export XUBOOT=<some-path>/u-boot-xlnx
-    export XDTS=<some-path>/device-tree-xlnx
+    XLINUX=<some-path>/linux-xlnx
+    XUBOOT=<some-path>/u-boot-xlnx
+    XDTS=<some-path>/device-tree-xlnx
     git clone https://github.com/Xilinx/linux-xlnx.git $XLINUX
     git clone https://github.com/Xilinx/u-boot-xlnx.git $XUBOOT
     git clone http://github.com/Xilinx/device-tree-xlnx.git $XDTS
-    export SAB4Z=<some-path>
+    SAB4Z=<some-path>
     git clone https://gitlab.eurecom.fr/renaud.pacalet/sab4z.git $SAB4Z
-    export BUILDROOT=<some-path>
+    BUILDROOT=<some-path>
     git clone http://git.buildroot.net/git/buildroot.git $BUILDROOT
 
 ## Hardware synthesis
@@ -284,6 +284,7 @@ In the buildroot configuration menus change the following options:
 
     Build options -> Location to save buildroot config -> ./build/buildroot.config
     Build options -> Enable compiler cache -> yes (faster build)
+    Target packages -> BusyBox configuration file to use? -> ./build/busybox.config
     Toolchain -> Toolchain type -> External toolchain
     Toolchain -> Toolchain -> Custom toolchain
     Toolchain -> Toolchain path -> <path-to-xilinx-sdk/gnu/arm/lin
@@ -391,7 +392,97 @@ Unmount the micro SD card.
 
 ## Create, compile and run a software application
 
-TODO
+The `C` sub-directory contains a very simple example C code `hello_world.c` that prints a welcome message, waits 2 seconds, prints a good bye message and exits. Cross-compile it on your host PC:
+
+    make CC=${CROSS_COMPILE}gcc -C C hello_world
+
+The only thing to do next is transfer the `C/hello_world` binary on the Zybo and execute it. There are several ways to transfer a file from the host PC to the Zybo. The most convenient, of course, is a network interface and, for instance, `scp`. In case none is available, here are several other options:
+
+### Transfer files from host PC to Zybo on SD card
+
+Mount the SD card on your host PC, copy the `C/hello_world` executable on it, eject the SD card, plug it in the Zybo, power on and connect as root. Mount the SD card and run the application:
+
+    # mount /dev/mmcblk0p1 /mnt
+    # /mnt/hello_world
+    Hello SAB4Z
+    Bye! SAB4Z
+
+### Add custom files to the root file system
+
+Another possibility is offered by the overlay feature of buildroot which allows to embed custom files in the generated root file system. To add the `hello_world` binary to the `/opt` directory of the root file system, first create a directory for our buildroot overlays and copy the file at destination:
+
+    cd $BUILDROOT
+    mkdir -p build/overlays/opt
+    cp $SAB4Z/C/hello_world build/overlays/opt
+
+Configure buildroot to add the overlays:
+
+    make O=build menuconfig
+
+In the configuration menu, change:
+
+    System configuration -> Root filesystem overlay directories -> ./build/overlays
+
+Quit with saving. Save the buildroot configuration and build the root file system:
+
+    make O=build savedefconfig
+    make O=build
+
+Re-create the U-Boot image of the root file system:
+
+    cd $SAB4Z
+    mkimage -A arm -T ramdisk -C gzip -d $ROOTFS build/uramdisk.image.gz
+
+Mount the SD card on your host PC, copy the new root file system image on it eject the SD card, plug it in the Zybo, power on and connect as root. Run the application located in `/opt` without mounting the SD card:
+
+    # /opt/hello_world
+    Hello SAB4Z
+    Bye! SAB4Z
+
+### File transfer on the serial link
+
+The drawback of the two previous solutions is the SD card manipulations. There is a way to transfer files from the host PC to the Zybo using the serial interface. On the Zybo side we need the `rx` utility and on the host PC side we need the `sx` utility plus a serial console utility that supports file transfers with sx (like `picocom`, for instance). Let us first add rx to the busybox of our root file system (it is not enabled by default):
+
+    cd $BUILDROOT
+    make O=build busybox-menuconfig
+   
+In the busybox configuration menu, change:
+
+    Miscellaneous Utilities -> rx -> yes
+
+Quit with saving. Save the busybox configuration and build the root file system:
+
+    make O=build busybox-update-config
+    make O=build
+
+Re-create the U-Boot image of the root file system:
+
+    cd $SAB4Z
+    mkimage -A arm -T ramdisk -C gzip -d $ROOTFS build/uramdisk.image.gz
+
+Mount the SD card on your host PC, copy the new root file system image on it eject the SD card, plug it in the Zybo, power on and connect as root. You can now transfer the application binary file (and any other file) from the host PC using picocom and rx. When launching picocom, pass the relevant options:
+
+    picocom -b115200 -fn -pn -d8 -r -l --send-cmd "sx" --receive-cmd "rx" /dev/ttyUSB1
+    # rx /tmp/hello_world
+    C
+
+On the Zybo the rx utility is now waiting for a file that it will store at `/tmp/hello_world`. Then, still in the picocom serial console, press `C-a C-s` (control-a control-s) and provide the name of the file to send:
+
+    *** file: C/hello_world
+    sx C/hello_world 
+    Sending C/hello_world, 51 blocks: Give your local XMODEM receive command now.
+    Bytes Sent:   6656   BPS:3443                            
+    
+    Transfer complete
+    
+    *** exit status: 0
+
+After the transfer completes you can run the application located in `/tmp`. First change the file's mode to executable:
+
+    # chmod +x /tmp/hello_world
+    # /tmp/hello_world
+    Hello SAB4Z
+    Bye! SAB4Z
 
 ## Access SAB4Z from a software application
 
