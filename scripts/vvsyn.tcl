@@ -40,7 +40,7 @@ create_bd_design "top"
 set ar [create_bd_cell -type ip -vlnv www.telecom-paristech.fr:SAB4Z:sab4z:1.0 sab4z]
 set ps7 [create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 ps7]
 apply_bd_automation -rule xilinx.com:bd_rule:processing_system7 -config {make_external "FIXED_IO, DDR" apply_board_preset "1" Master "Disable" Slave "Disable" } $ps7
-set_property -dict [list CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {50.000000}] $ps7
+set_property -dict [list CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {100.000000}] $ps7
 set_property -dict [list CONFIG.PCW_USE_M_AXI_GP0 {1}] $ps7
 set_property -dict [list CONFIG.PCW_USE_M_AXI_GP1 {1}] $ps7
 set_property -dict [list CONFIG.PCW_M_AXI_GP0_ENABLE_STATIC_REMAP {1}] $ps7

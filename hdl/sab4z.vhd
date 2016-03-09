@@ -259,17 +259,18 @@ begin
 
   -- Status register
   process(aclk)
-    variable cnt27: unsigned(26 downto 0); -- Life monitor counter
+    constant lifecntwidth: positive := 25;
+    variable lifecnt: unsigned(lifecntwidth - 1 downto 0); -- Life monitor counter
   begin
     if rising_edge(aclk) then
       if aresetn = '0' then
         status <= (0 => '1', others => '0');
-        cnt27 := (others => '0');
+        lifecnt := (others => '0');
       else
         -- Life monitor
-        cnt27 := cnt27 + 1;
-        if cnt27(26) = '1' then
-          cnt27(26) := '0';
+        lifecnt := lifecnt + 1;
+        if lifecnt(lifecntwidth - 1) = '1' then
+          lifecnt(lifecntwidth - 1) := '0';
           life <= life(2 downto 0) & life(3);
         end if;
         -- BTN event counter
