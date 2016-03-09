@@ -1,13 +1,37 @@
 This repository and its sub-directories contain the VHDL source code, VHDL simulation environment, simulation and synthesis scripts of SAB4Z, a simple design example for the Xilinx Zynq core. It can be ported on any board based on Xilinx Zynq cores but has been specifically designed for the Zybo board by Digilent.
 
 # Table of content
-1. [License](#license)
-1. [Content](#Content)
-1. [Description](#Description)
-1. [Installing from the archive](#Archive)
-1. [Running](#Running)
-1. [Building from scratch](#Building)
-1. [Going further](#Further)
+* [License](#license)
+* [Content](#Content)
+* [Description](#Description)
+* [Install from the archive](#Archive)
+* [Run SAB4Z on the Zybo](#Run)
+  * [Read the STATUS register](#ReadStatus)
+  * [Read and write the R register](#ReadWriteR)
+  * [Read DDR locations](#ReadDDR)
+  * [Press the push-button, select LED driver](#PushButton)
+  * [Mount the SD card](#MountSDCard)
+  * [Halt the system](#Halt)
+* [Build the whole example from scratch](#Building)
+  * [Downloads](#Downloads)
+  * [Hardware synthesis](#Synthesis)
+  * [Configure and build the Linux kernel](#Kernel)
+  * [Configure and build U-Boot, the second stage boot loader](#Uboot)
+  * [Configure and build a root file system](#RootFS)
+  * [Generate and build the hardware dependant software](#SDK)
+    * [Linux kernel device tree](#DTS)
+    * [First Stage Boot Loader (FSBL)](#FSBL)
+    * [Zynq boot image](#BootImg)
+    * [Create U-Boot images of the Linux kernel and root file system](#Uimages)
+    * [Prepare the micro SD card](#SDCard)
+* [Going further](#Further)
+  * [Create, compile and run a software user application](#UserApp)
+    * [Transfer files from host PC to Zybo on SD card](#SDTransfer)
+    * [Add custom files to the root file system](#Overlays)
+    * [File transfer on the serial link](#RX)
+  * [Access SAB4Z from a software user application](#SAB4ZSoft)
+  * [Add a Linux driver for SAB4Z](#LinuxDriver)
+  * [Boot Linux across SAB4Z](#BootInAAS)
 
 # <a name="License"></a>License
 
@@ -83,7 +107,7 @@ The BTN input is filtered by a debouncer-resynchronizer. CNT is a 4-bits counter
 
 Accesses to the unmapped region of the S0_AXI `[0x4000_0008..2G[` address space raise DECERR AXI errors. Write accesses to the read-only STATUS register raise SLVERR AXI errors.
 
-# <a name="Archive"></a>Installing from the archive
+# <a name="Archive"></a>Install from the archive
 
 Insert a micro SD card in your card reader and unpack the provided `sdcard.tgz` archive to it:
 
@@ -93,7 +117,7 @@ Insert a micro SD card in your card reader and unpack the provided `sdcard.tgz` 
 
 Unmount the micro SD card.
 
-# <a name="Running"></a>Using SAB4Z on the Zybo
+# <a name="Run"></a>Run SAB4Z on the Zybo
 
 * Plug the micro SD card in the Zybo and connect the USB cable.
 * Check the position of the jumper that selects the power source (USB or power adapter).
@@ -112,7 +136,7 @@ Unmount the micro SD card.
 
 `devmem` is a busybox utility that allows to access memory locations with their physical addresses. It is privileged but as we are root...
 
-## Read the STATUS register
+## <a name="ReadStatus"></a>Read the STATUS register
 
     # devmem 0x40000000 32
     0x00000004
@@ -126,7 +150,7 @@ As can be seen, the content of the STATUS register is all zeroes, except its 4 L
     # devmem 0x40000000 32
     0x50000002
 
-## Read and write the R register
+## <a name="ReadWriteR"></a>Read and write the R register
 
     # devmem 0x40000004 32
     0x00000000
@@ -134,17 +158,12 @@ As can be seen, the content of the STATUS register is all zeroes, except its 4 L
     # devmem 0x40000004 32
     0x12345678
 
-## Read DDR locations
+## <a name="ReadDDR"></a>Read DDR locations
 
     # devmem 0x01000000 32
     0x4D546529
     # devmem 0x81000000 32
     0x4D546529
-
-The `0x0100_0000` and `0x8100_0000` are two equivalent addresses for the same DDR location.
-
-## Read the STATUS register
-
     # devmem 0x40000000 32
     0x50001104
 
@@ -158,11 +177,11 @@ ARCNT and RCNT, the counters of address read and data read AXI transactions on A
 
 The read counters have been incremented once more because of the read access to `0x8200_0000`. The 3 write counters (AWCNT, WCNT and BCNT) have also been incremented by the write access to `0x8200_0000`.
 
-## Press the push-button, select LED driver
+## <a name="PushButton"></a>Press the push-button, select LED driver
 
 If we press the push-button and do not release it yet, the LEDs display `0001`, the new value of the incremented CNT. If we release the button the LEDs still display `0001` because when CNT=1 their are driven by... CNT. Press and release the button once more and check that the LEDs display `0010`, the current value of ARCNT. Continue exploring the 16 possible values of CNT and check that the LEDs display what they should.
 
-## Mount the SD card
+## <a name="MountSDCard"></a>Mount the SD card
 
 By default the SD card is not mounted but it can be. This is a convenient way to import / export data or even custom applications to / from the host PC (of course, a network interface is even better). Simply add files to the SD card from the host PC and they will show up on the Zybo once the SD card is mounted. Conversely, if you store a file on the mounted SD card from the Zybo, properly unmount the card, remove it from its slot and mount it to your host PC, you will be able to transfer the file to the host PC.
 
@@ -173,7 +192,7 @@ By default the SD card is not mounted but it can be. This is a convenient way to
 
 Do not forget to unmount the card properly before shutting down the Zybo. If you do not there is a risk that its content is damaged.
 
-## Halt the system
+## <a name="Halt"></a>Halt the system
 
 Always halt properly before switching the power off:
 
@@ -188,11 +207,11 @@ Always halt properly before switching the power off:
     Requesting system poweroff
     reboot: System halted
 
-# <a name="Building"></a>Building the whole example from scratch
+# <a name="Building"></a>Build the whole example from scratch
 
 To build the project you will need the Xilinx tools (Vivado and its companion SDK). In the following we assume that they are properly installed and in your PATH. You will also need to download several tools, configure and build them. Some steps can be run in parallel because they do not depend on the results of other steps. Let us first clone all components from their respective Git repositories.
 
-## Downloads
+## <a name="Downloads"></a>Downloads
 
     XLINUX=<some-path>/linux-xlnx
     XUBOOT=<some-path>/u-boot-xlnx
@@ -205,7 +224,7 @@ To build the project you will need the Xilinx tools (Vivado and its companion SD
     BUILDROOT=<some-path>
     git clone http://git.buildroot.net/git/buildroot.git $BUILDROOT
 
-## Hardware synthesis
+## <a name="Synthesis"></a>Hardware synthesis
 
     cd $SAB4Z
     make vv-all
@@ -214,7 +233,7 @@ The generated bitstream is:
 
     $SAB4Z/build/vv/top.runs/impl_1/top_wrapper.bit
 
-## Configure and build the Linux kernel
+## <a name="Kernel"></a>Configure and build the Linux kernel
 
     export CROSS_COMPILE=arm-xilinx-linux-gnueabi- # (note the trailing '-')
     export PATH=$PATH:<path-to-xilinx-sdk>/gnu/arm/lin/bin
@@ -245,7 +264,7 @@ Add this directory to your PATH, we will need dtc later:
 
     export PATH=$PATH:$XLINUX/build/scripts/dtc
 
-## Configure and build U-Boot, the second stage boot loader
+## <a name="Uboot"></a>Configure and build U-Boot, the second stage boot loader
 
 The U-Boot build process uses dtc. Unless you have another dtc binary somewhere, wait until the Linux kernel is built before building U-Boot.
 
@@ -272,7 +291,7 @@ Add this directory to your PATH, we will need mkimage later:
 
     export PATH=$PATH:$XUBOOT/build/tools
 
-## Configure and build a root file system
+## <a name="RootFS"></a>Configure and build a root file system
 
 Buildroot has no default configuration for the Zybo board but the ZedBoard configuration should work also for the Zybo:
 
@@ -328,9 +347,9 @@ The compressed archive of the root filesystem is:
 
     ROOTFS=$BUILDROOT/build/images/rootfs.cpio.gz
 
-## Generate and build the hardware dependant software
+## <a name="SDK"></a>Generate and build the hardware dependant software
 
-### Linux kernel device tree
+### <a name="DTS"></a>Linux kernel device tree
 
 Generate the device tree sources:
 
@@ -345,7 +364,7 @@ The device tree blob is:
 
     build/devicetree.dtb
 
-### First Stage Boot Loader (FSBL)
+### <a name="FSBL"></a>First Stage Boot Loader (FSBL)
 
 Generate the FSBL sources
 
@@ -359,7 +378,7 @@ The binary of the FSBL is:
 
     build/fsbl/executable.elf
 
-### Zynq boot image
+### <a name="BootImg"></a>Zynq boot image
 
 We are ready to generate the Zynq boot image. First copy the U-Boot ELF:
 
@@ -373,12 +392,12 @@ The boot image is:
 
     build/boot.bin
 
-### Create U-Boot images of the Linux kernel and root file system
+### <a name="Uimages"></a>Create U-Boot images of the Linux kernel and root file system
 
     mkimage -A arm -O linux -C none -T kernel -a 0x8000 -e 0x8000 -d $ZIMAGE build/uImage
     mkimage -A arm -T ramdisk -C gzip -d $ROOTFS build/uramdisk.image.gz
 
-### Prepare the micro SD card
+### <a name="SDCard"></a>Prepare the micro SD card
 
 Finally, copy the different components to the micro SD card:
 
@@ -390,7 +409,7 @@ Unmount the micro SD card.
 
 # <a name="Further"></a>Going further
 
-## Create, compile and run a software user application
+## <a name="UserApp"></a>Create, compile and run a software user application
 
 The `C` sub-directory contains a very simple example C code `hello_world.c` that prints a welcome message, waits 2 seconds, prints a good bye message and exits. Cross-compile it on your host PC:
 
@@ -398,7 +417,7 @@ The `C` sub-directory contains a very simple example C code `hello_world.c` that
 
 The only thing to do next is transfer the `C/hello_world` binary on the Zybo and execute it. There are several ways to transfer a file from the host PC to the Zybo. The most convenient, of course, is a network interface and, for instance, `scp`. In case none is available, here are several other options:
 
-### Transfer files from host PC to Zybo on SD card
+### <a name="SDTransfer"></a>Transfer files from host PC to Zybo on SD card
 
 Mount the SD card on your host PC, copy the `C/hello_world` executable on it, eject the SD card, plug it in the Zybo, power on and connect as root. Mount the SD card and run the application:
 
@@ -407,7 +426,7 @@ Mount the SD card on your host PC, copy the `C/hello_world` executable on it, ej
     Hello SAB4Z
     Bye! SAB4Z
 
-### Add custom files to the root file system
+### <a name="Overlays"></a>Add custom files to the root file system
 
 Another possibility is offered by the overlay feature of buildroot which allows to embed custom files in the generated root file system. To add the `hello_world` binary to the `/opt` directory of the root file system, first create a directory for our buildroot overlays and copy the file at destination:
 
@@ -439,7 +458,7 @@ Mount the SD card on your host PC, copy the new root file system image on it eje
     Hello SAB4Z
     Bye! SAB4Z
 
-### File transfer on the serial link
+### <a name="RX"></a>File transfer on the serial link
 
 The drawback of the two previous solutions is the SD card manipulations. There is a way to transfer files from the host PC to the Zybo using the serial interface. On the Zybo side we need the `rx` utility and on the host PC side we need the `sx` utility plus a serial console utility that supports file transfers with sx (like `picocom`, for instance). Let us first add rx to the busybox of our root file system (it is not enabled by default):
 
@@ -484,15 +503,15 @@ After the transfer completes you can run the application located in `/tmp`. Firs
     Hello SAB4Z
     Bye! SAB4Z
 
-## Access SAB4Z from a software user application
+## <a name="SAB4ZSoft"></a>Access SAB4Z from a software user application
 
 TODO
 
-## Add a Linux driver for SAB4Z
+## <a name="LinuxDriver"></a>Add a Linux driver for SAB4Z
 
 TODO
 
-## Boot Linux across SAB4Z
+## <a name="BootInAAS"></a>Boot Linux across SAB4Z
 
 TODO
 
