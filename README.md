@@ -6,32 +6,32 @@ This repository and its sub-directories contain the VHDL source code, VHDL simul
 * [Description](#Description)
 * [Install from the archive](#Archive)
 * [Run SAB4Z on the Zybo](#Run)
-  * [Read the STATUS register](#ReadStatus)
-  * [Read and write the R register](#ReadWriteR)
-  * [Read DDR locations](#ReadDDR)
-  * [Press the push-button, select LED driver](#PushButton)
-  * [Mount the SD card](#MountSDCard)
-  * [Halt the system](#Halt)
+    * [Read the STATUS register](#ReadStatus)
+    * [Read and write the R register](#ReadWriteR)
+    * [Read DDR locations](#ReadDDR)
+    * [Press the push-button, select LED driver](#PushButton)
+    * [Mount the SD card](#MountSDCard)
+    * [Halt the system](#Halt)
 * [Build the whole example from scratch](#Building)
-  * [Downloads](#Downloads)
-  * [Hardware synthesis](#Synthesis)
-  * [Configure and build the Linux kernel](#Kernel)
-  * [Configure and build U-Boot, the second stage boot loader](#Uboot)
-  * [Configure and build a root file system](#RootFS)
-  * [Generate and build the hardware dependant software](#SDK)
-    * [Linux kernel device tree](#DTS)
-    * [First Stage Boot Loader (FSBL)](#FSBL)
-    * [Zynq boot image](#BootImg)
-    * [Create U-Boot images of the Linux kernel and root file system](#Uimages)
-    * [Prepare the micro SD card](#SDCard)
+    * [Downloads](#Downloads)
+    * [Hardware synthesis](#Synthesis)
+    * [Configure and build the Linux kernel](#Kernel)
+    * [Configure and build U-Boot, the second stage boot loader](#Uboot)
+    * [Configure and build a root file system](#RootFS)
+    * [Generate and build the hardware dependant software](#SDK)
+        * [Linux kernel device tree](#DTS)
+        * [First Stage Boot Loader (FSBL)](#FSBL)
+        * [Zynq boot image](#BootImg)
+        * [Create U-Boot images of the Linux kernel and root file system](#Uimages)
+        * [Prepare the micro SD card](#SDCard)
 * [Going further](#Further)
-  * [Create, compile and run a software user application](#UserApp)
-    * [Transfer files from host PC to Zybo on SD card](#SDTransfer)
-    * [Add custom files to the root file system](#Overlays)
-    * [File transfer on the serial link](#RX)
-  * [Access SAB4Z from a software user application](#SAB4ZSoft)
-  * [Add a Linux driver for SAB4Z](#LinuxDriver)
-  * [Boot Linux across SAB4Z](#BootInAAS)
+    * [Create, compile and run a user software application](#UserApp)
+        * [Transfer files from host PC to Zybo on SD card](#SDTransfer)
+        * [Add custom files to the root file system](#Overlays)
+        * [File transfer on the serial link](#RX)
+    * [Access SAB4Z from a user software application](#SAB4ZSoft)
+    * [Add a Linux driver for SAB4Z](#LinuxDriver)
+    * [Boot Linux across SAB4Z](#BootInAAS)
 
 # <a name="License"></a>License
 
@@ -409,7 +409,7 @@ Unmount the micro SD card.
 
 # <a name="Further"></a>Going further
 
-## <a name="UserApp"></a>Create, compile and run a software user application
+## <a name="UserApp"></a>Create, compile and run a user software application
 
 The `C` sub-directory contains a very simple example C code `hello_world.c` that prints a welcome message, waits 2 seconds, prints a good bye message and exits. Cross-compile it on your host PC:
 
@@ -503,9 +503,42 @@ After the transfer completes you can run the application located in `/tmp`. Firs
     Hello SAB4Z
     Bye! SAB4Z
 
-## <a name="SAB4ZSoft"></a>Access SAB4Z from a software user application
+## <a name="SAB4ZSoft"></a>Access SAB4Z from a user software application
 
-TODO
+Accessing SAB4Z from a user software application running on top of the Linux operating system is not as simple as it seams: because of the virtual memory trying to access the SAB4Z registers using their physical addresses would fail. In order to do this we will use `/dev/mem`, a character device that is an image of the memory of the system. The character located at offset `x` from the beginning of `/dev/mem` is the byte stored at physical address `x`. Of course, accessing addresses that are not mapped in the system or writing at read-only addresses cause errors. As reading or writing at specific offset in a character device is not very convenient we will also use `mmap`, a Linux system call that can map a device to memory. To make it short, `/dev/mem` is an image of the physical memory space of the system and `mmap` allows us to map portions of this at a known virtual address. Reading and writing at the mapped virtual addresses becomes equivalent to reading and writing at the physical addresses.
+
+All this, for obvious security reasons, is privileged, but as we are root...
+
+The example C program in `C/sab4z.c` maps the STATUS and R registers of SAB4Z at a virtual address and the `[2G..2G+512M[` physical address range (that is, the DDR accessed across the PL) at another virtual address. It takes one string argument. It first prints a welcome message, then uses the mapping to print the content of STATUS and R registers. It then writes `0x12345678` in the R register and starts searching for the passed string argument in the `[2G..2G+512M[` range. If it finds it, it prints all charcaters in a `[-20..+20[` range around the found string, and stops the search. Then, it prints again STATUS and R, a good bye message and exits.
+
+Compile:
+
+    cd $SAB4Z
+    make CC=${CROSS_COMPILE}gcc C/sab4z
+
+Use one of the techniques presented above to transfer the binary to the Zybo and test it. In order to guarantee that a given string will indeed be stored somewhere in the DDR, you can, for instance, define an environment variable before launching the program. But this should not be necessary because the command you will type to launch the program will also probably be found in memory, as the example below demonstrates:
+
+    picocom -b115200 -fn -pn -d8 -r -l --send-cmd "sx" --receive-cmd "rx" /dev/ttyUSB1
+    # rx /tmp/sab4z 
+    C
+    *** file: sab4z
+    sx sab4z 
+    Sending sab4z, 69 blocks: Give your local XMODEM receive command now.
+    Bytes Sent:   8960   BPS:1878                            
+    
+    Transfer complete
+    
+    *** exit status: 0
+    # export FOO=barcuzqux
+    # chmod +x /tmp/sab4z
+    # /tmp/sab4z barcuz
+    Hello SAB4Z
+      0x40000000: 50004401 (STATUS)
+      0x40000004: 12345678 (R)
+      0x806d1f31: t|H.ov7l./tmp/sab4z.barcuz.USER=root.SHLVL=1.H
+      0x40000000: 50002208 (STATUS)
+      0x40000004: 12345678 (R)
+    Bye! SAB4Z
 
 ## <a name="LinuxDriver"></a>Add a Linux driver for SAB4Z
 
