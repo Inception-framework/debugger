@@ -10,7 +10,7 @@ This repository and its sub-directories contain the VHDL source code, VHDL simul
     * [Read and write the R register](#ReadWriteR)
     * [Read DDR locations](#ReadDDR)
     * [Press the push-button, select LED driver](#PushButton)
-    * [Mount the SD card](#MountSDCard)
+    * [Mount the MicroSD card](#MountSDCard)
     * [Halt the system](#Halt)
 * [Build the whole example from scratch](#Building)
     * [Downloads](#Downloads)
@@ -23,10 +23,10 @@ This repository and its sub-directories contain the VHDL source code, VHDL simul
         * [First Stage Boot Loader (FSBL)](#FSBL)
         * [Zynq boot image](#BootImg)
         * [Create U-Boot images of the Linux kernel and root file system](#Uimages)
-        * [Prepare the micro SD card](#SDCard)
+        * [Prepare the MicroSD card](#SDCard)
 * [Going further](#Further)
     * [Create, compile and run a user software application](#UserApp)
-        * [Transfer files from host PC to Zybo on SD card](#SDTransfer)
+        * [Transfer files from host PC to Zybo on MicroSD card](#SDTransfer)
         * [Add custom files to the root file system](#Overlays)
         * [File transfer on the serial link](#RX)
     * [Access SAB4Z from a user software application](#SAB4ZSoft)
@@ -109,19 +109,19 @@ Accesses to the unmapped region of the S0_AXI `[0x4000_0008..2G[` address space 
 
 # <a name="Archive"></a>Install from the archive
 
-Insert a micro SD card in your card reader and unpack the provided `sdcard.tgz` archive to it:
+Insert a MicroSD card in your card reader and unpack the provided `sdcard.tgz` archive to it:
 
     cd sab4z
     tar -C <path-to-mounted-sd-card> sdcard.tgz
     sync
 
-Unmount the micro SD card.
+Unmount the MicroSD card.
 
 # <a name="Run"></a>Run SAB4Z on the Zybo
 
-* Plug the micro SD card in the Zybo and connect the USB cable.
+* Plug the MicroSD card in the Zybo and connect the USB cable.
 * Check the position of the jumper that selects the power source (USB or power adapter).
-* Check the position of the jumper that selects the boot medium (SD card).
+* Check the position of the jumper that selects the boot medium (MicroSD card).
 * Power on.
 * Launch a terminal emulator (minicom, picocom...) with the following configuration:
   * Baudrate 115200
@@ -181,9 +181,9 @@ The read counters have been incremented once more because of the read access to 
 
 If we press the push-button and do not release it yet, the LEDs display `0001`, the new value of the incremented CNT. If we release the button the LEDs still display `0001` because when CNT=1 their are driven by... CNT. Press and release the button once more and check that the LEDs display `0010`, the current value of ARCNT. Continue exploring the 16 possible values of CNT and check that the LEDs display what they should.
 
-## <a name="MountSDCard"></a>Mount the SD card
+## <a name="MountSDCard"></a>Mount the MicroSD card
 
-By default the SD card is not mounted but it can be. This is a convenient way to import / export data or even custom applications to / from the host PC (of course, a network interface is even better). Simply add files to the SD card from the host PC and they will show up on the Zybo once the SD card is mounted. Conversely, if you store a file on the mounted SD card from the Zybo, properly unmount the card, remove it from its slot and mount it to your host PC, you will be able to transfer the file to the host PC.
+By default the MicroSD card is not mounted but it can be. This is a convenient way to import / export data or even custom applications to / from the host PC (of course, a network interface is even better). Simply add files to the MicroSD card from the host PC and they will show up on the Zybo once the MicroSD card is mounted. Conversely, if you store a file on the mounted MicroSD card from the Zybo, properly unmount the card, remove it from its slot and mount it to your host PC, you will be able to transfer the file to the host PC.
 
     # mount /dev/mmcblk0p1 /mnt
     # ls /mnt
@@ -397,15 +397,15 @@ The boot image is:
     mkimage -A arm -O linux -C none -T kernel -a 0x8000 -e 0x8000 -d $ZIMAGE build/uImage
     mkimage -A arm -T ramdisk -C gzip -d $ROOTFS build/uramdisk.image.gz
 
-### <a name="SDCard"></a>Prepare the micro SD card
+### <a name="SDCard"></a>Prepare the MicroSD card
 
-Finally, copy the different components to the micro SD card:
+Finally, copy the different components to the MicroSD card:
 
     cd build
     cp boot.bin devicetree.dtb uImage uramdisk.image.gz <path-to-mounted-sd-card>
     sync
 
-Unmount the micro SD card.
+Unmount the MicroSD card.
 
 # <a name="Further"></a>Going further
 
@@ -417,9 +417,9 @@ The `C` sub-directory contains a very simple example C code `hello_world.c` that
 
 The only thing to do next is transfer the `C/hello_world` binary on the Zybo and execute it. There are several ways to transfer a file from the host PC to the Zybo. The most convenient, of course, is a network interface and, for instance, `scp`. In case none is available, here are several other options:
 
-### <a name="SDTransfer"></a>Transfer files from host PC to Zybo on SD card
+### <a name="SDTransfer"></a>Transfer files from host PC to Zybo on MicroSD card
 
-Mount the SD card on your host PC, copy the `C/hello_world` executable on it, eject the SD card, plug it in the Zybo, power on and connect as root. Mount the SD card and run the application:
+Mount the MicroSD card on your host PC, copy the `C/hello_world` executable on it, eject the MicroSD card, plug it in the Zybo, power on and connect as root. Mount the MicroSD card and run the application:
 
     # mount /dev/mmcblk0p1 /mnt
     # /mnt/hello_world
@@ -452,7 +452,7 @@ Re-create the U-Boot image of the root file system:
     cd $SAB4Z
     mkimage -A arm -T ramdisk -C gzip -d $ROOTFS build/uramdisk.image.gz
 
-Mount the SD card on your host PC, copy the new root file system image on it eject the SD card, plug it in the Zybo, power on and connect as root. Run the application located in `/opt` without mounting the SD card:
+Mount the MicroSD card on your host PC, copy the new root file system image on it eject the MicroSD card, plug it in the Zybo, power on and connect as root. Run the application located in `/opt` without mounting the MicroSD card:
 
     # /opt/hello_world
     Hello SAB4Z
@@ -460,7 +460,7 @@ Mount the SD card on your host PC, copy the new root file system image on it eje
 
 ### <a name="RX"></a>File transfer on the serial link
 
-The drawback of the two previous solutions is the SD card manipulations. There is a way to transfer files from the host PC to the Zybo using the serial interface. On the Zybo side we need the `rx` utility and on the host PC side we need the `sx` utility plus a serial console utility that supports file transfers with sx (like `picocom`, for instance). Let us first add rx to the busybox of our root file system (it is not enabled by default):
+The drawback of the two previous solutions is the MicroSD card manipulations. There is a way to transfer files from the host PC to the Zybo using the serial interface. On the Zybo side we need the `rx` utility and on the host PC side we need the `sx` utility plus a serial console utility that supports file transfers with sx (like `picocom`, for instance). Let us first add rx to the busybox of our root file system (it is not enabled by default):
 
     cd $BUILDROOT
     make O=build busybox-menuconfig
@@ -479,7 +479,7 @@ Re-create the U-Boot image of the root file system:
     cd $SAB4Z
     mkimage -A arm -T ramdisk -C gzip -d $ROOTFS build/uramdisk.image.gz
 
-Mount the SD card on your host PC, copy the new root file system image on it eject the SD card, plug it in the Zybo, power on and connect as root. You can now transfer the application binary file (and any other file) from the host PC using picocom and rx. When launching picocom, pass the relevant options:
+Mount the MicroSD card on your host PC, copy the new root file system image on it eject the MicroSD card, plug it in the Zybo, power on and connect as root. You can now transfer the application binary file (and any other file) from the host PC using picocom and rx. When launching picocom, pass the relevant options:
 
     picocom -b115200 -fn -pn -d8 -r -l --send-cmd "sx" --receive-cmd "rx" /dev/ttyUSB1
     # rx /tmp/hello_world
@@ -546,5 +546,57 @@ TODO
 
 ## <a name="BootInAAS"></a>Boot Linux across SAB4Z
 
-TODO
+As, thanks to the AXI bridge that SAB4Z implements, the `[2G..3G[` address range is an alias of `[0..1G[`. It is thus possible to run software on the Zybo that use only the `[2G..3G[` range instead of `[0..1G[`. It is even possible for the Linux kernel. However we need to carefuly select the range of physical memory that we will instruct the kernel to use:
 
+* The Zybo has only 512MB of DDR, so the most we can use is `[2G..2G+512M[`.
+* As already mentionned the low DDR addresses cannot be accessed from the PL. So, we cannot let Linux access the low addresses of `[2G..2G+512M[` because we could not forward the requests to the DDR.
+* The Linux kernel insists to have its physical memory aligned on 128MB boundaries. To skip the low addresses of `[2G..2G+512M[` we must skip an entire 128MB chunk.
+
+All in all, we can run the Linux kernel in the `[2G+128MB..2G+512M[` range (`[0x8800_0000..0xa000_0000[`), that is only 384MB instead of 512MB. The other drawback is that the path to the DDR across the PL is much slower than the direct one: its bit-width is 32 bits instead of 64 and its clock frequency is that of the PL, that is 100MHz in our example instead of 650MHz. Of course, the overhead will impact only cache misses but there will be an overhead. So why doing this? Why using less memory than available and slowing down the memory accesses? There are several good reasons. One of them is that instead of just relaying the memory accesses, the SAB4Z could be modified to implement a kind of monitoring of these accesses. It already counts the AXI transactions but it could do something more sophisticated. It could even tamper with the memory accesses, for instance to emulate attacks against the system or accidental memory faults.
+
+Anyway, to boot and run Linux in the `[0x8800_0000..0xa000_0000[` physical memory range we need to modify a few things. First, edit the device tree source (`build/dts/system.dts`) and replace the definition of the physical memory:
+
+	memory {
+		device_type = "memory";
+		reg = <0x0 0x20000000>;
+	};
+
+by:
+
+	memory {
+		device_type = "memory";
+		linux,usable-memory = <0x88000000 0x18000000>;
+	};
+
+Recompile the blob:
+
+    cd $SAB4Z
+    dtc -I dts -O dtb -o build/devicetree.dtb build/dts/system.dts
+
+Next, recreate the U-Boot image of the Linux kernel with a different load address and entry point:
+
+    cd $SAB4Z
+    mkimage -A arm -O linux -C none -T kernel -a 0x88008000 -e 0x88008000 -d $ZIMAGE build/uImage
+
+Last, we must instruct U-Boot to load the device tree blob, Linux kernel and root file system images at different addresses. And, very important, we must force it not to displace the device tree blob and the root file system image as it does by default. Copy the new device tree blob and U-Boot image of the Linux kernel on the MicroSD card:
+
+    cd $SAB4Z
+    cp build/devicetree.dtb build/uImage <path-to-mounted-sd-card>
+
+Eject the MicroSD card, plug it in the Zybo, power on and stop the U-Boot count down by pressing a key. Modify the following U-Boot environment variables:
+
+    setenv devicetree_load_address 0x8a000000
+    setenv kernel_load_address 0x8a080000
+    setenv ramdisk_load_address 0x8c000000
+    setenv fdt_high 0xffffffff
+    setenv initrd_high 0xffffffff
+
+If you want these changes to be stored in the on-board flash such that U-Boot reuses them the next time:
+
+    saveenv
+
+It is time to boot:
+
+    boot
+
+As you will probably notice it takes a bit longer to copy the binaries from the MicroSD card to the memory and to boot the kernel but the system, even if slightly slower, remains responsive and perfectly usable. You can check that the memory accesses are really routed across the PL by pressing the BTN push-button twice. This should drive the LEDs with the counter of AXI address read transactions and you should see the LEDs blinking while the CPU performs read-write accesses to the memory across SAB4Z. If the LEDs do not blink enough, interact with the system through the serial console, this should increase the number of memory accesses.
