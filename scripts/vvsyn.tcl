@@ -24,7 +24,7 @@ set HDLRELPATH $VVRELPATH/$HDLDIR
 # Create IP with all VHDL source files #
 ########################################
 create_project ip . -part xc7z010clg400-1
-add_files $HDLRELPATH/axi_pkg.vhd $HDLRELPATH/debouncer.vhd $HDLRELPATH/utils.vhd $HDLRELPATH/sab4z.vhd
+add_files $HDLRELPATH/axi_pkg.vhd $HDLRELPATH/debouncer.vhd $HDLRELPATH/sab4z.vhd
 import_files -force -norecurse
 ipx::package_project -root_dir . -vendor www.telecom-paristech.fr -library SAB4Z
 close_project

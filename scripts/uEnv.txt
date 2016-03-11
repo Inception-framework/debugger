@@ -1,0 +1,5 @@
+devicetree_load_address=0x8a000000
+kernel_load_address=0x8a080000
+ramdisk_load_address=0x8c000000
+fdt_high=0xffffffff
+initrd_high=0xffffffff

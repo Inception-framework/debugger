@@ -5,31 +5,17 @@ This repository and its sub-directories contain the VHDL source code, VHDL simul
 * [Content](#Content)
 * [Description](#Description)
 * [Install from the archive](#Archive)
-* [Run SAB4Z on the Zybo](#Run)
-    * [Read the STATUS register](#ReadStatus)
-    * [Read and write the R register](#ReadWriteR)
-    * [Read DDR locations](#ReadDDR)
-    * [Press the push-button, select LED driver](#PushButton)
-    * [Mount the MicroSD card](#MountSDCard)
-    * [Halt the system](#Halt)
-* [Build the whole example from scratch](#Building)
+* [Test SAB4Z on the Zybo](#Run)
+* [Build everything from scratch](#Building)
     * [Downloads](#Downloads)
     * [Hardware synthesis](#Synthesis)
-    * [Configure and build the Linux kernel](#Kernel)
-    * [Configure and build U-Boot, the second stage boot loader](#Uboot)
-    * [Configure and build a root file system](#RootFS)
-    * [Generate and build the hardware dependant software](#SDK)
-        * [Linux kernel device tree](#DTS)
-        * [First Stage Boot Loader (FSBL)](#FSBL)
-        * [Zynq boot image](#BootImg)
-        * [Create U-Boot images of the Linux kernel and root file system](#Uimages)
-        * [Prepare the MicroSD card](#SDCard)
+    * [Build a root file system](#RootFS)
+    * [Build the Linux kernel](#Kernel)
+    * [Build U-Boot](#Uboot)
+    * [Build the hardware dependant software](#SDK)
 * [Going further](#Further)
-    * [Create, compile and run a user software application](#UserApp)
-        * [Transfer files from host PC to Zybo on MicroSD card](#SDTransfer)
-        * [Add custom files to the root file system](#Overlays)
-        * [File transfer on the serial link](#RX)
-    * [Access SAB4Z from a user software application](#SAB4ZSoft)
+    * [Run a user application on the Zybo](#UserApp)
+    * [Access SAB4Z from a user application on the Zybo](#SAB4ZSoft)
     * [Add a Linux driver for SAB4Z](#LinuxDriver)
     * [Boot Linux across SAB4Z](#BootInAAS)
 
@@ -48,29 +34,28 @@ http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.txt
 # <a name="Content"></a>Content
 
     .
-    ├── C
-    │   ├── hello_world.c
-    │   └── sab4z.c
-    ├── COPYING
-    ├── COPYING-FR
-    ├── COPYRIGHT
-    ├── hdl
-    │   ├── axi_pkg.vhd
-    │   ├── debouncer.vhd
-    │   ├── sab4z.vhd
-    │   └── utils.vhd
-    ├── images
-    │   ├── sab4z.fig
-    │   ├── sab4z.png
-    │   └── zybo.png
-    ├── Makefile
-    ├── README.md
-    ├── scripts
-    │   ├── boot.bif
-    │   ├── dts.tcl
-    │   ├── fsbl.tcl
-    │   └── vvsyn.tcl
-    └── sdcard.tgz
+    ├── C                       Directory of C source files
+    │   ├── hello_world.c       Simple example user application
+    │   └── sab4z.c             User application that uses SAB4Z
+    ├── COPYING                 License (English version)
+    ├── COPYING-FR              Licence (version française)
+    ├── COPYRIGHT               Copyright notice
+    ├── hdl                     Directory of VHDL source files
+    │   ├── axi_pkg.vhd         AXI definitions package
+    │   ├── debouncer.vhd       Debouncer-resynchronizer
+    │   └── sab4z.vhd           Top-level SAB4Z
+    ├── images                  Directory of figures
+    │   ├── sab4z.fig           Xfig figure of SAB4Z in Zybo
+    │   ├── sab4z.png           PNG export of sab4z.fig
+    │   └── zybo.png            PNG picture of Zybo
+    ├── Makefile                Main makefile
+    ├── README.md               This file
+    └── scripts                 Directory of scripts
+        ├── boot.bif            Zynq boot image description
+        ├── dts.tcl             TCL script for device tree generation
+        ├── fsbl.tcl            TCL script for FSBL generation
+        ├── uEnv.txt            U-Boot environment variables definitions
+        └── vvsyn.tcl           Vivado TCL synthesis script
 
 # <a name="Description"></a>Description
 
@@ -80,7 +65,7 @@ http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.txt
 
 As shown on the figure, the accesses from the PS that fall in the `[2G..3G[` range (S1_AXI) are forwarded to M_AXI with an address down shift from `[2G..3G[` to `[0..1G[`. The responses from M_AXI are forwarded back to S1_AXI. This path is thus a second way to access the DDR from the PS, across the PL. From the PS viewpoint each address in the `[0..1G[` range has an equivalent address in the `[2G..3G[` range. The Zybo board has only 512 MB of DDR and accesses above the DDR limit fall back in the low half (aliasing). Each DDR location can thus be accessed with 4 different addresses in the `[0..512M[`, `[512M..1G[`, `[2G..2G+512M[` or `[2G+512M..3G[` ranges.
 
-Important: depending on the configuration, Zynq-based systems have a reserved low addresses range that cannot be accessed from the PL. In these systems this low range can be accessed in the `[0..1G[` range but not in the `[2G..3G[` range where errors are raised. Last but not least, randomly modifying the content of the memory using the `[2G..3G[` range can crash the system or lead to unexpected behaviours if the modified region is currently in use by the currently running software stack.
+**Important**: depending on the configuration, Zynq-based systems have a reserved low addresses range that cannot be accessed from the PL. In these systems this low range can be accessed in the `[0..1G[` range but not in the `[2G..3G[` range where errors are raised. Last but not least, randomly modifying the content of the memory using the `[2G..3G[` range can crash the system or lead to unexpected behaviours if the modified region is currently in use by the currently running software stack.
 
 The AXI slave port S0_AXI is used to access the internal registers. The mapping of the S0_AXI address space is the following:
 
@@ -114,36 +99,41 @@ Accesses to the unmapped region of the S0_AXI `[1G+8..2G[` address space raise D
 
 # <a name="Archive"></a>Install from the archive
 
-In the following `Host>` is the host PC shell prompt, `Sab4z>` is the Zybo shell prompt and `Zybo>` is the U-Boot prompt. Code snipsets without a prompt are commands outputs, excerpts of configuration files or configuration menus.
+In the following `Host>` is the host PC shell prompt, `Sab4z>` is the Zybo shell prompt and `Zynq>` is the U-Boot prompt. Code snippets without a prompt are commands outputs, excerpts of configuration files or configuration menus.
 
-Insert a MicroSD card in your card reader and unpack the provided `sdcard.tgz` archive to it:
+Download the archive, insert a MicroSD card in your card reader and unpack the archive to it:
 
-    Host> cd sab4z
+    Host> cd /tmp
+    Host> https://gitlab.eurecom.fr/renaud.pacalet/sab4z/uploads/98b4b8524e498a56868230778f79887f/sdcard.tgz
     Host> tar -C <path-to-mounted-sd-card> sdcard.tgz
     Host> sync
 
-Unmount the MicroSD card.
+Unmount and eject the MicroSD card.
 
-# <a name="Run"></a>Run SAB4Z on the Zybo
+# <a name="Run"></a>Test SAB4Z on the Zybo
 
 * Plug the MicroSD card in the Zybo and connect the USB cable.
 * Check the position of the jumper that selects the power source (USB or power adapter).
 * Check the position of the jumper that selects the boot medium (MicroSD card).
 * Power on.
-* Launch a terminal emulator (minicom, picocom...) with the following configuration:
+* Launch a terminal emulator (picocom, minicom...) with the following configuration:
   * Baudrate 115200
   * No flow control
   * No paritys
   * 8 bits characters
   * No port reset
   * No port locking
-  * Connected to the `/dev/ttyUSB1` device (if needed use `dmesg` to check the device name)
-  * e.g. `picocom -b115200 -fn -pn -d8 -r -l /dev/ttyUSB1`
-* Wait until Linux boots, log in as root (there is no password) and start interacting with SAB4Z with `devmem`, for instance.
+  * Connected to the `/dev/ttyUSB1` device (if needed use dmesg to check the device name)
+* Wait until Linux boots, log in as root (there is no password) and start interacting with SAB4Z. To access the SAB4Z memory spaces you can use devmem, a BusyBox utility that allows to access memory locations with their physical addresses. It is privileged but as we are root...
 
-`devmem` is a busybox utility that allows to access memory locations with their physical addresses. It is privileged but as we are root...
 
-## <a name="ReadStatus"></a>Read the STATUS register
+    Host> picocom -b115200 -fn -pn -d8 -r -l /dev/ttyUSB1
+    ...
+    Welcome to SAB4Z (c) Telecom ParisTech
+    sab4z login: root
+    Sab4z>
+
+#### <a name="ReadStatus"></a>Read the STATUS register
 
     Sab4z> devmem 0x40000000 32
     0x00000004
@@ -157,7 +147,7 @@ As can be seen, the content of the STATUS register is all zeroes, except its 4 L
     Sab4z> devmem 0x40000000 32
     0x50000002
 
-## <a name="ReadWriteR"></a>Read and write the R register
+#### <a name="ReadWriteR"></a>Read and write the R register
 
     Sab4z> devmem 0x40000004 32
     0x00000000
@@ -165,7 +155,7 @@ As can be seen, the content of the STATUS register is all zeroes, except its 4 L
     Sab4z> devmem 0x40000004 32
     0x12345678
 
-## <a name="ReadDDR"></a>Read DDR locations
+#### <a name="ReadDDR"></a>Read DDR locations
 
     Sab4z> devmem 0x01000000 32
     0x4D546529
@@ -184,13 +174,13 @@ As expected, the `0x0100_0000` and `0x8100_0000` addresses store the same value.
 
 The read counters have again been incremented because of the read access at `0x8200_0000`. The 3 write counters (AWCNT, WCNT and BCNT) have also been incremented by the write access at `0x8200_0000`.
 
-## <a name="PushButton"></a>Press the push-button, select LED driver
+#### <a name="PushButton"></a>Press the push-button, select LED driver
 
 If we press the push-button and do not release it yet, the LEDs display `0001`, the new value of the incremented CNT. If we release the button the LEDs still display `0001` because when CNT=1 their are driven by... CNT. Press and release the button once more and check that the LEDs display `0010`, the current value of ARCNT. Continue exploring the 16 possible values of CNT and check that the LEDs display what they should.
 
-## <a name="MountSDCard"></a>Mount the MicroSD card
+#### <a name="MountSDCard"></a>Mount the MicroSD card
 
-By default the MicroSD card is not mounted but it can be. This is a convenient way to import / export data or even custom applications to / from the host PC (of course, a network interface is even better). Simply add files to the MicroSD card from the host PC and they will show up on the Zybo once the MicroSD card is mounted. Conversely, if you store a file on the mounted MicroSD card from the Zybo, properly unmount the card, remove it from its slot and mount it to your host PC, you will be able to transfer the file to the host PC.
+By default the MicroSD card is not mounted but it can be. This is a way to import / export data or even custom applications to / from the host PC (of course, a network interface is much better). Simply add files to the MicroSD card from the host PC and they will show up on the Zybo once the MicroSD card is mounted. Conversely, you can store a file on the mounted MicroSD card from the Zybo, properly unmount the card, remove it from its slot, mount it on your host PC and copy the file from the MicroSD card to the host PC.
 
     Sab4z> mount /dev/mmcblk0p1 /mnt
     Sab4z> ls /mnt
@@ -199,7 +189,7 @@ By default the MicroSD card is not mounted but it can be. This is a convenient w
 
 Do not forget to unmount the card properly before shutting down the Zybo. If you do not there is a risk that its content is damaged.
 
-## <a name="Halt"></a>Halt the system
+#### <a name="Halt"></a>Halt the system
 
 Always halt properly before switching the power off:
 
@@ -214,295 +204,237 @@ Always halt properly before switching the power off:
     Requesting system poweroff
     reboot: System halted
 
-# <a name="Building"></a>Build the whole example from scratch
+# <a name="Building"></a>Build everything from scratch
 
-To build the project you will need the Xilinx tools (Vivado and its companion SDK). In the following we assume that they are properly installed and in your PATH. You will also need to download several tools, configure and build them. Some steps can be run in parallel because they do not depend on the results of other steps. Let us first clone all components from their respective Git repositories.
+To build the project you will need the Xilinx tools (Vivado and its companion SDK). In the following we assume that they are properly installed and in your PATH. You will also need to download, configure and build several tools. Some steps can be run in parallel because they do not depend on the results of other steps.
+
+**Important**: the Xilinx initialization script redefines the LD_LIBRARY_PATH environment variable to point to Xilinx shared libraries. A consequence is that many utilities on your host PC will crash with more or less accurate error messages. To avoid this, run the Xilinx tools in a separate, dedicated shell. In the following we will use the `Host-Xilinx>` shell prompt to distinguish this dedicated shell.
 
 ## <a name="Downloads"></a>Downloads
 
+**Important**: after the build, the Linux repository occupies more than 2.5GB of disk space and the Buildroot repository more than 3GB. Carefully select where to install them... Clone all components from their respective Git repositories:
+
+    Host> cd <some-path>
+    Host> git clone https://gitlab.eurecom.fr/renaud.pacalet/sab4z.git
+    Host> git clone https://github.com/Xilinx/linux-xlnx.git
+    Host> git clone https://github.com/Xilinx/u-boot-xlnx.git
+    Host> git clone http://github.com/Xilinx/device-tree-xlnx.git
+    Host> git clone http://git.buildroot.net/git/buildroot.git
+    Host> SAB4Z=<some-path>/sab4z
     Host> XLINUX=<some-path>/linux-xlnx
     Host> XUBOOT=<some-path>/u-boot-xlnx
     Host> XDTS=<some-path>/device-tree-xlnx
-    Host> git clone https://github.com/Xilinx/linux-xlnx.git $XLINUX
-    Host> git clone https://github.com/Xilinx/u-boot-xlnx.git $XUBOOT
-    Host> git clone http://github.com/Xilinx/device-tree-xlnx.git $XDTS
-    Host> SAB4Z=<some-path>
-    Host> git clone https://gitlab.eurecom.fr/renaud.pacalet/sab4z.git $SAB4Z
-    Host> BUILDROOT=<some-path>
-    Host> git clone http://git.buildroot.net/git/buildroot.git $BUILDROOT
+    Host> BUILDROOT=<some-path>/buildroot
 
 ## <a name="Synthesis"></a>Hardware synthesis
 
-    Host> cd $SAB4Z
-    Host> make vv-all
+    Host-Xilinx> cd $SAB4Z
+    Host-Xilinx> make vv-all
 
 The generated bitstream is `SAB4Z/build/vv/top.runs/impl_1/top_wrapper.bit`.
 
-## <a name="Kernel"></a>Configure and build the Linux kernel
+## <a name="RootFS"></a>Build a root file system
 
-    Host> export CROSS_COMPILE=arm-xilinx-linux-gnueabi- # (note the trailing '-')
-    Host> export PATH=$PATH:<path-to-xilinx-sdk>/gnu/arm/lin/bin
-    Host> ${CROSS_COMPILE}gcc --version
+We will use Buildroot to build a BusyBox-based tiny root file system. Buildroot has no default configuration for the Zybo board but the ZedBoard default configuration should work also for the Zybo. Let us first configure Buildroot to:
 
-Note the toolchain version (result of the last command), we will need it later.
+* use a compiler cache (faster build),
+* enable the thread library debugging (needed to build the gdb server),
+* build (for the host PC) the gdb cross debugger with TUI support,
+* customize the host name and welcome banner,
+* enable networking,
+* embed some extra (overlays) files that we will provide later,
+* skip Linux kernel build (we will use the Linux kernel from the Xilinx Git repository),
+* embed a tiny gdb server,
+* embed dropbear, a tiny ssh server,
+* skip U-Boot build (we will the U-Boot from the Xilinx Git repository).
 
-    Host> cd $XLINUX
-    Host> make mrproper
-    Host> make O=build ARCH=arm xilinx_zynq_defconfig
-    Host> make -j8 O=build ARCH=arm zImage
-
-Adapt the `make` -j option to your host system.
-
-Note: if needed the configuration of the kernel can be tuned by running:
-
-    Host> make O=build ARCH=arm menuconfig
-
-before building the kernel. The generated compressed Linux kernel image is:
-
-    Host> ZIMAGE=$XLINUX/build/arch/arm/boot/zImage
-
-The Device Tree Compiler (dtc) is also generated in `XLINUX/build/scripts/dtc`. Add this directory to your PATH, we will need dtc later:
-
-    Host> export PATH=$PATH:$XLINUX/build/scripts/dtc
-
-## <a name="Uboot"></a>Configure and build U-Boot, the second stage boot loader
-
-The U-Boot build process uses dtc. Unless you have another dtc binary somewhere, wait until the Linux kernel is built before building U-Boot.
-
-    Host> cd $XUBOOT
-    Host> make mrproper
-    Host> make O=build zynq_zybo_defconfig
-    Host> make -j8 O=build
-
-Adapt the `make` -j option to your host system.
-
-Note: if needed the configuration of U-Boot can be tuned by running:
-
-    Host> make O=build menuconfig
-
-before building U-Boot. The generated ELF of U-Boot is:
-
-    Host> UBOOT=$XUBOOT/build/u-boot
-
-The mkimage U-Boot utility is also generated in `$XUBOOT/build/tools`. Add this directory to your PATH, we will need mkimage later:
-
-    Host> export PATH=$PATH:$XUBOOT/build/tools
-
-## <a name="RootFS"></a>Configure and build a root file system
-
-Buildroot has no default configuration for the Zybo board but the ZedBoard configuration should work also for the Zybo:
+Run the Buildroot configuration:
 
     Host> cd $BUILDROOT
     Host> make O=build zedboard_defconfig
     Host> make O=build menuconfig
 
-In the buildroot configuration menus change the following options:
+In the Buildroot configuration menus change the following options:
 
-    Build options -> Location to save buildroot config -> ./build/buildroot.config
-    Build options -> Enable compiler cache -> yes (faster build)
-    Target packages -> BusyBox configuration file to use? -> ./build/busybox.config
-    Toolchain -> Toolchain type -> External toolchain
-    Toolchain -> Toolchain -> Custom toolchain
-    Toolchain -> Toolchain path -> <path-to-xilinx-sdk/gnu/arm/lin
-    Toolchain -> Toolchain prefix -> arm-xilinx-linux-gnueabi # (no trailing '-')
-    Toolchain -> External toolchain gcc version -> <the-toolchain-version-you-noted>
-    Toolchain -> External toolchain C library -> glibc/eglibc
-    Toolchain -> Toolchain has RPC support? -> yes
+    Build options -> Enable compiler cache -> yes
+    Toolchain -> Thread library debugging -> yes
+    Toolchain -> Build cross gdb for the host -> yes
+    Toolchain -> TUI support -> yes
     System configuration -> System hostname -> sab4z
     System configuration -> System banner -> Welcome to SAB4Z (c) Telecom ParisTech
+    System configuration -> Network interface to configure through DHCP -> eth0
+    System configuration -> Root filesystem overlay directories -> ./build/overlays
     Kernel -> Linux Kernel -> no
+    Target packages -> Debugging, profiling and benchmark -> gdb -> yes
+    Target packages -> Networking applications -> dropbear -> yes
     Bootloaders -> U-Boot -> no
 
-If you intend to put the Zybo in a network with DHCP server and run a ssh server on the Zybo, also change the following options:
+Quit (save when asked). Let us now configure BusyBox to enable the rx utility that we will need later:
 
-    System configuration -> Network interface to configure through DHCP -> eth0
-    Target packages > Networking applications -> dropbear -> yes
+    Host> make O=build busybox-menuconfig
 
-Quit with saving. Save the buildroot configuration and build the root file system:
+In the BusyBox configuration menus change the following option:
 
-    Host> make O=build savedefconfig
+    Miscellaneous Utilities -> rx -> yes
+
+Quit (save when asked), create the overlays directory, populate it and build the root file system:
+
+    Host> mkdir -p build/overlays/etc/profile.d
+    Host> echo "export PS1='Sab4z> '" > build/overlays/etc/profile.d/prompt.sh
     Host> make O=build
 
-If you get an error:
+Note: the first build takes some time, especially because Buildroot must first build the toolchain for ARM targets, but most of the work will not have to be redone if we later change the configuration and re-build. Copy the generated root file system:
 
-    Incorrect selection of kernel headers: expected x.x.x, got y.y.y
+    Host> cp $BUILDROOT/build/images/rootfs.cpio.uboot $SAB4Z/build/uramdisk.image.gz
 
-note the `y.y.y` and run again the buildroot configuration:
+Buildroot also built applications for the host PC that we will need later:
 
-    Host> make O=build menuconfig
+* a complete toolchain (cross-compiler, debugger...) for the ARM processor of the Zybo,
+* dtc, a device tree compiler,
+* mkimage, a utility used to create images for U-Boot...
 
-change:
+They are in `$BUILDROOT/build/host/usr/bin`. Add this directory to your PATH and define the CROSS_COMPILE environment variable (note the trailing `-`):
 
-    Toolchain -> External toolchain kernel headers series -> the-kernel-headers-version-you-noted
+    Host> export PATH=$PATH:$BUILDROOT/build/host/usr/bin
+    Host> export CROSS_COMPILE=arm-buildroot-linux-uclibcgnueabi-
 
-quit with saving, save again the configuration and build:
+## <a name="Kernel"></a>Build the Linux kernel
 
-    Host> make O=build savedefconfig
-    Host> make O=build
+Do not start this part before the [toolchain](#RootFS) is built: it is needed. Note: select the value to pass to the make -j option depending on the characteristics of your host system. Note: if needed, you can adapt the configuration before building: run the commented command.
 
-The compressed archive of the root filesystem is:
+    Host> cd $XLINUX
+    Host> make mrproper
+    Host> make O=build ARCH=arm xilinx_zynq_defconfig
+    Host> # make O=build ARCH=arm menuconfig
+    Host> make -j8 O=build ARCH=arm LOADADDR=0x8000 uImage
+    Host> cp $XLINUX/build/arch/arm/boot/uImage $SAB4Z/build
 
-    Host> ROOTFS=$BUILDROOT/build/images/rootfs.cpio.gz
+## <a name="Uboot"></a>Build U-Boot
 
-## <a name="SDK"></a>Generate and build the hardware dependant software
+Do not start this part before the [toolchain](#RootFS) is built: it is needed. Note: select the value to pass to the make -j option depending on the characteristics of your host system. Note: if needed, you can adapt the configuration before building: run the commented command.
 
-### <a name="DTS"></a>Linux kernel device tree
+    Host> cd $XUBOOT
+    Host> make mrproper
+    Host> make O=build zynq_zybo_defconfig
+    Host> # make O=build menuconfig
+    Host> make -j8 O=build
+    Host> cp $XUBOOT/build/u-boot $SAB4Z/u-boot.elf
+
+## <a name="SDK"></a>Build the hardware dependant software
+
+Do not start this part before the [hardware synthesis finishes](#Synthesis) finishes and the [toolchain](#RootFS) is built: they are needed.
+
+#### <a name="DTS"></a>Linux kernel device tree
 
 Generate the device tree sources:
 
-    Host> cd $SAB4Z
-    Host> make dts
+    Host-Xilinx> cd $SAB4Z
+    Host-Xilinx> make XDTS=<some-path>/device-tree-xlnx dts
 
-The sources are at `build/dts`. If needed, edit them before compiling the device tree blob with dtc:
+The sources are in `build/dts`. If needed, edit them before compiling the device tree blob with dtc:
 
     Host> dtc -I dts -O dtb -o build/devicetree.dtb build/dts/system.dts
 
-The device tree blob is `build/devicetree.dtb`.
-
-### <a name="FSBL"></a>First Stage Boot Loader (FSBL)
+#### <a name="FSBL"></a>First Stage Boot Loader (FSBL)
 
 Generate the FSBL sources
 
-    Host> make fsbl
+    Host-Xilinx> make fsbl
 
 The sources are in `build/fsbl`. If needed, edit them before compiling the FSBL:
 
-    Host> make -C build/fsbl
+    Host-Xilinx> make -C build/fsbl
 
-The binary of the FSBL is `build/fsbl/executable.elf`.
+#### <a name="BootImg"></a>Zynq boot image
 
-### <a name="BootImg"></a>Zynq boot image
+Generate the Zynq boot image:
 
-We are ready to generate the Zynq boot image. First copy the U-Boot ELF:
+    Host-Xilinx> bootgen -w -image scripts/boot.bif -o build/boot.bin
 
-    Host> cp $UBOOT build/u-boot.elf
+#### <a name="SDCard"></a>Prepare the MicroSD card
 
-and generate the image:
-
-    Host> bootgen -w -image scripts/boot.bif -o build/boot.bin
-
-The boot image is `build/boot.bin`.
-
-### <a name="Uimages"></a>Create U-Boot images of the Linux kernel and root file system
-
-    Host> mkimage -A arm -O linux -C none -T kernel -a 0x8000 -e 0x8000 -d $ZIMAGE build/uImage
-    Host> mkimage -A arm -T ramdisk -C gzip -d $ROOTFS build/uramdisk.image.gz
-
-### <a name="SDCard"></a>Prepare the MicroSD card
-
-Finally, copy the different components to the MicroSD card:
+Finally, mount the MicroSD card on your host PC, and copy the different components to it:
 
     Host> cd build
     Host> cp boot.bin devicetree.dtb uImage uramdisk.image.gz <path-to-mounted-sd-card>
     Host> sync
 
-Unmount the MicroSD card.
-
 # <a name="Further"></a>Going further
 
 ## <a name="UserApp"></a>Create, compile and run a user software application
 
+Do not start this part before the [toolchain](#RootFS) is built: it is needed.
+
 The `C` sub-directory contains a very simple example C code `hello_world.c` that prints a welcome message, waits 2 seconds, prints a good bye message and exits. Cross-compile it on your host PC:
 
-    Host> make CC=${CROSS_COMPILE}gcc -C C hello_world
+    Host> cd $SAB4Z/C
+    Host> make CC=${CROSS_COMPILE}gcc hello_world
 
-The only thing to do next is transfer the `C/hello_world` binary on the Zybo and execute it. There are several ways to transfer a file from the host PC to the Zybo. The most convenient, of course, is a network interface and, for instance, `scp`. In case none is available, here are several other options:
+The only thing to do next is transfer the `hello_world` binary on the Zybo and execute it. There are several ways to transfer a file from the host PC to the Zybo. The most convenient, of course, is a network interface but in case none is available, here are several other options:
 
-### <a name="SDTransfer"></a>Transfer files from host PC to Zybo on MicroSD card
+#### <a name="SDTransfer"></a>Transfer files from host PC to Zybo on MicroSD card
 
-Mount the MicroSD card on your host PC, copy the `C/hello_world` executable on it, eject the MicroSD card, plug it in the Zybo, power on and connect as root. Mount the MicroSD card and run the application:
+Mount the MicroSD card on your host PC, copy the `hello_world` executable on it, unmount and eject the MicroSD card, plug it in the Zybo, power on and connect as root. Mount the MicroSD card and run the application:
 
     Sab4z> mount /dev/mmcblk0p1 /mnt
     Sab4z> /mnt/hello_world
     Hello SAB4Z
     Bye! SAB4Z
 
-### <a name="Overlays"></a>Add custom files to the root file system
+#### <a name="Overlays"></a>Add custom files to the root file system
 
-Another possibility is offered by the overlay feature of buildroot which allows to embed custom files in the generated root file system. To add the `hello_world` binary to the `/opt` directory of the root file system, first create a directory for our buildroot overlays and copy the file at destination:
+Another possibility is offered by the overlay feature of Buildroot which allows to embed custom files in the generated root file system. Add the `hello_world` binary to the `/opt` directory of the root file system and re-build the root file system:
 
     Host> cd $BUILDROOT
     Host> mkdir -p build/overlays/opt
     Host> cp $SAB4Z/C/hello_world build/overlays/opt
-
-Configure buildroot to add the overlays:
-
-    Host> make O=build menuconfig
-
-In the configuration menu, change:
-
-    System configuration -> Root filesystem overlay directories -> ./build/overlays
-
-Quit with saving. Save the buildroot configuration and build the root file system:
-
-    Host> make O=build savedefconfig
     Host> make O=build
+    Host> cp $BUILDROOT/build/images/rootfs.cpio.uboot $SAB4Z/build/uramdisk.image.gz
 
-Re-create the U-Boot image of the root file system:
-
-    Host> cd $SAB4Z
-    Host> mkimage -A arm -T ramdisk -C gzip -d $ROOTFS build/uramdisk.image.gz
-
-Mount the MicroSD card on your host PC, copy the new root file system image on it eject the MicroSD card, plug it in the Zybo, power on and connect as root. Run the application located in `/opt` without mounting the MicroSD card:
+Mount the MicroSD card on your host PC, copy the new root file system image on it, unmount and eject the MicroSD card, plug it in the Zybo, power on and connect as root. Run the application located in `/opt` without mounting the MicroSD card:
 
     Sab4z> /opt/hello_world
     Hello SAB4Z
     Bye! SAB4Z
 
-### <a name="RX"></a>File transfer on the serial link
+#### <a name="RX"></a>File transfer on the serial link
 
-The drawback of the two previous solutions is the MicroSD card manipulations. There is a way to transfer files from the host PC to the Zybo using the serial interface. On the Zybo side we need the `rx` utility and on the host PC side we need the `sx` utility plus a serial console utility that supports file transfers with sx (like `picocom`, for instance). Let us first add rx to the busybox of our root file system (it is not enabled by default):
+The drawback of the two previous solutions is the MicroSD card manipulations. There is a way to transfer files from the host PC to the Zybo using the serial interface. We will use the BusyBox rx utility on the Zybo side and the sx utility, plus a serial console utility that supports file transfers with sx (like picocom, for instance). Launch picocom, with the `--send-cmd "sx" --receive-cmd "rx"` options, launch `rx <destination-file>` on the Zybo, press `C-a C-s` (control-a control-s) to instruct picocom to send a file from the host PC to the Zybo and provide the name of the file to send:
 
-    Host> cd $BUILDROOT
-    Host> make O=build busybox-menuconfig
-   
-In the busybox configuration menu, change:
-
-    Miscellaneous Utilities -> rx -> yes
-
-Quit with saving. Save the busybox configuration and build the root file system:
-
-    Host> make O=build busybox-update-config
-    Host> make O=build
-
-Re-create the U-Boot image of the root file system:
-
-    Host> cd $SAB4Z
-    Host> mkimage -A arm -T ramdisk -C gzip -d $ROOTFS build/uramdisk.image.gz
-
-Mount the MicroSD card on your host PC, copy the new root file system image on it eject the MicroSD card, plug it in the Zybo, power on and connect as root. You can now transfer the application binary file (and any other file) from the host PC using picocom and rx. Launch picocom, with the `--send-cmd "sx" --receive-cmd "rx"` options, in the Zybo shell run `rx <destination-file>`, press `C-a C-s` (control-a control-s) to instruct picocom that a file must be sent from the host PC to the Zybo and provide the name of the file to send:
-
+    Host> cd $SAB4Z/C
     Host> picocom -b115200 -fn -pn -d8 -r -l --send-cmd "sx" --receive-cmd "rx" /dev/ttyUSB1
-    Sab4z> rx /tmp/hello_world
+    Sab4z> rx /opt/hello_world
     C
-    *** file: C/hello_world
-    sx C/hello_world 
-    Sending C/hello_world, 51 blocks: Give your local XMODEM receive command now.
+    *** file: hello_world
+    sx hello_world 
+    Sending hello_world, 51 blocks: Give your local XMODEM receive command now.
     Bytes Sent:   6656   BPS:3443                            
     
     Transfer complete
     
     *** exit status: 0
 
-After the transfer completes you can run the application located in `/tmp`. First change the file's mode to executable:
+After the transfer completes, change the file's mode to executable and run the application:
 
-    Sab4z> chmod +x /tmp/hello_world
-    Sab4z> /tmp/hello_world
+    Sab4z> chmod +x /opt/hello_world
+    Sab4z> /opt/hello_world
     Hello SAB4Z
     Bye! SAB4Z
 
+Note: this transfer method is not very reliable. Avoid using it on large files: the probability that a transfer fails increases with its length.
+
 ## <a name="SAB4ZSoft"></a>Access SAB4Z from a user software application
 
-Accessing SAB4Z from a user software application running on top of the Linux operating system is not as simple as it seems: because of the virtual memory trying to access the SAB4Z registers using their physical addresses would fail. In order to do this we will use `/dev/mem`, a character device that is an image of the memory of the system. The character located at offset `x` from the beginning of `/dev/mem` is the byte stored at physical address `x`. Of course, accessing addresses that are not mapped in the system or writing at read-only addresses cause errors. As reading or writing at specific offset in a character device is not very convenient we will also use `mmap`, a Linux system call that can map a device to memory. To make it short, `/dev/mem` is an image of the physical memory space of the system and `mmap` allows us to map portions of this at a known virtual address. Reading and writing at the mapped virtual addresses becomes equivalent to reading and writing at the physical addresses.
+Accessing SAB4Z from a user software application running on top of the Linux operating system is not as simple as it seems: because of the virtual memory, trying to access the SAB4Z registers using their physical addresses would fail. In order to do this we will use `/dev/mem`, a character device that is an image of the memory of the system. The character located at offset x from the beginning of `/dev/mem` is the byte stored at physical address x. Of course, accessing offsets corresponding to addresses that are not mapped in the system or writing at offsets corresponding to read-only addresses cause errors. As reading or writing at specific offset in a character device is not very convenient, we will also use mmap, a Linux system call that can map a device to memory. To make it short, `/dev/mem` is an image of the physical memory space of the system and mmap allows us to map portions of this at a known virtual address. Reading and writing at the mapped virtual addresses becomes equivalent to reading and writing at the physical addresses.
 
 All this, for obvious security reasons, is privileged, but as we are root...
 
-The example C program in `C/sab4z.c` maps the STATUS and R registers of SAB4Z at a virtual address and the `[2G..2G+512M[` physical address range (that is, the DDR accessed across the PL) at another virtual address. It takes one string argument. It first prints a welcome message, then uses the mapping to print the content of STATUS and R registers. It then writes `0x12345678` in the R register and starts searching for the passed string argument in the `[2G..2G+512M[` range. If it finds it, it prints all charcaters in a `[-20..+20[` range around the found string, and stops the search. Then, it prints again STATUS and R, a good bye message and exits. Have a look at the source code and use it as a starting point for your own projects.
+The example C program in `C/sab4z.c` maps the STATUS and R registers of SAB4Z at a virtual address and the `[2G..2G+512M[` physical address range (that is, the DDR accessed across the PL) at another virtual address. It takes one string argument. It first prints a welcome message, then uses the mapping to print the content of STATUS and R registers. It then writes `0x12345678` in the R register and starts searching for the passed string argument in the `[2G..2G+512M[` range. If it finds it, it prints all characters in a `[-20..+20[` range around the found string, and stops the search. Then, it prints again STATUS and R, a good bye message and exits. Have a look at the source code and use it as a starting point for your own projects.
 
 Compile:
 
-    Host> cd $SAB4Z
-    Host> make CC=${CROSS_COMPILE}gcc C/sab4z
+    Host> cd $SAB4Z/C
+    Host> make CC=${CROSS_COMPILE}gcc sab4z
 
 Use one of the techniques presented above to transfer the binary to the Zybo and test it. In order to guarantee that a given string will indeed be stored somewhere in the DDR, you can, for instance, define an environment variable before launching the program. But this should not be necessary because the command you will type to launch the program will also probably be found in memory, as the example below demonstrates:
 
@@ -534,15 +466,15 @@ TODO
 
 ## <a name="BootInAAS"></a>Boot Linux across SAB4Z
 
-As, thanks to the AXI bridge that SAB4Z implements, the `[2G..3G[` address range is an alias of `[0..1G[`. It is thus possible to run software on the Zybo that use only the `[2G..3G[` range instead of `[0..1G[`. It is even possible for the Linux kernel. However we need to carefuly select the range of physical memory that we will instruct the kernel to use:
+Thanks to the AXI bridge that SAB4Z implements, the `[2G..3G[` address range is an alias of `[0..1G[`. It is thus possible to run software on the Zybo that use only the `[2G..3G[` range instead of `[0..1G[`. It is even possible to run the Linux kernel there. However we must carefully select the range of physical memory that we will instruct the kernel to use:
 
 * The Zybo has only 512MB of DDR, so the most we can use is `[2G..2G+512M[`.
-* As already mentionned the low DDR addresses cannot be accessed from the PL. So, we cannot let Linux access the low addresses of `[2G..2G+512M[` because we could not forward the requests to the DDR.
-* The Linux kernel insists to have its physical memory aligned on 128MB boundaries. To skip the low addresses of `[2G..2G+512M[` we must skip an entire 128MB chunk.
+* As already mentioned, the low DDR addresses cannot be accessed from the PL. So, we cannot let Linux access the low addresses of `[2G..2G+512M[` because we could not forward the requests to the DDR.
+* The Linux kernel insists that its physical memory is aligned on 128MB boundaries. So, to skip the low addresses of `[2G..2G+512M[` we must skip an entire 128MB chunk.
 
-All in all, we can run the Linux kernel in the `[2G+128MB..2G+512M[` range (`[0x8800_0000..0xa000_0000[`), that is only 384MB instead of 512MB. The other drawback is that the path to the DDR across the PL is much slower than the direct one: its bit-width is 32 bits instead of 64 and its clock frequency is that of the PL, that is 100MHz in our example instead of 650MHz. Of course, the overhead will impact only cache misses but there will be an overhead. So why doing this? Why using less memory than available and slowing down the memory accesses? There are several good reasons. One of them is that instead of just relaying the memory accesses, the SAB4Z could be modified to implement a kind of monitoring of these accesses. It already counts the AXI transactions but it could do something more sophisticated. It could even tamper with the memory accesses, for instance to emulate attacks against the system or accidental memory faults.
+All in all, we can run the Linux kernel in the `[2G+128MB..2G+512M[` range (`[0x8800_0000..0xa000_0000[`), that is, only 384MB instead of 512MB. The other drawback is that the path to the DDR across the PL is much slower than the direct one: its bit-width is 32 bits instead of 64 and its clock frequency is that of the PL, 100MHz in our example design, instead of 650MHz. Of course, the overhead will impact only cache misses but there will be an overhead. So why doing this? Why using less memory than available and slowing down the memory accesses? There are several good reasons. One of them is that instead of just relaying the memory accesses, the SAB4Z could be modified to implement a kind of monitoring of these accesses. It already counts the AXI transactions but it could do something more sophisticated. It could even tamper with the memory accesses, for instance to emulate accidental memory faults or attacks against the system.
 
-Anyway, to boot and run Linux in the `[0x8800_0000..0xa000_0000[` physical memory range we need to modify a few things. First, edit the device tree source (`build/dts/system.dts`) and replace the definition of the physical memory:
+Anyway, to boot and run Linux in the `[0x8800_0000..0xa000_0000[` physical memory range we need to modify a few things. First, edit the device tree source (`$SAB4Z/build/dts/system.dts`) and replace the definition of the physical memory:
 
 	memory {
 		device_type = "memory";
@@ -563,28 +495,13 @@ Recompile the blob:
 
 Next, recreate the U-Boot image of the Linux kernel with a different load address and entry point:
 
+    Host> cd $XLINUX
+    Host> make -j8 O=build ARCH=arm LOADADDR=0x88008000 uImage
+    Host> cp $XLINUX/build/arch/arm/boot/uImage $SAB4Z/build
+
+Last, we must instruct U-Boot to load the device tree blob, Linux kernel and root file system images at different addresses. And, very important, we must force it not to displace the device tree blob and the root file system image as it does by default. This can be done by changing the default values of several U-Boot environment variables; if U-Boot finds a file named `uEnv.txt` on the MicroSD card, it uses its content to define its environment variables. Mount the MicroSD card on your host PC, copy the `$SAB4Z/scripts/uEnv.txt` file, the new device tree blob and the new U-Boot image of the Linux kernel on the MicroSD card:
+
     Host> cd $SAB4Z
-    Host> mkimage -A arm -O linux -C none -T kernel -a 0x88008000 -e 0x88008000 -d $ZIMAGE build/uImage
+    Host> cp scripts/uEnv.txt build/devicetree.dtb build/uImage <path-to-mounted-sd-card>
 
-Last, we must instruct U-Boot to load the device tree blob, Linux kernel and root file system images at different addresses. And, very important, we must force it not to displace the device tree blob and the root file system image as it does by default. Copy the new device tree blob and U-Boot image of the Linux kernel on the MicroSD card:
-
-    Host> cd $SAB4Z
-    Host> cp build/devicetree.dtb build/uImage <path-to-mounted-sd-card>
-
-Eject the MicroSD card, plug it in the Zybo, power on and stop the U-Boot count down by pressing a key. Modify the following U-Boot environment variables:
-
-    Zybo> setenv devicetree_load_address 0x8a000000
-    Zybo> setenv kernel_load_address 0x8a080000
-    Zybo> setenv ramdisk_load_address 0x8c000000
-    Zybo> setenv fdt_high 0xffffffff
-    Zybo> setenv initrd_high 0xffffffff
-
-If you want these changes to be stored in the on-board flash such that U-Boot reuses them the next time:
-
-    Zybo> saveenv
-
-It is time to boot:
-
-    Zybo> boot
-
-As you will probably notice it takes a bit longer to copy the binaries from the MicroSD card to the memory and to boot the kernel but the system, even if slightly slower, remains responsive and perfectly usable. You can check that the memory accesses are really routed across the PL by pressing the BTN push-button twice. This should drive the LEDs with the counter of AXI address read transactions and you should see the LEDs blinking while the CPU performs read-write accesses to the memory across SAB4Z. If the LEDs do not blink enough, interact with the system with the serial console, this should increase the number of memory accesses.
+Unmount and eject the MicroSD card, plug it in the Zybo, power on. As you will probably notice U-Boot takes a bit longer to copy the binaries from the MicroSD card to the memory and to boot the kernel but the system, even if slightly slower, remains responsive and perfectly usable. You can check that the memory accesses are really routed across the PL by pressing the BTN push-button twice. This should drive the LEDs with the counter of AXI address read transactions and you should see the LEDs blinking while the CPU performs read-write accesses to the memory across SAB4Z. If the LEDs do not blink enough, interact with the system with the serial console, this should increase the number of memory accesses.

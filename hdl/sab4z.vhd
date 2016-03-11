@@ -14,7 +14,6 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-use work.utils.all;
 use work.axi_pkg.all;
 
 entity sab4z is
@@ -207,6 +206,20 @@ architecture rtl of sab4z is
 
   -- R register
   signal r: std_ulogic_vector(31 downto 0);
+
+  -- Or reduction of std_ulogic_vector
+  function or_reduce(v: std_ulogic_vector) return std_ulogic is
+    variable tmp: std_ulogic_vector(v'length - 1 downto 0) := v;
+  begin
+    if tmp'length = 0 then
+      return '0';
+    elsif tmp'length = 1 then
+      return tmp(0);
+    else
+      return or_reduce(tmp(tmp'length - 1 downto tmp'length / 2)) or
+             or_reduce(tmp(tmp'length / 2 - 1 downto 0));
+    end if;
+  end function or_reduce;
 
 begin
 
