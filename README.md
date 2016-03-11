@@ -84,7 +84,7 @@ The two registers are subdivided in 16 four-bits nibbles, indexed from 0, for th
 | STATUS   |      0 |  `3...0` | LIFE       | Rotating bit (life monitor)                   |
 | ...      |      1 |  `7...4` | CNT        | Counter of BTN events                         |
 | ...      |      2 | `11...8` | ARCNT      | Counter of S1_AXI address-read transactions   |
-| ...      |      3 | `15..12` | RCNT       | Counter of S1_AXI date-read transactions      |
+| ...      |      3 | `15..12` | RCNT       | Counter of S1_AXI data-read transactions      |
 | ...      |      4 | `19..16` | AWCNT      | Counter of S1_AXI address-write transactions  |
 | ...      |      5 | `23..20` | WCNT       | Counter of S1_AXI data-write transactions     |
 | ...      |      6 | `27..24` | BCNT       | Counter of S1_AXI write-response transactions |
@@ -105,7 +105,7 @@ Download the archive, insert a MicroSD card in your card reader and unpack the a
 
     Host> cd /tmp
     Host> https://gitlab.eurecom.fr/renaud.pacalet/sab4z/uploads/98b4b8524e498a56868230778f79887f/sdcard.tgz
-    Host> tar -C <path-to-mounted-sd-card> sdcard.tgz
+    Host> tar -C <path-to-mounted-sd-card> -xf sdcard.tgz
     Host> sync
 
 Unmount and eject the MicroSD card.
