@@ -99,7 +99,7 @@ Accesses to the unmapped region of the S0_AXI `[1G+8..2G[` address space raise D
 
 # <a name="Archive"></a>Install from the archive
 
-In the following `Host>` is the host PC shell prompt, `Sab4z>` is the Zybo shell prompt and `Zynq>` is the U-Boot prompt. Code snippets without a prompt are commands outputs, excerpts of configuration files or configuration menus.
+In the following `Host>` is the host PC shell prompt and `Sab4z>` is the Zybo shell prompt. Code snippets without a prompt are commands outputs, excerpts of configuration files or configuration menus.
 
 Download the archive, insert a MicroSD card in your card reader and unpack the archive to it:
 
@@ -486,6 +486,7 @@ by:
 	memory {
 		device_type = "memory";
 		linux,usable-memory = <0x88000000 0x18000000>;
+		//reg = <0x0 0x20000000>;
 	};
 
 Recompile the blob:
@@ -493,13 +494,22 @@ Recompile the blob:
     Host> cd $SAB4Z
     Host> dtc -I dts -O dtb -o build/devicetree.dtb build/dts/system.dts
 
-Next, recreate the U-Boot image of the Linux kernel with a different load address and entry point:
+Next, recreate the U-Boot image of the Linux kernel with a different load address:
 
     Host> cd $XLINUX
     Host> make -j8 O=build ARCH=arm LOADADDR=0x88008000 uImage
     Host> cp $XLINUX/build/arch/arm/boot/uImage $SAB4Z/build
 
-Last, we must instruct U-Boot to load the device tree blob, Linux kernel and root file system images at different addresses. And, very important, we must force it not to displace the device tree blob and the root file system image as it does by default. This can be done by changing the default values of several U-Boot environment variables; if U-Boot finds a file named `uEnv.txt` on the MicroSD card, it uses its content to define its environment variables. Mount the MicroSD card on your host PC, copy the `$SAB4Z/scripts/uEnv.txt` file, the new device tree blob and the new U-Boot image of the Linux kernel on the MicroSD card:
+Last, we must instruct U-Boot to load the device tree blob, Linux kernel and root file system images at different addresses. And, very important, we must force it not to displace the device tree blob and the root file system image as it does by default. This can be done by changing the default values of several U-Boot environment variables, as specified in the provided file:
+
+    Host> cat $SAB4Z/scripts/uEnv.txt
+    devicetree_load_address=0x8a000000
+    kernel_load_address=0x8a080000
+    ramdisk_load_address=0x8c000000
+    fdt_high=0xffffffff
+    initrd_high=0xffffffff
+
+If U-Boot finds a file named `uEnv.txt` on the MicroSD card, it uses its content to define its environment variables. Mount the MicroSD card on your host PC, copy the `uEnv.txt` file, the new device tree blob and the new U-Boot image of the Linux kernel on the MicroSD card:
 
     Host> cd $SAB4Z
     Host> cp scripts/uEnv.txt build/devicetree.dtb build/uImage <path-to-mounted-sd-card>
