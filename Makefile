@@ -76,7 +76,7 @@ make targets:
   make dts        generate device tree sources ($(DTSBUILD))
   make dts-clean  delete device tree sources
   make fsbl       generate First Stage Boot Loader (FSBL) sources ($(FSBLBUILD))
-  make fs-clean   delete FSBL sources
+  make fsbl-clean delete FSBL sources
   make doc        generate documentation images
   make doc-clean  delete generated documentation images
   make clean      delete all automatically created files and directories
@@ -169,7 +169,7 @@ $(FSBLTOP): $(SYSDEF) $(FSBLSCRIPT)
 	@echo '[HSI] $< --> $(FSBLBUILD)'; \
 	$(HSI) $(FSBLFLAGS) -source $(FSBLSCRIPT) -tclargs $(SYSDEF) $(FSBLBUILD) $(OUTPUT)
 
-fs-clean:
+fsbl-clean:
 	@echo '[RM] $(FSBLBUILD)'; \
 	rm -rf $(FSBLBUILD)
 
