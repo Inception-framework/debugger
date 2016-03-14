@@ -466,6 +466,8 @@ TODO
 
 ## <a name="BootInAAS"></a>Boot Linux across SAB4Z
 
+#### <a name="BootInAASPrinciples"></a>Principles
+
 Thanks to the AXI bridge that SAB4Z implements, the `[2G..3G[` address range is an alias of `[0..1G[`. It is thus possible to run software on the Zybo that use only the `[2G..3G[` range instead of `[0..1G[`. It is even possible to run the Linux kernel there. However we must carefully select the range of physical memory that we will instruct the kernel to use:
 
 * The Zybo has only 512MB of DDR, so the most we can use is `[2G..2G+512M[`.
@@ -473,6 +475,8 @@ Thanks to the AXI bridge that SAB4Z implements, the `[2G..3G[` address range is 
 * The Linux kernel insists that its physical memory is aligned on 128MB boundaries. So, to skip the low addresses of `[2G..2G+512M[` we must skip an entire 128MB chunk.
 
 All in all, we can run the Linux kernel in the `[2G+128MB..2G+512M[` range (`[0x8800_0000..0xa000_0000[`), that is, only 384MB instead of 512MB. The other drawback is that the path to the DDR across the PL is much slower than the direct one: its bit-width is 32 bits instead of 64 and its clock frequency is that of the PL, 100MHz in our example design, instead of 650MHz. Of course, the overhead will impact only cache misses but there will be an overhead. So why doing this? Why using less memory than available and slowing down the memory accesses? There are several good reasons. One of them is that instead of just relaying the memory accesses, the SAB4Z could be modified to implement a kind of monitoring of these accesses. It already counts the AXI transactions but it could do something more sophisticated. It could even tamper with the memory accesses, for instance to emulate accidental memory faults or attacks against the system.
+
+#### <a name="BootInAASDTS"></a>Modify the device tree
 
 Anyway, to boot and run Linux in the `[0x8800_0000..0xa000_0000[` physical memory range we need to modify a few things. First, edit the device tree source (`$SAB4Z/build/dts/system.dts`) and replace the definition of the physical memory:
 
@@ -494,11 +498,15 @@ Recompile the blob:
     Host> cd $SAB4Z
     Host> dtc -I dts -O dtb -o build/devicetree.dtb build/dts/system.dts
 
-Next, recreate the U-Boot image of the Linux kernel with a different load address:
+#### <a name="BootInAASKernel"></a>Change the load address in U-Boot image of Linux kernel
+
+Next, recreate the U-Boot image of the Linux kernel with a different load address and entry point. This address is the one at which U-Boot loads the Linux kernel image (`uImage`) and at which it jumps afterwards:
 
     Host> cd $XLINUX
     Host> make -j8 O=build ARCH=arm LOADADDR=0x88008000 uImage
     Host> cp $XLINUX/build/arch/arm/boot/uImage $SAB4Z/build
+
+#### <a name="BootInAASUboot"></a>Adapt the U-Boot environment variables
 
 Last, we must instruct U-Boot to load the device tree blob, Linux kernel and root file system images at different addresses. And, very important, we must force it not to displace the device tree blob and the root file system image as it does by default. This can be done by changing the default values of several U-Boot environment variables, as specified in the provided file:
 
@@ -514,4 +522,11 @@ If U-Boot finds a file named `uEnv.txt` on the MicroSD card, it uses its content
     Host> cd $SAB4Z
     Host> cp scripts/uEnv.txt build/devicetree.dtb build/uImage <path-to-mounted-sd-card>
 
+#### <a name="BootInAASBoot"></a>Boot and see
+
 Unmount and eject the MicroSD card, plug it in the Zybo, power on. As you will probably notice U-Boot takes a bit longer to copy the binaries from the MicroSD card to the memory and to boot the kernel but the system, even if slightly slower, remains responsive and perfectly usable. You can check that the memory accesses are really routed across the PL by pressing the BTN push-button twice. This should drive the LEDs with the counter of AXI address read transactions and you should see the LEDs blinking while the CPU performs read-write accesses to the memory across SAB4Z. If the LEDs do not blink enough, interact with the system with the serial console, this should increase the number of memory accesses.
+
+#### <a name="BootInAASExercise"></a>Exercise
+
+There is a way to use more DDR than 384MB. This involves a hardware modification and a rework of the software changes. This is left as an exercise.
+
