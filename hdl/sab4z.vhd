@@ -21,6 +21,7 @@ entity sab4z is
     aclk:       in std_logic;  -- Clock
     aresetn:    in std_logic;  -- Synchronous, active low, reset
     btn:        in std_logic;  -- Command button
+    btn_re:     in std_logic;  -- Rising edge of command button
     sw:         in  std_logic_vector(3 downto 0); -- Slide switches
     led:        out std_logic_vector(3 downto 0); -- LEDs
 
@@ -189,10 +190,6 @@ architecture rtl of sab4z is
   signal m_axi_m2s: axi_gp_m2s;
   signal m_axi_s2m: axi_gp_s2m;
 
-  -- Debounced and re-synchronized BTN
-  signal tick: std_ulogic;
-  signal rtick: std_ulogic;
-
   -- STATUS register
   signal status: std_ulogic_vector(31 downto 0);
 
@@ -223,20 +220,8 @@ architecture rtl of sab4z is
 
 begin
 
-  -- BTN debouncer
-  i_btn_deb: entity work.debouncer(rtl)
-  port map(
-    clk   => aclk,
-    srstn => aresetn,
-    d     => btn,
-    q     => tick,
-    r     => rtick,
-    f     => open,
-    a     => open
-  );
-
   -- LED outputs
-  process(status, r, tick)
+  process(status, r, btn)
     variable m0: std_ulogic_vector(63 downto 0);
     variable m1: std_ulogic_vector(31 downto 0);
     variable m2: std_ulogic_vector(15 downto 0);
@@ -264,7 +249,7 @@ begin
     else
       m4 := m3(3 downto 0);
     end if;
-    if tick = '1' then
+    if btn = '1' then
       m4 := cnt;
     end if;
     led <= std_logic_vector(m4);
@@ -287,7 +272,7 @@ begin
           life <= life(2 downto 0) & life(3);
         end if;
         -- BTN event counter
-        if rtick = '1' then
+        if btn_re = '1' then
           cnt <= std_ulogic_vector(unsigned(cnt) + 1);
         end if;
         -- S1_AXI address read transactions counter

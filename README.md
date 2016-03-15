@@ -528,5 +528,5 @@ Unmount and eject the MicroSD card, plug it in the Zybo, power on. As you will p
 
 #### <a name="BootInAASExercise"></a>Exercise
 
-There is a way to use more DDR than 384MB. This involves a hardware modification and a rework of the software changes. This is left as an exercise. Hint: SAB4Z transforms the addresses in S1_AXI requests before forwarding them to M_AXI: it subtracts `2G` (`0x8000_0000`). This brings them back in the `[0..1G[` DDR range. SAB4Z could implement another address transform.
+There is a way to use more DDR than 384MB. This involves a hardware modification and a rework of the software changes. This is left as an exercise. Hint: SAB4Z transforms the addresses in S1_AXI requests before forwarding them to M_AXI: it subtracts `2G` (`0x8000_0000`) to bring them back in the `[0..1G[` DDR range. SAB4Z could implement a different address transform.
 
