@@ -47,7 +47,7 @@ VVMODE		?= batch
 VIVADO		:= vivado
 VVBUILD		:= $(BUILD)/vv
 VVSCRIPT	:= $(SCRIPTS)/vvsyn.tcl
-VIVADOFLAGS	:= -mode $(VVMODE) -source $(VVSCRIPT) -tempDir /tmp -journal $(VVBUILD)/vivado.jou -log $(VVBUILD)/vivado.log -tclargs $(rootdir) $(VVBUILD) $(ILA)
+VIVADOFLAGS	:= -mode $(VVMODE) -notrace -source $(VVSCRIPT) -tempDir /tmp -journal $(VVBUILD)/vivado.jou -log $(VVBUILD)/vivado.log -tclargs $(rootdir) $(VVBUILD) $(ILA)
 VVIMPL		:= $(VVBUILD)/top.runs/impl_1
 VVBIT		:= $(VVIMPL)/top_wrapper.bit
 
