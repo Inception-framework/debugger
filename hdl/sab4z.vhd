@@ -60,8 +60,8 @@ entity sab4z is
     -- Write data channel
     s0_axi_wready:  out std_logic;
     -- Write response channel
-    s0_axi_bvalid:  out std_logic;
     s0_axi_bresp:   out std_logic_vector(1 downto 0);
+    s0_axi_bvalid:  out std_logic;
 
     ---------------------------
     -- AXI slave port s1_axi --
@@ -116,9 +116,9 @@ entity sab4z is
     -- Write data channel
     s1_axi_wready:  out std_logic;
     -- Write response channel
-    s1_axi_bvalid:  out std_logic;
     s1_axi_bid:     out std_logic_vector(5 downto 0);
     s1_axi_bresp:   out std_logic_vector(1 downto 0);
+    s1_axi_bvalid:  out std_logic;
 
     ---------------------------
     -- AXI master port m_axi --
@@ -174,9 +174,9 @@ entity sab4z is
     -- Write data channel
     m_axi_wready:  in  std_logic;
     -- Write response channel
-    m_axi_bvalid:  in  std_logic;
     m_axi_bid:     in  std_logic_vector(5 downto 0);
-    m_axi_bresp:   in  std_logic_vector(1 downto 0)
+    m_axi_bresp:   in  std_logic_vector(1 downto 0);
+    m_axi_bvalid:  in  std_logic
   );
 end entity sab4z;
 

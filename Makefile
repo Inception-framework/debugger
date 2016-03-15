@@ -24,6 +24,7 @@ else
 OUTPUT	:=
 endif
 
+rootdir		:= $(realpath .)
 BUILD		:= build
 HDLDIR		:= hdl
 HDLSRCS		:= $(wildcard $(HDLDIR)/*.vhd)
@@ -31,26 +32,24 @@ SCRIPTS		:= scripts
 
 # Mentor Graphics Modelsim
 MSBUILD		:= $(BUILD)/ms
-MSRELPATH	:= ../..
+MSCONFIG	:= $(MSBUILD)/modelsim.ini
 MSLIB		:= vlib
 MSMAP		:= vmap
 MSCOM		:= vcom
 MSCOMFLAGS	:= -ignoredefaultbinding -nologo -quiet -2008
-MSLOG    	:= vlog
-MSLOGFLAGS	:= -nologo -quiet
 MSSIM		:= vsim
 MSSIMFLAGS	:= -voptargs="+acc"
-MSCONFIG	:= $(MSBUILD)/modelsim.ini
 MSTAGS		:= $(patsubst $(HDLDIR)/%.vhd,$(MSBUILD)/%.tag,$(HDLSRCS))
 
 # Xilinx Vivado
+ILA		?= 0
+VVMODE		?= batch
 VIVADO		:= vivado
-VIVADOFLAGS	:= -mode batch
 VVBUILD		:= $(BUILD)/vv
-VVRELPATH	:= ../..
+VVSCRIPT	:= $(SCRIPTS)/vvsyn.tcl
+VIVADOFLAGS	:= -mode $(VVMODE) -source $(VVSCRIPT) -tempDir /tmp -journal $(VVBUILD)/vivado.jou -log $(VVBUILD)/vivado.log -tclargs $(rootdir) $(VVBUILD) $(ILA)
 VVIMPL		:= $(VVBUILD)/top.runs/impl_1
 VVBIT		:= $(VVIMPL)/top_wrapper.bit
-VVSCRIPT	:= $(SCRIPTS)/vvsyn.tcl
 
 # Software Design Kits
 XDTS			?= /opt/xlnx/device-tree-xlnx
@@ -90,8 +89,10 @@ directories:
   FSBL sources         ./$(FSBLBUILD)
 
 customizable make variables:
-  DEBUG  debug level: 0=none, 1: some, 2: verbose ($(DEBUG))
-  XDTS   clone of Xilinx device trees git repository ($(XDTS))
+  DEBUG   debug level: 0=none, 1: some, 2: verbose ($(DEBUG))
+  XDTS    clone of Xilinx device trees git repository ($(XDTS))
+  ILA     embed Integrated Logic Analyzer (0 or 1) ($(ILA))"
+  VVMODE  Vivado running mode (gui, tcl or batch) ($(VVMODE))"
 endef
 export HELP_message
 
@@ -109,8 +110,8 @@ ms-all: $(MSTAGS)
 $(MSTAGS): $(MSBUILD)/%.tag: $(HDLDIR)/%.vhd
 	@echo '[MSCOM] $<'; \
 	cd $(MSBUILD); \
-	$(MSCOM) $(MSCOMFLAGS) $(MSRELPATH)/$<; \
-	touch $(notdir $@)
+	$(MSCOM) $(MSCOMFLAGS) $(rootdir)/$<; \
+	touch $(rootdir)/$@
 
 $(MSTAGS): $(MSCONFIG)
 
@@ -133,15 +134,9 @@ vv-all: $(VVBIT)
 $(VVBIT): $(HDLSRCS) $(VVSCRIPT)
 	@echo '[VIVADO] $(VVSCRIPT)'; \
 	mkdir -p $(VVBUILD); \
-	cd $(VVBUILD); \
-	VVRELPATH=$(VVRELPATH) HDLDIR=$(HDLDIR) $(VIVADO) $(VIVADOFLAGS) -source $(VVRELPATH)/$(VVSCRIPT); \
-	echo ''; \
-	echo '[VIVADO] $(VVSCRIPT): done'; \
-	echo '  bitstream in $(VVBIT)'; \
-	echo '  resource utilization report in $(VVIMPL)/top_wrapper_utilization_placed.rpt'; \
-	echo '  timing report in $(VVIMPL)/top_wrapper_timing_summary_routed.rpt'
+	$(VIVADO) $(VIVADOFLAGS)
 
-$(VVIMPL)/$(SYSDEF): $(VVBIT)
+$(SYSDEF): $(VVBIT)
 
 vv-clean:
 	@echo '[RM] $(VVBUILD)'; \

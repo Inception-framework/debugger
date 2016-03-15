@@ -8,59 +8,58 @@
 # http://www.cecill.info/licences/Licence_CeCILL_V1.1-US.txt
 #
 
-# Set ila to 1 to instanciate an Integrated Logic Analyzer (ILA) debug core and
-# debug the I/Os of debouncer.
-# set ila 0
-set ila 1
-
-if { [ info exists ::env(VVRELPATH) ] && ( "x$::env(VVRELPATH)" != "x" ) } {
-	set VVRELPATH $::env(VVRELPATH)
-} else {
-	error "VVRELPATH environment variable undefined"
-}
-if { [ info exists ::env(HDLDIR) ] && ( "x$::env(HDLDIR)" != "x" ) } {
-	set HDLDIR $::env(HDLDIR)
-} else {
-	error "HDLDIR environment variable undefined"
+proc usage {} {
+	puts "usage: vivado -mode batch -source <script> -tclargs <rootdir> <builddir> \[<ila>\]"
+	puts "  <rootdir>:  absolute path of sab4z root directory"
+	puts "  <builddir>: absolute path of build directory"
+	puts "  <ila>:      embed Integrated Logic Analyzer (0 or 1, default 0)"
+	exit -1
 }
 
-source $VVRELPATH/scripts/ila.tcl
+if { $argc == 3 } {
+	set rootdir [lindex $argv 0]
+	set builddir [lindex $argv 1]
+	set ila [lindex $argv 2]
+	if { $ila != 0 && $ila != 1 } {
+		usage
+	}
+} else {
+	usage
+}
+
+cd $builddir
+source $rootdir/scripts/ila.tcl
 
 ###################
 # Create SAB4Z IP #
 ###################
-file mkdir sab4z
-cd sab4z
-create_project sab4z . -part xc7z010clg400-1
-add_files ../$VVRELPATH/$HDLDIR/axi_pkg.vhd ../$VVRELPATH/$HDLDIR/sab4z.vhd
+create_project -part xc7z010clg400-1 -force sab4z sab4z
+add_files $rootdir/hdl/axi_pkg.vhd $rootdir/hdl/sab4z.vhd
 import_files -force -norecurse
-ipx::package_project -root_dir . -vendor www.telecom-paristech.fr -library SAB4Z
+ipx::package_project -root_dir sab4z -vendor www.telecom-paristech.fr -library SAB4Z -force sab4z
 close_project
-cd ..
 
 #######################
 # Create DEBOUNCER IP #
 #######################
-file mkdir debouncer
-cd debouncer
-create_project debouncer . -part xc7z010clg400-1
-add_files ../$VVRELPATH/$HDLDIR/debouncer.vhd
+create_project -part xc7z010clg400-1 -force debouncer debouncer
+add_files $rootdir/hdl/debouncer.vhd
 import_files -force -norecurse
-ipx::package_project -root_dir . -vendor www.telecom-paristech.fr -library SAB4Z
+ipx::package_project -root_dir debouncer -vendor www.telecom-paristech.fr -library SAB4Z -force debouncer
 close_project
-cd ..
 
 ############################
 ## Create top level design #
 ############################
-create_project top . -part xc7z010clg400-1
+set top top
+create_project -part xc7z010clg400-1 -force $top .
 set_property board_part digilentinc.com:zybo:part0:1.0 [current_project]
 set_property ip_repo_paths { ./sab4z ./debouncer } [current_fileset]
 update_ip_catalog
-create_bd_design "top"
-set sab4z [create_bd_cell -type ip -vlnv www.telecom-paristech.fr:SAB4Z:sab4z:1.0 sab4z]
-set debouncer [create_bd_cell -type ip -vlnv www.telecom-paristech.fr:SAB4Z:debouncer:1.0 debouncer]
-set ps7 [create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 ps7]
+create_bd_design "$top"
+set sab4z [create_bd_cell -type ip -vlnv [get_ipdefs *www.telecom-paristech.fr:SAB4Z:sab4z:*] sab4z]
+set debouncer [create_bd_cell -type ip -vlnv [get_ipdefs *www.telecom-paristech.fr:SAB4Z:debouncer:*] debouncer]
+set ps7 [create_bd_cell -type ip -vlnv [get_ipdefs *xilinx.com:ip:processing_system7:*] ps7]
 apply_bd_automation -rule xilinx.com:bd_rule:processing_system7 -config {make_external "FIXED_IO, DDR" apply_board_preset "1" Master "Disable" Slave "Disable" } $ps7
 set_property -dict [list CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {100.000000}] $ps7
 set_property -dict [list CONFIG.PCW_USE_M_AXI_GP0 {1}] $ps7
@@ -79,9 +78,9 @@ connect_bd_net [get_bd_pins /sab4z/sw] [get_bd_ports sw]
 create_bd_port -dir I btn
 connect_bd_net [get_bd_pins /debouncer/d] [get_bd_ports btn]
 # ps7 - sab4z
-apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/ps7/M_AXI_GP0" Clk "Auto" }  [get_bd_intf_pins sab4z/s0_axi]
-apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/ps7/M_AXI_GP1" Clk "Auto" }  [get_bd_intf_pins sab4z/s1_axi]
-apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/sab4z/m_axi" Clk "Auto" }  [get_bd_intf_pins ps7/S_AXI_HP0]
+apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/ps7/M_AXI_GP0" Clk "Auto" }  [get_bd_intf_pins /sab4z/s0_axi]
+apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/ps7/M_AXI_GP1" Clk "Auto" }  [get_bd_intf_pins /sab4z/s1_axi]
+apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/sab4z/m_axi" Clk "Auto" }  [get_bd_intf_pins /ps7/S_AXI_HP0]
 # ps7 - debouncer
 connect_bd_net [get_bd_pins ps7/FCLK_CLK0] [get_bd_pins debouncer/clk]
 connect_bd_net [get_bd_pins rst_ps7_100M/peripheral_aresetn] [get_bd_pins debouncer/srstn]
@@ -90,36 +89,50 @@ connect_bd_net [get_bd_pins debouncer/q] [get_bd_pins sab4z/btn]
 connect_bd_net [get_bd_pins debouncer/r] [get_bd_pins sab4z/btn_re]
 
 # Addresses ranges
-set_property offset 0x40000000 [get_bd_addr_segs ps7/Data/SEG_sab4z_reg0]
-set_property range 1G [get_bd_addr_segs ps7/Data/SEG_sab4z_reg0]
-set_property offset 0x80000000 [get_bd_addr_segs ps7/Data/SEG_sab4z_reg01]
-set_property range 1G [get_bd_addr_segs {ps7/Data/SEG_sab4z_reg01}]
-set_property offset 0x00000000 [get_bd_addr_segs [list sab4z/m_axi/SEG_ps7_HP0_DDR_LOWOCM]]
-set_property range 1G [get_bd_addr_segs [list sab4z/m_axi/SEG_ps7_HP0_DDR_LOWOCM]]
+set_property offset 0x40000000 [get_bd_addr_segs -of_object [get_bd_intf_pins /ps7/M_AXI_GP0]]
+set_property range 1G [get_bd_addr_segs -of_object [get_bd_intf_pins /ps7/M_AXI_GP0]]
+set_property offset 0x80000000 [get_bd_addr_segs -of_object [get_bd_intf_pins /ps7/M_AXI_GP1]]
+set_property range 1G [get_bd_addr_segs -of_object [get_bd_intf_pins /ps7/M_AXI_GP1]]
+set_property offset 0x00000000 [get_bd_addr_segs -of_object [get_bd_intf_pins /sab4z/m_axi]]
+set_property range 1G [get_bd_addr_segs -of_object [get_bd_intf_pins /sab4z/m_axi]]
 
 # In-circuit debugging
 if { $ila == 1 } {
-	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_nets -of_objects [get_bd_ports btn]]
-	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_nets -of_objects [get_bd_pins /debouncer/q]]
-	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_nets -of_objects [get_bd_pins /debouncer/r]]
+	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_intf_nets -of_objects [get_bd_intf_pins /sab4z/m_axi]]
 }
 
 # Synthesis flow
 validate_bd_design
-generate_target all [get_files top.srcs/sources_1/bd/top/top.bd]
-make_wrapper -files [get_files top.srcs/sources_1/bd/top/top.bd] -top
-add_files -norecurse -force top.srcs/sources_1/bd/top/hdl/top_wrapper.v
-update_compile_order -fileset sources_1
-update_compile_order -fileset sim_1
+set files [get_files *$top.bd]
+generate_target all $files
+add_files -norecurse -force [make_wrapper -files $files -top]
 save_bd_design
-set_property STEPS.SYNTH_DESIGN.ARGS.FLATTEN_HIERARCHY none [get_runs synth_1]
-launch_runs synth_1
-wait_on_run synth_1
-open_run synth_1 -name netlist_1
+set run [get_runs synth*]
+set_property STEPS.SYNTH_DESIGN.ARGS.FLATTEN_HIERARCHY none $run
+launch_runs $run
+wait_on_run $run
+open_run $run
 
 # In-circuit debugging
 if { $ila == 1 } {
-	add_ila_core dc top_i/ps7/inst/FCLK_CLK0 [get_nets -hier -filter {MARK_DEBUG==1}]
+	set topcell [get_cells $top*]
+	set nets {}
+	set suffixes {
+		ARID ARADDR ARLEN ARSIZE ARBURST ARLOCK ARCACHE ARPROT ARQOS ARVALID
+		RREADY
+		AWID AWADDR AWLEN AWSIZE AWBURST AWLOCK AWCACHE AWPROT AWQOS AWVALID
+		WID WDATA WSTRB WLAST WVALID
+		BREADY
+		ARREADY
+		RID RDATA RRESP RLAST RVALID
+		AWREADY
+		WREADY
+		BID BRESP BVALID
+	}
+	foreach suffix $suffixes {
+		lappend nets $topcell/sab4z_m_axi_${suffix}
+	}
+	add_ila_core dc $topcell/ps7_FCLK_CLK0 $nets
 }
 
 # IOs
@@ -142,11 +155,22 @@ foreach io [ array names ios ] {
 }
 
 # Timing constraints
-set_false_path -from [get_clocks {clk_fpga_0}] -to [get_ports {led[*]}]
-set_false_path -from [get_ports {btn sw[*]}] -to [get_clocks {clk_fpga_0}]
+set clock [get_clocks]
+set_false_path -from $clock -to [get_ports {led[*]}]
+set_false_path -from [get_ports {btn sw[*]}] -to $clock
 
+# Implementation
 save_constraints
-reset_run impl_1
-set_property STEPS.WRITE_BITSTREAM.ARGS.BIN_FILE true [get_runs impl_1]
-launch_runs impl_1 -to_step write_bitstream
-wait_on_run impl_1
+set run [get_runs impl*]
+reset_run $run
+set_property STEPS.WRITE_BITSTREAM.ARGS.BIN_FILE true $run
+launch_runs -to_step write_bitstream $run
+wait_on_run $run
+
+# Messages
+set rundir ${builddir}/$top.runs/$run
+puts ""
+puts "\[VIVADO\]: done"
+puts "  bitstream in $rundir/${top}_wrapper.bit"
+puts "  resource utilization report in $rundir/${top}_wrapper_utilization_placed.rpt"
+puts "  timing report in $rundir/${top}_wrapper_timing_summary_routed.rpt"
