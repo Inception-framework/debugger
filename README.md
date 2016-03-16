@@ -128,13 +128,13 @@ Unmount and eject the MicroSD card.
   * Connected to the `/dev/ttyUSB1` device (if needed use dmesg to check the device name)
 * Wait until Linux boots, log in as root (there is no password) and start interacting with SAB4Z. To access the SAB4Z memory spaces you can use devmem, a BusyBox utility that allows to access memory locations with their physical addresses. It is privileged but as we are root...
 
-
-
-    Host> picocom -b115200 -fn -pn -d8 -r -l /dev/ttyUSB1
-    ...
-    Welcome to SAB4Z (c) Telecom ParisTech
-    sab4z login: root
-    Sab4z>
+```
+Host> picocom -b115200 -fn -pn -d8 -r -l /dev/ttyUSB1
+...
+Welcome to SAB4Z (c) Telecom ParisTech
+sab4z login: root
+Sab4z>
+```
 
 #### <a name="ReadStatus"></a>Read the STATUS register
 
