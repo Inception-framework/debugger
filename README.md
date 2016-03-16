@@ -129,6 +129,7 @@ Unmount and eject the MicroSD card.
 * Wait until Linux boots, log in as root (there is no password) and start interacting with SAB4Z. To access the SAB4Z memory spaces you can use devmem, a BusyBox utility that allows to access memory locations with their physical addresses. It is privileged but as we are root...
 
 
+
     Host> picocom -b115200 -fn -pn -d8 -r -l /dev/ttyUSB1
     ...
     Welcome to SAB4Z (c) Telecom ParisTech
@@ -536,7 +537,7 @@ There is a way to use more DDR than 384MB. This involves a hardware modification
 
 Xilinx tools offer several ways to debug the hardware mapped in the PL. One uses Integrated Logic Analyzers (ILAs), hardware blocks that the tools automatically add to the design and that monitor internal signals. The tools running on the host PC communicate with the ILAs in the PL. Triggers can be configured to start / stop the recording of the monitored signals and the recorded signals can be displayed as waveforms.
 
-The provided synthesis script and Makefile have options to embed one ILA core to monitor all signals of the M_AXI interface of SAB4Z. The only think to do is re-run the synthesis with:
+The provided synthesis script and Makefile have options to embed one ILA core to monitor all signals of the M_AXI interface of SAB4Z. The only thing to do is re-run the synthesis:
 
     Host-Xilinx> cd $SAB4Z
     Host-Xilinx> make ILA=1 vv-clean vv-all
@@ -545,15 +546,13 @@ and re-generate the boot image:
 
     Host-Xilinx> bootgen -w -image scripts/boot.bif -o build/boot.bin
 
-Use one of the techniques presented above to transfer the new boot image to the MicroSD card on the Zybo and power on. Launch Vivado:
+Use one of the techniques presented above to transfer the new boot image to the MicroSD card on the Zybo and power on. Launch Vivado on the host PC:
 
     Host-Xilinx> vivado build/vv/top.xpr &
 
-In the `Hardware Manager`, select `Open Target` and `Auto Connect`. The tool should now be connected to the ILA core in the PL of the Zynq of the Zybo. Select the signals to use for the trigger, for instance `top_i/sab4z_m_axi_ARVALID` and `top_i/sab4z_m_axi_ARREADY`. Configure the trigger such that it starts recording when both signals are asserted. Set the trigger position in window to 512 and run the trigger. If you are running the software stack across the PL (see section [Run the complete software stack across SAB4Z](#BootInAAS)), the trigger should be fired immediately. If it is not use the serial console to interact with the software stack and cause some read access to the DDR across the PL. Analyze the complete AXI transaction in the `Waveform` sub-window of Vivado. If you are not running the software stack across the PL, use devmem to access the DDR across the PL:
+In the `Hardware Manager`, select `Open Target` and `Auto Connect`. The tool should now be connected to the ILA core in the PL of the Zynq of the Zybo. Select the signals to use for the trigger, for instance `top_i/sab4z_m_axi_ARVALID` and `top_i/sab4z_m_axi_ARREADY`. Configure the trigger such that it starts recording when both signals are asserted. Set the trigger position in window to 512 and run the trigger. If you are running the software stack across the PL (see section [Run the complete software stack across SAB4Z](#BootInAAS)), the trigger should be fired immediately (if it is not use the serial console to interact with the software stack and cause some read access to the DDR across the PL). If you are not running the software stack across the PL, use devmem to perform a read access to the DDR across the PL:
 
     Host> picocom -b115200 -fn -pn -d8 -r -l /dev/ttyUSB1
     Sab4z> devmem 0x90000000 32
 
-and analyze the complete AXI transaction.
-
-Note: the trigger logic can be much more sophisticated than the suggested one. It can be based on state machines, for instance. See the Xilinx documentation for more information on this.
+Analyse the complete AXI transaction in the `Waveform` sub-window of Vivado. Note: the trigger logic can be much more sophisticated than the suggested one. It can be based on state machines, for instance. See the Xilinx documentation for more information on this.
