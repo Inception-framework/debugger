@@ -17,7 +17,7 @@ This repository and its sub-directories contain the VHDL source code, VHDL simul
     * [Run a user application on the Zybo](#UserApp)
     * [Access SAB4Z from a user application on the Zybo](#SAB4ZSoft)
     * [Add a Linux driver for SAB4Z](#LinuxDriver)
-    * [Boot Linux across SAB4Z](#BootInAAS)
+    * [Run the complete software stack across SAB4Z](#BootInAAS)
 
 # <a name="License"></a>License
 
@@ -34,6 +34,8 @@ http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.txt
 # <a name="Content"></a>Content
 
     .
+    ├── archives                Directory of read to use archives
+    │   └── sdcard.tgz          Archive to unpack on MicroSD card
     ├── C                       Directory of C source files
     │   ├── hello_world.c       Simple example user application
     │   └── sab4z.c             User application that uses SAB4Z
@@ -104,7 +106,7 @@ In the following `Host>` is the host PC shell prompt and `Sab4z>` is the Zybo sh
 Download the archive, insert a MicroSD card in your card reader and unpack the archive to it:
 
     Host> cd /tmp
-    Host> https://gitlab.eurecom.fr/renaud.pacalet/sab4z/uploads/98b4b8524e498a56868230778f79887f/sdcard.tgz
+    Host> wget https://gitlab.eurecom.fr/renaud.pacalet/sab4z/raw/master/archives/sdcard.tgz
     Host> tar -C <path-to-mounted-sd-card> -xf sdcard.tgz
     Host> sync
 
@@ -464,21 +466,21 @@ Use one of the techniques presented above to transfer the binary to the Zybo and
 
 TODO
 
-## <a name="BootInAAS"></a>Boot Linux across SAB4Z
+## <a name="BootInAAS"></a>Run the complete software stack across SAB4Z
 
 #### <a name="BootInAASPrinciples"></a>Principles
 
-Thanks to the AXI bridge that SAB4Z implements, the `[2G..3G[` address range is an alias of `[0..1G[`. It is thus possible to run software on the Zybo that use only the `[2G..3G[` range instead of `[0..1G[`. It is even possible to run the Linux kernel there. However we must carefully select the range of physical memory that we will instruct the kernel to use:
+Thanks to the AXI bridge that SAB4Z implements, the `[2G..3G[` address range is an alias of `[0..1G[`. It is thus possible to run software on the Zybo that use only the `[2G..3G[` range instead of `[0..1G[`. It is even possible to run the Linux kernel and all other software applications on top of it in the `[2G..3G[` range. However we must carefully select the range of physical memory that we will instruct the kernel to use:
 
 * The Zybo has only 512MB of DDR, so the most we can use is `[2G..2G+512M[`.
 * As already mentioned, the first 512kB of DDR cannot be accessed from the PL. So, we cannot let Linux access the low addresses of `[2G..2G+512M[` because we could not forward the requests to the DDR.
 * The Linux kernel insists that its physical memory is aligned on 128MB boundaries. So, to skip the low addresses of `[2G..2G+512M[` we must skip an entire 128MB chunk.
 
-All in all, we can run the Linux kernel in the `[2G+128MB..2G+512M[` range (`[0x8800_0000..0xa000_0000[`), that is, only 384MB instead of 512MB. The other drawback is that the path to the DDR across the PL is much slower than the direct one: its bit-width is 32 bits instead of 64 and its clock frequency is that of the PL, 100MHz in our example design, instead of 650MHz. Of course, the overhead will impact only cache misses but there will be an overhead. So why doing this? Why using less memory than available and slowing down the memory accesses? There are several good reasons. One of them is that instead of just relaying the memory accesses, the SAB4Z could be modified to implement a kind of monitoring of these accesses. It already counts the AXI transactions but it could do something more sophisticated. It could even tamper with the memory accesses, for instance to emulate accidental memory faults or attacks against the system.
+All in all, we can run the software stack in the `[2G+128MB..2G+512M[` range (`[0x8800_0000..0xa000_0000[`), that is, only 384MB instead of 512MB. The other drawback is that the path to the DDR across the PL is much slower than the direct one: its bit-width is 32 bits instead of 64 and its clock frequency is that of the PL, 100MHz in our example design, instead of 650MHz. Of course, the overhead will impact only cache misses but there will be an overhead. So why doing this? Why using less memory than available and slowing down the memory accesses? There are several good reasons. One of them is that instead of just relaying the memory accesses, the SAB4Z could be modified to implement a kind of monitoring of these accesses. It already counts the AXI transactions but it could do something more sophisticated. It could even tamper with the memory accesses, for instance to emulate accidental memory faults or attacks against the system.
 
 #### <a name="BootInAASDTS"></a>Modify the device tree
 
-Anyway, to boot and run Linux in the `[0x8800_0000..0xa000_0000[` physical memory range we need to modify a few things. First, edit the device tree source (`$SAB4Z/build/dts/system.dts`) and replace the definition of the physical memory:
+Anyway, to boot the Linux kernel and run the software stack in the `[0x8800_0000..0xa000_0000[` physical memory range we need to modify a few things. First, edit the device tree source (`$SAB4Z/build/dts/system.dts`) and replace the definition of the physical memory:
 
 	memory {
 		device_type = "memory";
@@ -524,9 +526,34 @@ If U-Boot finds a file named `uEnv.txt` on the MicroSD card, it uses its content
 
 #### <a name="BootInAASBoot"></a>Boot and see
 
-Unmount and eject the MicroSD card, plug it in the Zybo, power on. As you will probably notice U-Boot takes a bit longer to copy the binaries from the MicroSD card to the memory and to boot the kernel but the system, even if slightly slower, remains responsive and perfectly usable. You can check that the memory accesses are really routed across the PL by pressing the BTN push-button twice. This should drive the LEDs with the counter of AXI address read transactions and you should see the LEDs blinking while the CPU performs read-write accesses to the memory across SAB4Z. If the LEDs do not blink enough, interact with the system with the serial console, this should increase the number of memory accesses.
+Unmount and eject the MicroSD card, plug it in the Zybo, power on. As you will probably notice U-Boot takes a bit longer to copy the binaries from the MicroSD card to the memory and to boot the kernel but the system, even if slightly slower, remains responsive and perfectly usable. You can check that the memory accesses are really routed across the PL by pressing the BTN push-button twice. This should drive the LEDs with the counter of AXI address read transactions and you should see the LEDs blinking while the CPU performs read-write accesses to the memory across SAB4Z. If the LEDs do not blink enough, interact with the software stack with the serial console, this should increase the number of memory accesses.
 
 #### <a name="BootInAASExercise"></a>Exercise
 
 There is a way to use more DDR than 384MB. This involves a hardware modification and a rework of the software changes. This is left as an exercise. Hint: SAB4Z transforms the addresses in S1_AXI requests before forwarding them to M_AXI: it subtracts `2G` (`0x8000_0000`) to bring them back in the `[0..1G[` DDR range. SAB4Z could implement a different address transform.
 
+## <a name="ILA"></a>Debug hardware using ILA
+
+Xilinx tools offer several ways to debug the hardware mapped in the PL. One uses Integrated Logic Analyzers (ILAs), hardware blocks that the tools automatically add to the design and that monitor internal signals. The tools running on the host PC communicate with the ILAs in the PL. Triggers can be configured to start / stop the recording of the monitored signals and the recorded signals can be displayed as waveforms.
+
+The provided synthesis script and Makefile have options to embed one ILA core to monitor all signals of the M_AXI interface of SAB4Z. The only think to do is re-run the synthesis with:
+
+    Host-Xilinx> cd $SAB4Z
+    Host-Xilinx> make ILA=1 vv-clean vv-all
+
+and re-generate the boot image:
+
+    Host-Xilinx> bootgen -w -image scripts/boot.bif -o build/boot.bin
+
+Use one of the techniques presented above to transfer the new boot image to the MicroSD card on the Zybo and power on. Launch Vivado:
+
+    Host-Xilinx> vivado build/vv/top.xpr &
+
+In the `Hardware Manager`, select `Open Target` and `Auto Connect`. The tool should now be connected to the ILA core in the PL of the Zynq of the Zybo. Select the signals to use for the trigger, for instance `top_i/sab4z_m_axi_ARVALID` and `top_i/sab4z_m_axi_ARREADY`. Configure the trigger such that it starts recording when both signals are asserted. Set the trigger position in window to 512 and run the trigger. If you are running the software stack across the PL (see section [Run the complete software stack across SAB4Z](#BootInAAS)), the trigger should be fired immediately. If it is not use the serial console to interact with the software stack and cause some read access to the DDR across the PL. Analyze the complete AXI transaction in the `Waveform` sub-window of Vivado. If you are not running the software stack across the PL, use devmem to access the DDR across the PL:
+
+    Host> picocom -b115200 -fn -pn -d8 -r -l /dev/ttyUSB1
+    Sab4z> devmem 0x90000000 32
+
+and analyze the complete AXI transaction.
+
+Note: the trigger logic can be much more sophisticated than the suggested one. It can be based on state machines, for instance. See the Xilinx documentation for more information on this.

@@ -1,4 +1,6 @@
 /build/
+/C/*.o
 /C/hello_world
-/images/*.fig.bak
+/C/sab4z
 .*.swp
+/images/*.fig.bak
