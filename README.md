@@ -18,6 +18,7 @@ This repository and its sub-directories contain the VHDL source code, VHDL simul
     * [Access SAB4Z from a user application on the Zybo](#SAB4ZSoft)
     * [Add a Linux driver for SAB4Z](#LinuxDriver)
     * [Run the complete software stack across SAB4Z](#BootInAAS)
+    * [Debug hardware using ILA](#ILA)
 
 # <a name="License"></a>License
 
@@ -34,29 +35,29 @@ http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.txt
 # <a name="Content"></a>Content
 
     .
-    ├── archives                Directory of read to use archives
+    ├── archives                Archives
     │   └── sdcard.tgz          Archive to unpack on MicroSD card
-    ├── C                       Directory of C source files
+    ├── C                       C source code
     │   ├── hello_world.c       Simple example user application
-    │   └── sab4z.c             User application that uses SAB4Z
+    │   └── sab4z.c             User application using SAB4Z
     ├── COPYING                 License (English version)
     ├── COPYING-FR              Licence (version française)
     ├── COPYRIGHT               Copyright notice
-    ├── hdl                     Directory of VHDL source files
-    │   ├── axi_pkg.vhd         AXI definitions package
+    ├── hdl                     VHDL source code
+    │   ├── axi_pkg.vhd         Package of AXI definitions
     │   ├── debouncer.vhd       Debouncer-resynchronizer
     │   └── sab4z.vhd           Top-level SAB4Z
-    ├── images                  Directory of figures
-    │   ├── sab4z.fig           Xfig figure of SAB4Z in Zybo
+    ├── images                  Figures
+    │   ├── sab4z.fig           SAB4Z in Zybo
     │   ├── sab4z.png           PNG export of sab4z.fig
-    │   └── zybo.png            PNG picture of Zybo
+    │   └── zybo.png            Zybo board
     ├── Makefile                Main makefile
     ├── README.md               This file
-    └── scripts                 Directory of scripts
-        ├── boot.bif            Zynq boot image description
+    └── scripts                 Scripts
+        ├── boot.bif            Zynq Boot Image description File
         ├── dts.tcl             TCL script for device tree generation
         ├── fsbl.tcl            TCL script for FSBL generation
-        ├── uEnv.txt            U-Boot environment variables definitions
+        ├── uEnv.txt            Definitions of U-Boot environment variables
         └── vvsyn.tcl           Vivado TCL synthesis script
 
 # <a name="Description"></a>Description
