@@ -216,7 +216,7 @@ To build the project you will need the Xilinx tools (Vivado and its companion SD
 
 ## <a name="Downloads"></a>Downloads
 
-**Important**: after the build, the Linux repository occupies more than 2.5GB of disk space and the Buildroot repository more than 3GB. Carefully select where to install them... Clone all components from their respective Git repositories:
+**Important**: after the build, the Linux repository occupies more than 2.5GB of disk space and the Buildroot repository more than 3GB. Carefully select where to install them. In the following we assume that you installed everything under a single directory: `<some-path>`. Clone all components from their respective Git repositories:
 
     Host> cd <some-path>
     Host> git clone https://gitlab.eurecom.fr/renaud.pacalet/sab4z.git
@@ -227,15 +227,15 @@ To build the project you will need the Xilinx tools (Vivado and its companion SD
     Host> SAB4Z=<some-path>/sab4z
     Host> XLINUX=<some-path>/linux-xlnx
     Host> XUBOOT=<some-path>/u-boot-xlnx
-    Host> XDTS=<some-path>/device-tree-xlnx
     Host> BUILDROOT=<some-path>/buildroot
 
 ## <a name="Synthesis"></a>Hardware synthesis
 
+    Host-Xilinx> SAB4Z=<some-path>/sab4z
     Host-Xilinx> cd $SAB4Z
     Host-Xilinx> make vv-all
 
-The generated bitstream is `SAB4Z/build/vv/top.runs/impl_1/top_wrapper.bit`.
+The generated bitstream is in `$SAB4Z/build/vv/top.runs/impl_1/top_wrapper.bit`.
 
 ## <a name="RootFS"></a>Build a root file system
 
@@ -275,6 +275,7 @@ In the Buildroot configuration menus change the following options:
 
 Quit (save when asked). Let us now configure BusyBox to enable the rx utility that we will need later:
 
+    Host> cd $BUILDROOT
     Host> make O=build busybox-menuconfig
 
 In the BusyBox configuration menus change the following option:
@@ -283,6 +284,7 @@ In the BusyBox configuration menus change the following option:
 
 Quit (save when asked), create the overlays directory, populate it and build the root file system:
 
+    Host> cd $BUILDROOT
     Host> mkdir -p build/overlays/etc/profile.d
     Host> echo "export PS1='Sab4z> '" > build/overlays/etc/profile.d/prompt.sh
     Host> make O=build
@@ -322,7 +324,7 @@ Do not start this part before the [toolchain](#RootFS) is built: it is needed. N
     Host> make O=build zynq_zybo_defconfig
     Host> # make O=build menuconfig
     Host> make -j8 O=build
-    Host> cp $XUBOOT/build/u-boot $SAB4Z/u-boot.elf
+    Host> cp $XUBOOT/build/u-boot $SAB4Z/build/u-boot.elf
 
 ## <a name="SDK"></a>Build the hardware dependant software
 
@@ -333,33 +335,38 @@ Do not start this part before the [hardware synthesis finishes](#Synthesis) fini
 Generate the device tree sources:
 
     Host-Xilinx> cd $SAB4Z
-    Host-Xilinx> make XDTS=<some-path>/device-tree-xlnx dts
+    Host-Xilinx> XDTS=<some-path>/device-tree-xlnx
+    Host-Xilinx> make XDTS=$XDTS dts
 
-The sources are in `build/dts`. If needed, edit them before compiling the device tree blob with dtc:
+The sources are in `$SAB4Z/build/dts`. If needed, edit them before compiling the device tree blob with dtc:
 
+    Host> cd $SAB4Z
     Host> dtc -I dts -O dtb -o build/devicetree.dtb build/dts/system.dts
 
 #### <a name="FSBL"></a>First Stage Boot Loader (FSBL)
 
 Generate the FSBL sources
 
+    Host-Xilinx> cd $SAB4Z
     Host-Xilinx> make fsbl
 
-The sources are in `build/fsbl`. If needed, edit them before compiling the FSBL:
+The sources are in `$SAB4Z/build/fsbl`. If needed, edit them before compiling the FSBL:
 
+    Host-Xilinx> cd $SAB4Z
     Host-Xilinx> make -C build/fsbl
 
 #### <a name="BootImg"></a>Zynq boot image
 
 Generate the Zynq boot image:
 
+    Host-Xilinx> cd $SAB4Z
     Host-Xilinx> bootgen -w -image scripts/boot.bif -o build/boot.bin
 
 #### <a name="SDCard"></a>Prepare the MicroSD card
 
 Finally, mount the MicroSD card on your host PC, and copy the different components to it:
 
-    Host> cd build
+    Host> cd $SAB4Z/build
     Host> cp boot.bin devicetree.dtb uImage uramdisk.image.gz <path-to-mounted-sd-card>
     Host> sync
 
@@ -545,10 +552,12 @@ The provided synthesis script and Makefile have options to embed one ILA core to
 
 and re-generate the boot image:
 
+    Host-Xilinx> cd $SAB4Z
     Host-Xilinx> bootgen -w -image scripts/boot.bif -o build/boot.bin
 
 Use one of the techniques presented above to transfer the new boot image to the MicroSD card on the Zybo and power on. Launch Vivado on the host PC:
 
+    Host-Xilinx> cd $SAB4Z
     Host-Xilinx> vivado build/vv/top.xpr &
 
 In the `Hardware Manager`, select `Open Target` and `Auto Connect`. The tool should now be connected to the ILA core in the PL of the Zynq of the Zybo. Select the signals to use for the trigger, for instance `top_i/sab4z_m_axi_ARVALID` and `top_i/sab4z_m_axi_ARREADY`. Configure the trigger such that it starts recording when both signals are asserted. Set the trigger position in window to 512 and run the trigger. If you are running the software stack across the PL (see section [Run the complete software stack across SAB4Z](#BootInAAS)), the trigger should be fired immediately (if it is not use the serial console to interact with the software stack and cause some read access to the DDR across the PL). If you are not running the software stack across the PL, use devmem to perform a read access to the DDR across the PL:
