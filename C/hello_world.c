@@ -11,7 +11,14 @@
 #include <stdio.h>
 
 void main(void) {
+  int i, s;
+
   printf("Hello SAB4Z\n");
+  s = 0;
+  for(i = 0; i <= 100; i++) {
+    s += i;
+  }
+  printf("sum_{i=0}^{i=100}{i}=%d\n", s);
   sleep(2);
   printf("Bye! SAB4Z\n");
 }

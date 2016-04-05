@@ -14,9 +14,13 @@ This repository and its sub-directories contain the VHDL source code, VHDL simul
     * [Build U-Boot](#Uboot)
     * [Build the hardware dependant software](#SDK)
 * [Going further](#Further)
+    * [Set up a network interface between host and Zybo](#Networking)
     * [Run a user application on the Zybo](#UserApp)
+    * [Debug a user application with gdb](#UserAppDebug)
     * [Access SAB4Z from a user application on the Zybo](#SAB4ZSoft)
+<!---
     * [Add a Linux driver for SAB4Z](#LinuxDriver)
+--->
     * [Run the complete software stack across SAB4Z](#BootInAAS)
     * [Debug hardware using ILA](#ILA)
 
@@ -243,7 +247,7 @@ We will use Buildroot to build a BusyBox-based tiny root file system. Buildroot 
 
 * use a compiler cache (faster build),
 * enable the thread library debugging (needed to build the gdb server),
-* build (for the host PC) the gdb cross debugger with TUI support,
+* build (for the host PC) the gdb cross debugger with TUI and python support,
 * customize the host name and welcome banner,
 * enable networking,
 * embed some extra (overlays) files that we will provide later,
@@ -255,7 +259,7 @@ We will use Buildroot to build a BusyBox-based tiny root file system. Buildroot 
 Run the Buildroot configuration:
 
     Host> cd $BUILDROOT
-    Host> make O=build zedboard_defconfig
+    Host> make O=build zynq_zed_defconfig
     Host> make O=build menuconfig
 
 In the Buildroot configuration menus change the following options:
@@ -264,6 +268,7 @@ In the Buildroot configuration menus change the following options:
     Toolchain -> Thread library debugging -> yes
     Toolchain -> Build cross gdb for the host -> yes
     Toolchain -> TUI support -> yes
+    Toolchain -> Python support -> yes
     System configuration -> System hostname -> sab4z
     System configuration -> System banner -> Welcome to SAB4Z (c) Telecom ParisTech
     System configuration -> Network interface to configure through DHCP -> eth0
@@ -289,11 +294,7 @@ Quit (save when asked), create the overlays directory, populate it and build the
     Host> echo "export PS1='Sab4z> '" > build/overlays/etc/profile.d/prompt.sh
     Host> make O=build
 
-Note: the first build takes some time, especially because Buildroot must first build the toolchain for ARM targets, but most of the work will not have to be redone if we later change the configuration and re-build. Copy the generated root file system:
-
-    Host> cp $BUILDROOT/build/images/rootfs.cpio.uboot $SAB4Z/build/uramdisk.image.gz
-
-Buildroot also built applications for the host PC that we will need later:
+The generated root file system is in `$BUILDROOT/build/images/rootfs.cpio.uboot` but is it not yet the final version. We still have a few things to add to the overlays. Note: the first build takes some time, especially because Buildroot must first build the toolchain for ARM targets, but most of the work will not have to be redone if we later change the configuration and re-build. Buildroot also built applications for the host PC that we will need later:
 
 * a complete toolchain (cross-compiler, debugger...) for the ARM processor of the Zybo,
 * dtc, a device tree compiler,
@@ -312,8 +313,15 @@ Do not start this part before the [toolchain](#RootFS) is built: it is needed. N
     Host> make mrproper
     Host> make O=build ARCH=arm xilinx_zynq_defconfig
     Host> # make O=build ARCH=arm menuconfig
-    Host> make -j8 O=build ARCH=arm LOADADDR=0x8000 uImage
-    Host> cp $XLINUX/build/arch/arm/boot/uImage $SAB4Z/build
+    Host> make -j8 O=build ARCH=arm LOADADDR=0x8000 uImage vmlinux
+
+The kernel image is in `$XLINUX/build/arch/arm/boot/uImage`. The kernel comes with several modules that must also be built and that will be installed in our root file system. The Buildroot overlays directory is the perfect way to embed the kernel modules in the root file system. Of course, we will have to rebuild the root file system. We will also copy it in `$SAB4Z/build`.
+
+    Host> cd $XLINUX
+    Host> make -j8 O=build ARCH=arm modules
+    Host> make -j8 O=build ARCH=arm modules_install INSTALL_MOD_PATH=$BUILDROOT/build/overlays
+    Host> cd $BUILDROOT
+    Host> make O=build
 
 ## <a name="Uboot"></a>Build U-Boot
 
@@ -324,7 +332,6 @@ Do not start this part before the [toolchain](#RootFS) is built: it is needed. N
     Host> make O=build zynq_zybo_defconfig
     Host> # make O=build menuconfig
     Host> make -j8 O=build
-    Host> cp $XUBOOT/build/u-boot $SAB4Z/build/u-boot.elf
 
 ## <a name="SDK"></a>Build the hardware dependant software
 
@@ -355,6 +362,14 @@ The sources are in `$SAB4Z/build/fsbl`. If needed, edit them before compiling th
     Host-Xilinx> cd $SAB4Z
     Host-Xilinx> make -C build/fsbl
 
+#### <a name="BootImg"></a>Gather all pieces
+
+Copy all pieces in our build directory:
+
+    Host> cp $XLINUX/build/arch/arm/boot/uImage $SAB4Z/build
+    Host> cp $BUILDROOT/build/images/rootfs.cpio.uboot $SAB4Z/build/uramdisk.image.gz
+    Host> cp $XUBOOT/build/u-boot $SAB4Z/build/u-boot.elf
+
 #### <a name="BootImg"></a>Zynq boot image
 
 Generate the Zynq boot image:
@@ -372,6 +387,52 @@ Finally, mount the MicroSD card on your host PC, and copy the different componen
 
 # <a name="Further"></a>Going further
 
+## <a name="Networking"></a>Set up a network interface between host and Zybo
+
+The dropbear tiny ssh server that we added to our root file system allows us to connect to the Zybo from the host using a ssh client. In order to do this we must:
+
+* Connect the board to a wired network using an Ethernet cable. Note that if your network is protected and rejects unknown clients you can create a mini network between your host and the board. Under GNU/Linux, dnsmasq (http://www.thekelleys.org.uk/dnsmasq/doc.html) is a very convenient way to do this. It even allows to share the wireless connection of a laptop with the board. In the following we assume that the Zybo board is connected to the network and that its hostname is sab4z.
+* Install our ssh public key on the Zybo. Assuming our public key is in `~/.ssh/id_rsa.pub`, we can add it to the Buildroot overlays:
+````
+Host> cd $BUILDROOT
+Host> mkdir -p build/overlays/root/.ssh
+Host> cp ~/.ssh/id_rsa.pub build/overlays/root/.ssh/authorized_keys
+Host> make O=build
+````
+* Mount the MicroSD card on your host PC, copy the new root file system image on it, unmount and eject the MicroSD card, plug it in the Zybo, power on and try to connect from the host to force the generation of a first ECDSA host key on the Zybo:
+````
+Host> ssh root@sab4z
+The authenticity of host 'sab4z (<no hostip for proxy command>)' can't be established.
+ECDSA key fingerprint is d3:c5:2e:05:5d:be:89:42:65:d5:62:45:39:18:41:24.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added 'sab4z' (ECDSA) to the list of known hosts.
+Sab4z> ls /etc/dropbear
+dropbear_ecdsa_host_key
+````
+* Copy the generated ECDSA host key to the Buildroot overlays, such that the authentification of the Zybo becomes persistent accross reboot:
+````
+Host> cd $BUILDROOT
+Host> mkdir -p build/overlays/etc/dropbear
+Host> scp root@sab4z:/etc/dropbear/dropbear_ecdsa_host_key build/overlays/etc/dropbear
+Host> make O=build
+````
+* Mount the MicroSD card on the Zybo:
+````
+Sab4z> mount /dev/mmcblk0p1 /mnt
+````
+* Use the network link to transfer the new root file system to the MicroSD card on the Zybo:
+````
+Host> cd $BUILDROOT
+Host> scp build/images/rootfs.cpio.uboot root@sab4z:/mnt/uramdisk.image.gz
+````
+* Finally, on the Zybo, unmount the MicroSD card and reboot:
+````
+Sab4z> umount /mnt
+Sab4z> reboot
+````
+
+We should now be able to ssh or scp from host to Zybo without password.
+
 ## <a name="UserApp"></a>Create, compile and run a user software application
 
 Do not start this part before the [toolchain](#RootFS) is built: it is needed.
@@ -379,9 +440,9 @@ Do not start this part before the [toolchain](#RootFS) is built: it is needed.
 The `C` sub-directory contains a very simple example C code `hello_world.c` that prints a welcome message, waits 2 seconds, prints a good bye message and exits. Cross-compile it on your host PC:
 
     Host> cd $SAB4Z/C
-    Host> make CC=${CROSS_COMPILE}gcc hello_world
+    Host> ${CROSS_COMPILE}gcc -o hello_world hello_world.c
 
-The only thing to do next is transfer the `hello_world` binary on the Zybo and execute it. There are several ways to transfer a file from the host PC to the Zybo. The most convenient, of course, is a network interface but in case none is available, here are several other options:
+The only thing to do next is transfer the `hello_world` binary on the Zybo and execute it. There are several ways to transfer a file from the host PC to the Zybo. The most convenient, of course, is a network interface but in case none is available, here are several other options.
 
 #### <a name="SDTransfer"></a>Transfer files from host PC to Zybo on MicroSD card
 
@@ -434,6 +495,53 @@ After the transfer completes, change the file's mode to executable and run the a
 
 Note: this transfer method is not very reliable. Avoid using it on large files: the probability that a transfer fails increases with its length.
 
+## <a name="UserAppDebug"></a>Debug a user application with gdb
+
+In order to debug our simple user application while it is running on the target we will need a [network interface between the host PC and the Zybo](#Networking). In the following we assume that the Zybo board is connected to the network and that its hostname is sab4z.
+
+Recompile the use application with debug information added, copy the binary to the Zybo and launch gdbserver on the Zybo:
+
+    Host> cd $SAB4Z/C
+    Host> ${CROSS_COMPILE}gcc -g3 -o hello_world hello_world.c
+    Host> scp hello_world root@sab4z:
+    Host> ssh root@sab4z
+    Sab4z> gdbserver :1234 hello_world
+
+On the host PC, launch gdb, connect to the gdbserver on the Zybo and start interacting (set breakpoints, examine variables...):
+
+    Host> cd $SAB4Z/C
+    Host> ${CROSS_COMPILE}gdb hello_world
+    GNU gdb (GDB) 7.9.1
+    ...
+    (gdb) target remote sab4z:1234
+    ...
+    (gdb) l 20
+    15    
+    16        printf("Hello SAB4Z\n");
+    17        s = 0;
+    18        for(i = 0; i <= 100; i++) {
+    19          s += i;
+    20        }
+    21        printf("sum_{i=0}^{i=100}{i}=%d\n", s);
+    22        sleep(2);
+    23        printf("Bye! SAB4Z\n");
+    24      }
+    (gdb) b 21
+    Breakpoint 2 at 0x852c: file hello_world.c, line 21.
+    (gdb) c
+    Continuing.
+    
+    Breakpoint 3, main () at hello_world.c:21
+    21        printf("sum_{i=0}^{i=100}{i}=%d\n", s);
+    (gdb) p s
+    $1 = 5050
+    (gdb) c
+    Continuing.
+    [Inferior 1 (process 734) exited with code 013]
+    (gdb) q
+
+Note: there are plenty of gdb front ends for those who do not like its command line interface. TUI is the gdb built-in, curses-based interface. Just type `C-x a` to enter TUI while gdb runs.
+
 ## <a name="SAB4ZSoft"></a>Access SAB4Z from a user software application
 
 Accessing SAB4Z from a user software application running on top of the Linux operating system is not as simple as it seems: because of the virtual memory, trying to access the SAB4Z registers using their physical addresses would fail. In order to do this we will use `/dev/mem`, a character device that is an image of the memory of the system. The character located at offset x from the beginning of `/dev/mem` is the byte stored at physical address x. Of course, accessing offsets corresponding to addresses that are not mapped in the system or writing at offsets corresponding to read-only addresses cause errors. As reading or writing at specific offset in a character device is not very convenient, we will also use mmap, a Linux system call that can map a device to memory. To make it short, `/dev/mem` is an image of the physical memory space of the system and mmap allows us to map portions of this at a known virtual address. Reading and writing at the mapped virtual addresses becomes equivalent to reading and writing at the physical addresses.
@@ -471,9 +579,34 @@ Use one of the techniques presented above to transfer the binary to the Zybo and
       0x40000004: 12345678 (R)
     Bye! SAB4Z
 
+<!---
 ## <a name="LinuxDriver"></a>Add a Linux driver for SAB4Z
 
 TODO
+
+    Host> cd $XLINUX
+    Host> make mrproper
+    Host> make O=build ARCH=arm menuconfig
+
+    Kernel Features -> Symmetric Multi-Processing -> No
+    Kernel hacking -> Compile-time checks and compiler options -> Compile the kernel with debug info -> Yes
+
+    Host> make -j8 O=build ARCH=arm LOADADDR=0x8000 uImage vmlinux
+
+    Host> cd $SAB4Z/C
+    Host> make CROSS_COMPILE=${CROSS_COMPILE} ARCH=arm KDIR=$XLINUX/build
+    Host> cp first.ko $BUILDROOT/build/overlays/root
+    Host> cd $BUILDROOT
+    Host> make -O build
+
+    Host-Xilinx> xmd
+    XMD% connect arm hw
+
+    Host> ${CROSS_COMPILE}gdb -x $BUILDROOT/build/staging/usr/share/buildroot/gdbinit -nw $XLINUX/build/vmlinux
+    (gdb) target remote :1234
+    (gdb) continue
+
+--->
 
 ## <a name="BootInAAS"></a>Run the complete software stack across SAB4Z
 
