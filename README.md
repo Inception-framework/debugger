@@ -394,12 +394,14 @@ The dropbear tiny ssh server that we added to our root file system allows us to 
 * Connect the board to a wired network using an Ethernet cable. Note that if your network is protected and rejects unknown clients you can create a mini network between your host and the board. Under GNU/Linux, dnsmasq (http://www.thekelleys.org.uk/dnsmasq/doc.html) is a very convenient way to do this. It even allows to share the wireless connection of a laptop with the board. In the following we assume that the Zybo board is connected to the network and that its hostname is sab4z.
 * Install our ssh public key on the Zybo. Assuming our public key is in `~/.ssh/id_rsa.pub`, we can add it to the Buildroot overlays:
 
+
     Host> cd $BUILDROOT
     Host> mkdir -p build/overlays/root/.ssh
     Host> cp ~/.ssh/id_rsa.pub build/overlays/root/.ssh/authorized_keys
     Host> make O=build
 
 * Mount the MicroSD card on your host PC, copy the new root file system image on it, unmount and eject the MicroSD card, plug it in the Zybo, power on and try to connect from the host to force the generation of a first ECDSA host key on the Zybo:
+
 
     Host> ssh root@sab4z
     The authenticity of host 'sab4z (<no hostip for proxy command>)' can't be established.
@@ -411,6 +413,7 @@ The dropbear tiny ssh server that we added to our root file system allows us to 
 
 * Copy the generated ECDSA host key to the Buildroot overlays, such that the authentification of the Zybo becomes persistent accross reboot:
 
+
     Host> cd $BUILDROOT
     Host> mkdir -p build/overlays/etc/dropbear
     Host> scp root@sab4z:/etc/dropbear/dropbear_ecdsa_host_key build/overlays/etc/dropbear
@@ -418,14 +421,17 @@ The dropbear tiny ssh server that we added to our root file system allows us to 
 
 * Mount the MicroSD card on the Zybo:
 
+
     Sab4z> mount /dev/mmcblk0p1 /mnt
 
 * Use the network link to transfer the new root file system to the MicroSD card on the Zybo:
+
 
     Host> cd $BUILDROOT
     Host> scp build/images/rootfs.cpio.uboot root@sab4z:/mnt/uramdisk.image.gz
 
 * Finally, on the Zybo, unmount the MicroSD card and reboot:
+
 
     Sab4z> umount /mnt
     Sab4z> reboot
