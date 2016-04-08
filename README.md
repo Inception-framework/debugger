@@ -265,7 +265,10 @@ Run the Buildroot configuration:
 In the Buildroot configuration menus change the following options:
 
     Build options -> Enable compiler cache -> yes
+    Toolchain -> C library -> glibc
     Toolchain -> Thread library debugging -> yes
+    Toolchain -> Enable WCHAR support -> yes
+    Toolchain -> Enable C++ support -> yes
     Toolchain -> Build cross gdb for the host -> yes
     Toolchain -> TUI support -> yes
     Toolchain -> Python support -> yes
@@ -275,6 +278,7 @@ In the Buildroot configuration menus change the following options:
     System configuration -> Root filesystem overlay directories -> ./build/overlays
     Kernel -> Linux Kernel -> no
     Target packages -> Debugging, profiling and benchmark -> gdb -> yes
+    Target packages -> Hardware handling -> gptfdisk -> ncurses cgdisk -> yes
     Target packages -> Networking applications -> dropbear -> yes
     Bootloaders -> U-Boot -> no
 
@@ -303,7 +307,7 @@ The generated root file system is in `$BUILDROOT/build/images/rootfs.cpio.uboot`
 They are in `$BUILDROOT/build/host/usr/bin`. Add this directory to your PATH and define the CROSS_COMPILE environment variable (note the trailing `-`):
 
     Host> export PATH=$PATH:$BUILDROOT/build/host/usr/bin
-    Host> export CROSS_COMPILE=arm-buildroot-linux-uclibcgnueabi-
+    Host> export CROSS_COMPILE=arm-buildroot-linux-gnueabi-
 
 ## <a name="Kernel"></a>Build the Linux kernel
 
