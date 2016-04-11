@@ -1,6 +1,6 @@
 image:
 {
-  [bootloader]./build/fsbl/executable.elf
-  ./build/vv/top.runs/impl_1/top_wrapper.bit
-  ./build/u-boot.elf
+  [bootloader]fsbl/executable.elf
+  vv/top.runs/impl_1/top_wrapper.bit
+  uboot/u-boot.elf
 }

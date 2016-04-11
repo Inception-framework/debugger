@@ -21,7 +21,6 @@ entity sab4z is
     aclk:       in std_logic;  -- Clock
     aresetn:    in std_logic;  -- Synchronous, active low, reset
     btn:        in std_logic;  -- Command button
-    btn_re:     in std_logic;  -- Rising edge of command button
     sw:         in  std_logic_vector(3 downto 0); -- Slide switches
     led:        out std_logic_vector(3 downto 0); -- LEDs
 
@@ -219,10 +218,23 @@ architecture rtl of sab4z is
     end if;
   end function or_reduce;
 
+  signal btn_sd: std_logic;  -- Synchronized and debounced command button
+  signal btn_re: std_logic;  -- Rising edge of command button
+
 begin
 
+  -- Synchronizer - debouncer
+  sd: entity work.debouncer(rtl)
+    port map(clk   => aclk,
+             srstn => aresetn,
+             d     => btn,
+             q     => btn_sd,
+             r     => btn_re,
+             f     => open,
+             a     => open);
+
   -- LED outputs
-  process(status, r, btn)
+  process(status, r, btn_sd)
     variable m0: std_ulogic_vector(63 downto 0);
     variable m1: std_ulogic_vector(31 downto 0);
     variable m2: std_ulogic_vector(15 downto 0);
@@ -250,7 +262,7 @@ begin
     else
       m4 := m3(3 downto 0);
     end if;
-    if btn = '1' then
+    if btn_sd = '1' then
       m4 := cnt;
     end if;
     led <= std_logic_vector(m4);
