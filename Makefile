@@ -122,7 +122,7 @@ $(MSCONFIG):
 	$(MSLIB) .work $(OUTPUT); \
 	$(MSMAP) work .work $(OUTPUT)
 
-$(MSBUILD)/sab4z.tag: $(MSBUILD)/axi_pkg.tag
+$(MSBUILD)/sab4z.tag: $(MSBUILD)/axi_pkg.tag $(MSBUILD)/debouncer.tag
 
 ms-clean:
 	@echo '[RM] $(MSBUILD)'; \
