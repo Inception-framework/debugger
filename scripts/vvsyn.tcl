@@ -34,18 +34,9 @@ source $rootdir/scripts/ila.tcl
 # Create SAB4Z IP #
 ###################
 create_project -part xc7z010clg400-1 -force sab4z sab4z
-add_files $rootdir/hdl/axi_pkg.vhd $rootdir/hdl/sab4z.vhd
+add_files $rootdir/hdl/axi_pkg.vhd $rootdir/hdl/debouncer.vhd $rootdir/hdl/sab4z.vhd
 import_files -force -norecurse
 ipx::package_project -root_dir sab4z -vendor www.telecom-paristech.fr -library SAB4Z -force sab4z
-close_project
-
-#######################
-# Create DEBOUNCER IP #
-#######################
-create_project -part xc7z010clg400-1 -force debouncer debouncer
-add_files $rootdir/hdl/debouncer.vhd
-import_files -force -norecurse
-ipx::package_project -root_dir debouncer -vendor www.telecom-paristech.fr -library SAB4Z -force debouncer
 close_project
 
 ############################
@@ -54,11 +45,10 @@ close_project
 set top top
 create_project -part xc7z010clg400-1 -force $top .
 set_property board_part digilentinc.com:zybo:part0:1.0 [current_project]
-set_property ip_repo_paths { ./sab4z ./debouncer } [current_fileset]
+set_property ip_repo_paths { ./sab4z } [current_fileset]
 update_ip_catalog
 create_bd_design "$top"
 set sab4z [create_bd_cell -type ip -vlnv [get_ipdefs *www.telecom-paristech.fr:SAB4Z:sab4z:*] sab4z]
-set debouncer [create_bd_cell -type ip -vlnv [get_ipdefs *www.telecom-paristech.fr:SAB4Z:debouncer:*] debouncer]
 set ps7 [create_bd_cell -type ip -vlnv [get_ipdefs *xilinx.com:ip:processing_system7:*] ps7]
 apply_bd_automation -rule xilinx.com:bd_rule:processing_system7 -config {make_external "FIXED_IO, DDR" apply_board_preset "1" Master "Disable" Slave "Disable" } $ps7
 set_property -dict [list CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {100.000000}] $ps7
@@ -76,17 +66,11 @@ connect_bd_net [get_bd_pins /sab4z/led] [get_bd_ports led]
 create_bd_port -dir I -from 3 -to 0 sw
 connect_bd_net [get_bd_pins /sab4z/sw] [get_bd_ports sw]
 create_bd_port -dir I btn
-connect_bd_net [get_bd_pins /debouncer/d] [get_bd_ports btn]
+connect_bd_net [get_bd_pins /sab4z/btn] [get_bd_ports btn]
 # ps7 - sab4z
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/ps7/M_AXI_GP0" Clk "Auto" }  [get_bd_intf_pins /sab4z/s0_axi]
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/ps7/M_AXI_GP1" Clk "Auto" }  [get_bd_intf_pins /sab4z/s1_axi]
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/sab4z/m_axi" Clk "Auto" }  [get_bd_intf_pins /ps7/S_AXI_HP0]
-# ps7 - debouncer
-connect_bd_net [get_bd_pins ps7/FCLK_CLK0] [get_bd_pins debouncer/clk]
-connect_bd_net [get_bd_pins rst_ps7_100M/peripheral_aresetn] [get_bd_pins debouncer/srstn]
-# debouncer - sab4z
-connect_bd_net [get_bd_pins debouncer/q] [get_bd_pins sab4z/btn]
-connect_bd_net [get_bd_pins debouncer/r] [get_bd_pins sab4z/btn_re]
 
 # Addresses ranges
 set_property offset 0x40000000 [get_bd_addr_segs -of_object [get_bd_intf_pins /ps7/M_AXI_GP0]]
