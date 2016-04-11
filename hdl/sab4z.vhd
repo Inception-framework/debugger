@@ -200,6 +200,7 @@ architecture rtl of sab4z is
   alias awcnt:   std_ulogic_vector(3 downto 0) is status(19 downto 16);
   alias wcnt:    std_ulogic_vector(3 downto 0) is status(23 downto 20);
   alias bcnt:    std_ulogic_vector(3 downto 0) is status(27 downto 24);
+  alias slsw:    std_ulogic_vector(3 downto 0) is status(31 downto 28);
 
   -- R register
   signal r: std_ulogic_vector(31 downto 0);
@@ -259,17 +260,35 @@ begin
   process(aclk)
     constant lifecntwidth: positive := 25;
     variable lifecnt: unsigned(lifecntwidth - 1 downto 0); -- Life monitor counter
+    variable lifeleft2right: boolean;
   begin
     if rising_edge(aclk) then
       if aresetn = '0' then
-        status <= (0 => '1', others => '0');
+        life  <= X"1";
+        cnt   <= X"0";
+        arcnt <= X"0";
+        rcnt  <= X"0";
+        awcnt <= X"0";
+        wcnt  <= X"0";
+        bcnt  <= X"0";
         lifecnt := (others => '0');
+        lifeleft2right := true;
       else
         -- Life monitor
         lifecnt := lifecnt + 1;
         if lifecnt(lifecntwidth - 1) = '1' then
           lifecnt(lifecntwidth - 1) := '0';
-          life <= life(2 downto 0) & life(3);
+          if lifeleft2right then
+            life <= life(0) & life(3 downto 1);
+            if life(1) = '1' then
+              lifeleft2right := not lifeleft2right;
+            end if;
+          else
+            life <= life(2 downto 0) & life(3);
+            if life(2) = '1' then
+              lifeleft2right := not lifeleft2right;
+            end if;
+          end if;
         end if;
         -- BTN event counter
         if btn_re = '1' then
@@ -296,7 +315,7 @@ begin
           bcnt <= std_ulogic_vector(unsigned(bcnt) + 1);
         end if;
         -- Slide switches
-        status(31 downto 28) <= std_ulogic_vector(sw);
+        slsw <= std_ulogic_vector(sw);
       end if;
     end if;
   end process;
