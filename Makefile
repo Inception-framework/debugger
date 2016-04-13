@@ -136,6 +136,9 @@ $(VVBIT): $(HDLSRCS) $(VVSCRIPT)
 	mkdir -p $(VVBUILD); \
 	$(VIVADO) $(VIVADOFLAGS)
 
+$(SYSDEF):
+	@$(MAKE) vv-all
+
 vv-clean:
 	@echo '[RM] $(VVBUILD)'; \
 	rm -rf $(VVBUILD)
@@ -143,7 +146,7 @@ vv-clean:
 # Device tree
 dts: $(DTSTOP)
 
-$(DTSTOP): $(VVBIT) $(DTSSCRIPT)
+$(DTSTOP): $(SYSDEF) $(DTSSCRIPT)
 	@if [ ! -d $(XDTS) ]; then \
 		echo 'Xilinx device tree source directory $(XDTS) not found.'; \
 		exit -1; \
@@ -158,7 +161,7 @@ dts-clean:
 # First Stage Boot Loader (FSBL)
 fsbl: $(FSBLTOP)
 
-$(FSBLTOP): $(VVBIT) $(FSBLSCRIPT)
+$(FSBLTOP): $(SYSDEF) $(FSBLSCRIPT)
 	@echo '[HSI] $< --> $(FSBLBUILD)'; \
 	$(HSI) $(FSBLFLAGS) -source $(FSBLSCRIPT) -tclargs $(SYSDEF) $(FSBLBUILD) $(OUTPUT)
 

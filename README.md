@@ -309,7 +309,7 @@ The generated root file system is available in different formats in `$SAB4Z/buil
 
 * a complete toolchain (cross-compiler, debugger...) for the ARM processor of the Zybo,
 * dtc, a device tree compiler (more on this later),
-* mkimage, a utility used to create images for U-Boot (more on this later)...
+* mkimage, a utility used to create images for U-Boot (and that the build system used to create `$SAB4Z/build/rootfs/images/rootfs.cpio.uboot`).
 
 They are in `$SAB4Z/build/rootfs/host/usr/bin`. Add this directory to your PATH and define the CROSS_COMPILE environment variable (note the trailing hyphen):
 
@@ -442,8 +442,8 @@ SAB4Z comes with a Makefile and a TCL script that automate the generation of dev
 
 The sources are in `$SAB4Z/build/dts`, the top level is `$SAB4Z/build/dts/system.dts`. Have a look at the sources. If needed, edit them before compiling the device tree blob with dtc:
 
-    Host> cd $SAB4Z/build
-    Host> dtc -I dts -O dtb -o devicetree.dtb dts/system.dts
+    Host> cd $SAB4Z
+    Host> dtc -I dts -O dtb -o build/devicetree.dtb build/dts/system.dts
 
 #### <a name="FSBL"></a>First Stage Boot Loader (FSBL)
 
@@ -454,24 +454,23 @@ Generate the FSBL sources
 
 The sources are in `$SAB4Z/build/fsbl`. If needed, edit them before compiling the FSBL:
 
-    Host-Xilinx> cd $SAB4Z/build/fsbl
-    Host-Xilinx> make
+    Host-Xilinx> cd $SAB4Z
+    Host-Xilinx> make -C build/fsbl
 
 #### <a name="BootImg"></a>Zynq boot image
 
 A Zynq boot image is a file that is read from the boot medium of the Zybo when the board is powered on. It contains the FSBL ELF, the bitstream and the U-Boot ELF. Generate the Zynq boot image with the Xilinx bootgen utility and the provided boot image description file:
 
-    Host-Xilinx> cd $SAB4Z/build
-    Host-Xilinx> bootgen -w -image ../scripts/boot.bif -o boot.bin
+    Host-Xilinx> cd $SAB4Z
+    Host-Xilinx> bootgen -w -image scripts/boot.bif -o build/boot.bin
 
 #### <a name="SDCard"></a>Prepare the MicroSD card
 
 Finally, prepare a MicroSD card with a FAT32 first primary partition (8MB minimum), mount it on your host PC, and copy the different components to it:
 
-    Host> cd $SAB4Z/build
-    Host> cp boot.bin devicetree.dtb <path-to-mounted-sd-card>
-    Host> cp kernel/arch/arm/boot/uImage <path-to-mounted-sd-card>
-    Host> cp rootfs/images/rootfs.cpio.uboot <path-to-mounted-sd-card>/uramdisk.image.gz
+    Host> cd $SAB4Z
+    Host> cp build/boot.bin build/devicetree.dtb build/kernel/arch/arm/boot/uImage <path-to-mounted-sd-card>
+    Host> cp build/rootfs/images/rootfs.cpio.uboot <path-to-mounted-sd-card>/uramdisk.image.gz
     Host> sync
     Host> umount <path-to-mounted-sd-card>
 
@@ -873,7 +872,7 @@ Another option is to add a udev rule to create the serial device with read/write
 
 #### <a name="AXI"></a>AXI bus protocol
 
-AXI (AMBA-4) is a bus protocol created by the [ARM company](http://www.arm.com/). It is an open standard frequently encountered in System-on-Chips. It is used to interconnect components and comes in different flavours, depending on the specific communication needs of the participants. The Xilinx Zynq cores use the AXI protocol to interconnect the Processing System (PS, with the ARM processor and its peripherals) and the Programmable Logic (PL, the FPGA part of the core). More information on the AXI bus protocol can be found on [ARM web site](http://www.arm.com/). More information the Zynq architecture can be found on [Xilinx web site](http://www.xilinx.com/).
+AXI (AMBA-4) is a bus protocol created by [ARM](http://www.arm.com/). It is an open standard frequently encountered in Systems-on-Chips (SoC). It is used to interconnect components and comes in different flavours (lite, regular, stream...), depending on the specific communication needs of the participants. The Xilinx Zynq cores use the AXI protocol to interconnect the Processing System (the ARM processor plus its peripherals) and the Programmable Logic (the FPGA part of the core). More information on the AXI bus protocol can be found on [ARM web site](http://www.arm.com/). More information the Zynq architecture can be found on [Xilinx web site](http://www.xilinx.com/).
 
 #### <a name="DeviceTree"></a>Device tree
 
