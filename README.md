@@ -17,6 +17,7 @@ Please signal errors and send suggestions for improvements to renaud.pacalet@tel
     * [Build the hardware dependant software](#SDK)
 * [Going further](#Further)
     * [Set up a network interface between host and Zybo](#Networking)
+    * [Transfer files from host PC to Zybo without a network interface](#FileTransfer)
     * [Run a user application on the Zybo](#UserApp)
     * [Debug a user application with gdb](#UserAppDebug)
     * [Access SAB4Z from a user application on the Zybo](#SAB4ZSoft)
@@ -110,7 +111,7 @@ Accesses to the unmapped region of the S0_AXI `[1G+8..2G[` address space raise D
 
 # <a name="Archive"></a>Install from the archive
 
-In the following `Host>` is the host PC shell prompt and `Sab4z>` is the Zybo shell prompt. Code blocks without a prompt are commands outputs, excerpts of configuration files or configuration menus.
+In the following `Host>` is the host PC shell prompt and `Sab4z>` is the Zybo shell prompt. Code blocks without a prompt are commands outputs, excerpts of configuration files or configuration menus. On the host some actions must be run as root. They will be indicated with the `Host#` prompt.
 
 Download the archive, insert a MicroSD card in your card reader and unpack the archive to it:
 
@@ -217,7 +218,7 @@ The embedded system world sometimes looks overcomplicated to non-specialists. Bu
 
 **Important**: the Xilinx initialization script redefines the LD_LIBRARY_PATH environment variable to point to Xilinx shared libraries. A consequence is that many utilities on your host PC will crash with more or less accurate error messages. To avoid this, run the Xilinx tools in a separate, dedicated shell. In the following we will use the `Host-Xilinx>` shell prompt to distinguish this dedicated shell form the regular ones.
 
-**Important**: the instructions bellow introduce new concepts one after the other, with the advantage that for any given goal the number of actions to perform is limited and each action is easier to understand. The drawback is that, each time we introduce a new concept, we will have to re-configure, re-build and re-install one or several components. In certain circumstances (like, for instance, when re-configuring the Buildroot tool chain) such a move will take several minutes or even worse. Just the once will not hurt, the impatient should thus read the complete document before she starts following the instructions.
+**Important**: the instructions bellow introduce new concepts one after the other, with the advantage that for any given goal the number of actions to perform is limited and each action is easier to understand. The drawback is that, each time we introduce a new concept, we will have to reconfigure, rebuild and reinstall one or several components. In certain circumstances (like, for instance, when reconfiguring the Buildroot tool chain) such a move will take several minutes or even worse. Just the once will not hurt, the impatient should thus read the complete document before she starts following the instructions.
 
 **Important**: the Linux repository, the Buildroot repository and the directory in which we will build all components (`$SAB4Z/build`) occupy several GB of disk space each. Carefully select where to install them.
 
@@ -290,7 +291,7 @@ Quit (save when asked). The overlay directory that we specified will be incorpor
     Host> echo "export PS1='Sab4z> '" > overlays/etc/profile.d/prompt.sh
     Host> make
 
-**Note**: the first build takes some time, especially because Buildroot must first build the toolchain for ARM targets, but most of the work will not have to be redone if we later change the configuration and re-build (unless we change the configuration of the Buildroot tool chain, in which case we will have to re-build everything).
+**Note**: the first build takes some time, especially because Buildroot must first build the toolchain for ARM targets, but most of the work will not have to be redone if we later change the configuration and rebuild (unless we change the configuration of the Buildroot tool chain, in which case we will have to rebuild everything).
 
 The generated root file system is available in different formats in `$SAB4Z/build/rootfs/images/`:
 
@@ -308,7 +309,7 @@ The generated root file system is available in different formats in `$SAB4Z/buil
 **Note**: Buildroot also built applications for the host PC that we will need later:
 
 * a complete toolchain (cross-compiler, debugger...) for the ARM processor of the Zybo,
-* dtc, a device tree compiler (more on this later),
+* dtc, a [device tree](#DeviceTree) compiler (more on this later),
 * mkimage, a utility used to create images for U-Boot (and that the build system used to create `$SAB4Z/build/rootfs/images/rootfs.cpio.uboot`).
 
 They are in `$SAB4Z/build/rootfs/host/usr/bin`. Add this directory to your PATH and define the CROSS_COMPILE environment variable (note the trailing hyphen):
@@ -432,7 +433,7 @@ Again, the result of U-Boot build is available in different formats. The one we 
 
 Do not start this part before the [hardware synthesis finishes](#Synthesis) finishes and the [toolchain](#RootFS) is built: they are needed.
 
-#### <a name="DTS"></a>Linux kernel [device tree](#DeviceTree)
+#### <a name="DTS"></a>Linux kernel device tree
 
 SAB4Z comes with a Makefile and a TCL script that automate the generation of device tree sources using the Xilinx hsi utility, the clone of the git repository of Xilinx device trees (`<some-path>/device-tree-xlnx`) and the description of our hardware design that was generated during the hardware synthesis (`$SAB4Z/build/vv/top.runs/impl_1/top_wrapper.sysdef`). Generate the default device tree sources for our hardware design for the Zybo:
 
@@ -480,21 +481,47 @@ Eject the MicroSD card, plug it in the Zybo and power on.
 
 ## <a name="Networking"></a>Set up a network interface between host and Zybo
 
-The serial interface that we use to interact with the Zybo is limited both in terms of bandwidth and functionality. Transferring files between the host and the Zybo, for instance, even if not impossible (see the [note about files transfers between host and target](doc/files_transfers.md)) is overcomplicated. This section will show you how to set up a much more powerful and convenient network interface between host and Zybo. In order to do this we will connect the board to a wired network using an Ethernet cable. Note that if you do not have a wired network or if, for security reasons, you cannot use your existing wired network, it is possible to create a point-to-point Ethernet network between your host and the board. Under GNU/Linux, dnsmasq (http://www.thekelleys.org.uk/dnsmasq/doc.html) is a very convenient way to do this. It even allows to share the wireless connection of a laptop with the board. In the following we assume that the host and the Zybo can communicate.
+The serial interface that we use to interact with the Zybo is limited both in terms of bandwidth and functionality. Transferring files between the host and the Zybo, for instance, even if [not impossible](#FileTransfer) through the serial interface is overcomplicated. This section will show you how to set up a much more powerful and convenient network interface between host and Zybo. In order to do this we will connect the board to a wired network using an Ethernet cable. Note that if you do not have a wired network or if, for security reasons, you cannot use your existing wired network, it is possible to create a point-to-point Ethernet network between your host and the board. Under GNU/Linux, dnsmasq (http://www.thekelleys.org.uk/dnsmasq/doc.html) is a very convenient way to do this. It even allows to share the wireless connection of a laptop with the board. To install dnsmasq on Debian:
 
-We will first add dropbear, a tiny ssh server, to our root file system. It will allow us to connect to the Zybo from the host using a ssh client. We will also have to install ssh keys on the host and on the Zybo.
+    Host# apt-get install dnsmasq
 
+To configure dnsmasq you will need the Ethernet MAC address of your board. Connect the Zybo to the host with the USB cable, power it up, launch your terminal emulator and hit a key to stop the U-Boot countdown.
 
- In the following we assume that the Zybo board is connected to the network and that its hostname is sab4z.
+    Host> picocom -b115200 -fn -pn -d8 -r -l /dev/ttyUSB1
+    ...
+    Hit any key to stop autoboot:  0
+    Zynq> printenv ethaddr
+    ethaddr=00:0a:35:00:01:81
 
-Next, let us install our ssh public key on the Zybo. Assuming our public key is `~/.ssh/id_rsa.pub`, we can add it to the Buildroot overlays:
+**Note**: if you have not been fast enough to stop the U-Boot countdown, simply wait until the Linux kernel boots, log in as root and reboot.
 
-    Host> cd $BUILDROOT
-    Host> mkdir -p build/overlays/root/.ssh
-    Host> cp ~/.ssh/id_rsa.pub build/overlays/root/.ssh/authorized_keys
-    Host> make O=build
+Note the Ethernet MAC address (`00:0a:35:00:01:81` in our example). Create a dnsmasq configuration file for the Zybo (replace the Ethernet MAC address by the one you noted and the interface and IP address by whatever suits you best), add a new entry in `/etc/hosts` and force dnsmasq to reload its configuration:
 
-Mount the MicroSD card on your host PC, copy the new root file system image on it, unmount and eject the MicroSD card, plug it in the Zybo, power on and try to connect from the host to force the generation of a first ECDSA host key on the Zybo:
+    Host# cat <<! > /etc/dnsmasq.d/sab4z.conf
+    interface=eth0
+    dhcp-host=00:0A:35:00:01:81,sab4z,10.42.0.129,infinite
+    !
+    Host# echo "10.42.0.129    sab4z" >> /etc/hosts
+    Host# /etc/init.d/dnsmasq reload
+
+From now on we consider that the host and the Zybo can be connected on the same wired network, either because you installed and configured dnsmaqs properly or because you had another solution. We also consider that the host knows the Zybo under the sab4z hostname. The next step is to add dropbear, a tiny ssh server, to our root file system and enable the networking. This will allow us to connect to the Zybo from the host using a ssh client.
+
+    Host> cd $SAB4Z/build/rootfs
+    Host> make menuconfig
+
+In the Buildroot configuration menus change the following options
+
+    System configuration -> Network interface to configure through DHCP -> eth0
+    Target packages -> Networking applications -> dropbear -> yes
+
+By default, for security reasons, the board will reject ssh connections for user root. Let us copy our host ssh public key to the Zybo such that we can connect as root on the Zybo, from the host, without password. If you do not have a ssh key already, generate one first with ssh-keygen. Assuming our public key on the host is `~/.ssh/id_rsa.pub`, add it to the Buildroot overlays and rebuild the root file system:
+
+    Host> cd $SAB4Z/build/rootfs
+    Host> mkdir -p overlays/root/.ssh
+    Host> cp ~/.ssh/id_rsa.pub overlays/root/.ssh/authorized_keys
+    Host> make
+
+Mount the MicroSD card on your host PC, copy the new root file system image on it, unmount and eject the MicroSD card, plug it in the Zybo, power on and try to connect from the host:
 
     Host> ssh root@sab4z
     The authenticity of host 'sab4z (<no hostip for proxy command>)' can't be established.
@@ -504,21 +531,21 @@ Mount the MicroSD card on your host PC, copy the new root file system image on i
     Sab4z> ls /etc/dropbear
     dropbear_ecdsa_host_key
 
-Copy the generated ECDSA host key to the Buildroot overlays, such that the authentification of the Zybo becomes persistent accross reboot:
+A ECDSA host key has been automatically generated on the Zybo, sent back to the host for confirmation and, as we accepted it, has been added to the list of known hosts that we trust. Unfortunately, our root file system is initramfs and thus non persistent accross reboot. Next time, a new ECDSA host key will be generated and it will be different, forcing us to delete the old one and add the new one to the list of known hosts. To avoid this, let us copy the generated ECDSA host key to the Buildroot overlays, such that the authentification of the Zybo becomes persistent accross reboot:
 
-    Host> cd $BUILDROOT
-    Host> mkdir -p build/overlays/etc/dropbear
-    Host> scp root@sab4z:/etc/dropbear/dropbear_ecdsa_host_key build/overlays/etc/dropbear
-    Host> make O=build
+    Host> cd $SAB4Z/build/rootfs
+    Host> mkdir -p overlays/etc/dropbear
+    Host> scp root@sab4z:/etc/dropbear/dropbear_ecdsa_host_key overlays/etc/dropbear
+    Host> make
 
-Mount the MicroSD card on the Zybo:
+Let us use our new network interface to copy the root file system directly on the MicroSD card on the Zybo. First mount the MicroSD card on the Zybo:
 
     Sab4z> mount /dev/mmcblk0p1 /mnt
 
 Use the network link to transfer the new root file system to the MicroSD card on the Zybo:
 
-    Host> cd $BUILDROOT
-    Host> scp build/images/rootfs.cpio.uboot root@sab4z:/mnt/uramdisk.image.gz
+    Host> cd $SAB4Z
+    Host> scp build/rootfs/images/rootfs.cpio.uboot root@sab4z:/mnt/uramdisk.image.gz
 
 Finally, on the Zybo, unmount the MicroSD card and reboot:
 
@@ -527,73 +554,124 @@ Finally, on the Zybo, unmount the MicroSD card and reboot:
 
 We should now be able to ssh or scp from host to Zybo without password.
 
-## <a name="UserApp"></a>Create, compile and run a user software application
+**Note**: if needed, for instance to avoid conflicts, you can change the Ethernet MAC address of your Zybo from the U-Boot command line:
 
-Do not start this part before the [toolchain](#RootFS) is built: it is needed.
+    Host> picocom -b115200 -fn -pn -d8 -r -l /dev/ttyUSB1
+    ...
+    Hit any key to stop autoboot:  0
+    Zynq> printenv ethaddr
+    ethaddr=00:0a:35:00:01:81
+    Zynq> setenv ethaddr aa:bb:cc:dd:ee:ff
+    Zynq> saveenv
+    Saving Environment to SPI Flash...
+    SF: Detected S25FL128S_64K with page size 256 Bytes, erase size 64 KiB, total 16 MiB
+    Erasing SPI flash...Writing to SPI flash...done
 
-The `C` sub-directory contains a very simple example C code `hello_world.c` that prints a welcome message, waits 2 seconds, prints a good bye message and exits. Cross-compile it on your host PC:
+The new Ethernet MAC address has been changed and stored in the on-board SPI Flash memory, from where it will be read again by U-Boot the next time we reboot the board.
 
-    Host> cd $SAB4Z/C
-    Host> ${CROSS_COMPILE}gcc -o hello_world hello_world.c
+## <a name="FileTransfer"></a>Transfer files from host PC to Zybo without a network interface
 
-The only thing to do next is transfer the `hello_world` binary on the Zybo and execute it. There are several ways to transfer a file from the host PC to the Zybo. The most convenient, of course, is a network interface but in case none is available, here are several other options.
+A network interface should always be preferred to transfer files from the host to the Zybo: it is fast, reliable and it avoids manipulating the delicate MicroSD card. Here are several alternate ways, in case you cannot set up a network interface between your host and the Zybo.
 
-#### <a name="SDTransfer"></a>Transfer files from host PC to Zybo on MicroSD card
+#### <a name="SDTransfer"></a>Use the MicroSD card
 
-Mount the MicroSD card on your host PC, copy the `hello_world` executable on it, unmount and eject the MicroSD card, plug it in the Zybo, power on and connect as root. Mount the MicroSD card and run the application:
+Mount the MicroSD card on your host PC, copy the files to transfer on it, unmount and eject the MicroSD card:
+
+    Host> cp foo <path-to-mounted-sd-card>
+    Host> umount <path-to-mounted-sd-card>
+
+Plug the MicroSD card in the Zybo, power on, connect as root and mount the MicroSD card:
 
     Sab4z> mount /dev/mmcblk0p1 /mnt
-    Sab4z> /mnt/hello_world
-    Hello SAB4Z
-    Bye! SAB4Z
+    Sab4z> ls /mnt
+    foo
+
+Do not forget to unmount the MicroSD card before shutting down:
+
+    Sab4z> umount /mnt
+    Sab4z> poweroff
 
 #### <a name="Overlays"></a>Add custom files to the root file system
 
-Another possibility is offered by the overlay feature of Buildroot which allows to embed custom files in the generated root file system. Add the `hello_world` binary to the `/opt` directory of the root file system and re-build the root file system:
+Another possibility is offered by the overlay feature of Buildroot which allows to embed custom files in the generated root file system. Add the files to transfer to the overlay and rebuild the root file system:
 
-    Host> cd $BUILDROOT
-    Host> mkdir -p build/overlays/opt
-    Host> cp $SAB4Z/C/hello_world build/overlays/opt
-    Host> make O=build
-    Host> cp $BUILDROOT/build/images/rootfs.cpio.uboot $SAB4Z/build/uramdisk.image.gz
+    Host> cd $SAB4Z/build/rootfs
+    Host> mkdir -p overlays/tmp
+    Host> cp foo overlays/tmp
+    Host> make
 
-Mount the MicroSD card on your host PC, copy the new root file system image on it, unmount and eject the MicroSD card, plug it in the Zybo, power on and connect as root. Run the application located in `/opt` without mounting the MicroSD card:
+Mount the MicroSD card on your host PC, copy the new root file system image on it:
 
-    Sab4z> /opt/hello_world
-    Hello SAB4Z
-    Bye! SAB4Z
+    Host> cp $SAB4Z/build/rootfs/images/rootfs.cpio.uboot <path-to-mounted-sd-card>/uramdisk.image.gz
+
+Unmount and eject the MicroSD card, plug it in the Zybo, power on and connect as root:
+
+    Sab4z> ls /tmp
+    foo
 
 #### <a name="RX"></a>File transfer on the serial link
 
-The drawback of the two previous solutions is the MicroSD card manipulations. There is a way to transfer files from the host PC to the Zybo using the serial interface. We will use the Busybox rx utility on the Zybo side and the sx utility, plus a serial console utility that supports file transfers with sx (like picocom, for instance). Launch picocom, with the `--send-cmd "sx" --receive-cmd "rx"` options, launch `rx <destination-file>` on the Zybo, press `C-a C-s` (control-a control-s) to instruct picocom to send a file from the host PC to the Zybo and provide the name of the file to send:
+The drawback of the two previous solutions is the MicroSD card manipulations. There is a way to transfer files from the host PC to the Zybo using the serial interface. On the Zybo side we will use the Busybox rx utility. As it is not enabled by default, we will first reconfigure and rebuild our root file system:
 
-    Host> cd $SAB4Z/C
+    Host> cd $SAB4Z/build/rootf
+    Host> make busybox-menuconfig
+
+In the Busybox configuration menus change the following option:
+
+    Miscellaneous Utilities -> rx -> yes
+
+Quit (save when asked), rebuild, mount the MicroSD card on the host, copy the new root file system image, unmount and eject the MicroSD card, plug it in the Zybo and power on:
+
+    Host> cd $SAB4Z/build/rootf
+    Host> make
+    ...
+    Host> cp $SAB4Z/build/rootfs/images/rootfs.cpio.uboot <path-to-mounted-sd-card>/uramdisk.image.gz
+    Host> umount <path-to-mounted-sd-card>
+
+On the host side we will use the sx utility. If it is not already, install it first - it is provided by the lrzsz Debian package. Launch picocom, with the `--send-cmd "sx" --receive-cmd "rx"` options, launch `rx <destination-file>` on the Zybo, press `C-a C-s` (control-a control-s) to instruct picocom to send a file from the host PC to the Zybo and provide the name of the file to send:
+
     Host> picocom -b115200 -fn -pn -d8 -r -l --send-cmd "sx" --receive-cmd "rx" /dev/ttyUSB1
-    Sab4z> rx /opt/hello_world
+    Sab4z> rx /tmp/foo
     C
-    *** file: hello_world
-    sx hello_world 
-    Sending hello_world, 51 blocks: Give your local XMODEM receive command now.
+    *** file: foo
+    sx foo
+    Sending foo, 51 blocks: Give your local XMODEM receive command now.
     Bytes Sent:   6656   BPS:3443                            
     
     Transfer complete
     
     *** exit status: 0
-
-After the transfer completes, change the file's mode to executable and run the application:
-
-    Sab4z> chmod +x /opt/hello_world
-    Sab4z> /opt/hello_world
-    Hello SAB4Z
-    Bye! SAB4Z
+    Sab4z> ls /tmp
+    foo
 
 **Note**: this transfer method is not very reliable. Avoid using it on large files: the probability that a transfer fails increases with its length.
+
+## <a name="UserApp"></a>Create, compile and run a user software application
+
+Do not start this part before the [toolchain](#RootFS) is built: it is needed.
+
+The `C` sub-directory contains a very simple example C code `hello_world.c` that prints a welcome message, computes and prints the sum of the 100 first integers, waits 2 seconds, prints a good bye message and exits. Cross-compile it on your host PC:
+
+    Host> cd $SAB4Z/C
+    Host> ${CROSS_COMPILE}gcc -o hello_world hello_world.c
+
+The only thing to do next is transfer the `hello_world` binary on the Zybo (using the [network interface](#Networking) or [another method](#FileTransfer) and execute it.
+
+    Host> cd $SAB4Z/C
+    Host> scp hello_world root@sab4z:
+    Host> ssh root@sab4z
+    Sab4z> ls
+    hello_world
+    Sab4z> ./hello_world 
+    Hello SAB4Z
+    sum_{i=0}^{i=100}{i}=5050
+    Bye! SAB4Z
 
 ## <a name="UserAppDebug"></a>Debug a user application with gdb
 
 In order to debug our simple user application while it is running on the target we will need a [network interface between the host PC and the Zybo](#Networking). In the following we assume that the Zybo board is connected to the network and that its hostname is sab4z.
 
-Recompile the use application with debug information added, copy the binary to the Zybo and launch gdbserver on the Zybo:
+Recompile the user application with debug information added, copy the binary to the Zybo and launch gdbserver on the Zybo:
 
     Host> cd $SAB4Z/C
     Host> ${CROSS_COMPILE}gcc -g3 -o hello_world hello_world.c
@@ -743,12 +821,12 @@ There is a way to use more DDR than 384MB. This involves a hardware modification
 
 Xilinx tools offer several ways to debug the hardware mapped in the PL. One uses Integrated Logic Analyzers (ILAs), hardware blocks that the tools automatically add to the design and that monitor internal signals. The tools running on the host PC communicate with the ILAs in the PL. Triggers can be configured to start / stop the recording of the monitored signals and the recorded signals can be displayed as waveforms.
 
-The provided synthesis script and Makefile have options to embed one ILA core to monitor all signals of the M_AXI interface of SAB4Z. The only thing to do is re-run the synthesis:
+The provided synthesis script and Makefile have options to embed one ILA core to monitor all signals of the M_AXI interface of SAB4Z. The only thing to do is rerun the synthesis:
 
     Host-Xilinx> cd $SAB4Z
     Host-Xilinx> make ILA=1 vv-clean vv-all
 
-and re-generate the boot image:
+and regenerate the boot image:
 
     Host-Xilinx> cd $SAB4Z
     Host-Xilinx> bootgen -w -image scripts/boot.bif -o build/boot.bin
@@ -770,9 +848,6 @@ Analyse the complete AXI transaction in the `Waveform` sub-window of Vivado. **N
 * build (for the host PC) the gdb cross debugger with TUI and python support,
 * embed a tiny gdb server,
 
-* enable networking,
-* embed dropbear, a tiny ssh server,
-
 * embed a disk partitioning tool,
 
     System configuration -> Network interface to configure through DHCP -> eth0
@@ -784,16 +859,7 @@ Analyse the complete AXI transaction in the `Waveform` sub-window of Vivado. **N
     Target packages -> Debugging, profiling and benchmark -> gdb -> yes
     Target packages -> Hardware handling -> gptfdisk -> yes
     Target packages -> Networking applications -> dropbear -> yes
- Let us now configure Busybox to enable the rx utility that we will need later:
-
-    Host> cd $BUILDROOT
-    Host> make O=build busybox-menuconfig
-
-In the Busybox configuration menus change the following option:
-
-    Miscellaneous Utilities -> rx -> yes
-
-Quit (save when asked), --->
+--->
 <!---
 ## <a name="LinuxDriver"></a>Add a Linux driver for SAB4Z
 
@@ -864,7 +930,7 @@ Of course, you could work as root but this is never a good solution. A better on
 
     Host> sudo adduser mary dialout
 
-Another option is to add a udev rule to create the serial device with read/write permissions for all users. As root, create a `/etc/udev/rules.d/99-zybo.rules` file containing:
+Another option is to add a udev rule to create the serial device with read/write permissions for all users. As root, create a `/etc/udev/rules.d/99-ft2232h.rules` file containing:
 
     SUBSYSTEMS=="usb", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6010", MODE="0666"
 
