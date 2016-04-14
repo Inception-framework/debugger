@@ -64,6 +64,7 @@ http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.txt
         ├── boot.bif            Zynq Boot Image description File
         ├── dts.tcl             TCL script for device tree generation
         ├── fsbl.tcl            TCL script for FSBL generation
+        ├── ila.tcl             TCL script for ILA debug cores
         ├── uEnv.txt            Definitions of U-Boot environment variables
         └── vvsyn.tcl           Vivado TCL synthesis script
 
