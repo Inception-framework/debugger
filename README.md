@@ -242,7 +242,7 @@ First define shell environment variables pointing to the local copies of the var
     Host> SAB4Z=<some-path>/sab4z            # 3GB after all builds
     Host> XLINUX=<some-path>/linux-xlnx      # 2.3GB
     Host> XUBOOT=<some-path>/u-boot-xlnx     # 240MB
-    Host> XDTS=<some-path>/device-tree-xlnxA # 3MB
+    Host> XDTS=<some-path>/device-tree-xlnx  # 3MB
     Host> BUILDROOT=<some-path>/buildroot    # 200MB
 
 Clone all components from their respective git repositories:
