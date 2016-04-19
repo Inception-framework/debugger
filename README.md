@@ -237,13 +237,16 @@ The embedded system world sometimes looks overcomplicated to non-specialists. Bu
 
 ## <a name="BuildDownloads"></a>Downloads
 
-Clone all components from their respective git repositories and define shell environment variables pointing to their local copies:
+First define shell environment variables pointing to the local copies of the various git repositories we need. Their approximate respective sizes are provided in comments to help you deciding where to put them. Note that they will potentially grow a bit each time you will pull the last commits from the remote repositories. Note also that we will build everything in a sub-directory of `$SAB4Z` and that the total size of the build is about 3GB.
 
-    Host> SAB4Z=<some-path>/sab4z
-    Host> XLINUX=<some-path>/linux-xlnx
-    Host> XUBOOT=<some-path>/u-boot-xlnx
-    Host> XDTS=<some-path>/device-tree-xlnx
-    Host> BUILDROOT=<some-path>/buildroot
+    Host> SAB4Z=<some-path>/sab4z            # 3GB after all builds
+    Host> XLINUX=<some-path>/linux-xlnx      # 2.3GB
+    Host> XUBOOT=<some-path>/u-boot-xlnx     # 240MB
+    Host> XDTS=<some-path>/device-tree-xlnxA # 3MB
+    Host> BUILDROOT=<some-path>/buildroot    # 200MB
+
+Clone all components from their respective git repositories:
+
     Host> git clone https://gitlab.eurecom.fr/renaud.pacalet/sab4z.git $SAB4Z
     Host> git clone https://github.com/Xilinx/linux-xlnx.git $XLINUX
     Host> git clone https://github.com/Xilinx/u-boot-xlnx.git $XUBOOT
@@ -292,6 +295,7 @@ Then, customize the default configuration to:
 In the Buildroot configuration menus change the following options:
 
     Build options -> Enable compiler cache -> yes
+    Build options -> Download dir -> $(BR2_EXTERNAL)/dl
     System configuration -> System hostname -> sab4z
     System configuration -> System banner -> Welcome to SAB4Z (c) Telecom ParisTech
     System configuration -> Root filesystem overlay directories -> $(BR2_EXTERNAL)/overlays
