@@ -1100,7 +1100,7 @@ The new Ethernet MAC address has been changed and stored in the on-board SPI Fla
 
 #### <a name="TipsNcore"></a>Select the value to pass to the make `-j` option depending on the characteristics of your host (number of physical / logical cores)
 
-The `-jN` option (or, equivalently, `--jobs=N`) of make, where `N` is an integer, tells make to launch up to `N` jobs in parallel. The default is 1, meaning that make will always wait for the completion of the current job before launching another one. On multi-core CPU architectures this option can really make a difference on the total time taken by make. Under GNU/Linux use the lscpu utility to discover how many cores your CPU has and set the `-jN` option accordingly. If your CPU architecture supports hyperthreading (two logical cores per physical core) and if your machine is not heavily loaded by other tasks you can even double that number. Examples:
+The `-jN` option (or, equivalently, `--jobs=N`) of make, where `N` is an integer, tells make to launch up to `N` jobs in parallel. The default is 1, meaning that make will always wait for the completion of the current job before launching another one. On multi-core architectures this option can really make a difference on the total time taken by make. Under GNU/Linux use the lscpu utility to discover how many cores your machine has and set the `-jN` option accordingly. If your architecture supports hyperthreading (two logical cores per physical core) and if your machine is not heavily loaded by other tasks you can even double that number. Examples:
 
     Host> lscpu
     Architecture:          x86_64
