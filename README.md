@@ -1018,13 +1018,9 @@ Debug kernel module
 
 # <a name="Problems"></a>Common problems
 
-#### <a name="ProblemsCharDevAccessRights"></a>Character device access rights
+#### <a name="ProblemsCharDevAccessRights"></a>FATAL: cannot open /dev/ttyUSB1: Permission denied
 
-If, when launching your [terminal emulator](#GlossaryTerminalEmulator), you get error messages like:
-
-    FATAL: cannot open /dev/ttyUSB1: Permission denied
-
-it is probably because the [character device](#GlossaryFt2232hCharDev) that was created when the FT2232H chip was discovered was created with limited access rights:
+If, when launching your [terminal emulator](#GlossaryTerminalEmulator), you get this error message, it is probably because the [character device](#GlossaryFt2232hCharDev) that was created when the FT2232H chip was discovered was created with limited access rights:
 
     Host> ls -l /dev/ttyUSB1
     crw-rw---- 1 root dialout 188, 1 Apr 11 14:53 /dev/ttyUSB1 
@@ -1068,7 +1064,7 @@ Redefine the variable without the `.`:
 
 #### <a name="ProblemsUbootEvp"></a>fatal error: openssl/evp.h: No such file or directory
 
-U-Boot is configured in such a way that its compilation requires the openssl header files to be installed on your host. Either they are not or the U-Boot build system looked for them in the wrong location. The simplest way to fix this is to configure U-Boot such that it does not need the host openssl any more:
+If you get this error message when building U-Boot, it is probably because U-Boot has been configured in such a way that its compilation requires the openssl header files to be installed on your host. Either they are not or the U-Boot build system looked for them in the wrong location. The simplest way to fix this is to configure U-Boot such that it does not need the host openssl any more:
 
     Host> cd $SAB4Z/build/uboot
     Host> make menuconfig
