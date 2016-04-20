@@ -153,7 +153,11 @@ Eject the MicroSD card.
     sab4z login: root
     Sab4z>
 
+---
+
 **Common problem**: [FATAL: cannot open /dev/ttyUSB1: Permission denied](#ProblemsChaDevAccessRights)
+
+---
 
 #### <a name="RunReadStatus"></a>Read the STATUS register (address `0x4000_0000`)
 
@@ -237,13 +241,13 @@ The embedded system world sometimes looks overcomplicated to non-specialists. Bu
 
 ## <a name="BuildDownloads"></a>Downloads
 
-First define shell environment variables pointing to the local copies of the various git repositories we need. Their approximate respective sizes are provided in comments to help you deciding where to put them. Note that they will potentially grow a bit each time you will pull the last commits from the remote repositories. Note also that we will build everything in a sub-directory of `$SAB4Z` and that the total size of the build is about 3GB.
+First define shell environment variables pointing to the local copies of the various git repositories we need. Their approximate respective sizes are provided in comments to help you deciding where to put them. Note that they will potentially grow a bit each time you will pull the last commits from the remote repositories. Note also that we will build everything in a sub-directory of `$SAB4Z` and that the total size of `$SAB4Z` will increase a lot during the build.
 
-    Host> SAB4Z=<some-path>/sab4z            # 3GB after all builds
+    Host> SAB4Z=<some-path>/sab4z            # 3.3GB after all builds
     Host> XLINUX=<some-path>/linux-xlnx      # 2.3GB
-    Host> XUBOOT=<some-path>/u-boot-xlnx     # 240MB
-    Host> XDTS=<some-path>/device-tree-xlnx  # 3MB
-    Host> BUILDROOT=<some-path>/buildroot    # 200MB
+    Host> XUBOOT=<some-path>/u-boot-xlnx     # 270MB
+    Host> XDTS=<some-path>/device-tree-xlnx  # 2MB
+    Host> BUILDROOT=<some-path>/buildroot    # 170MB
 
 Clone all components from their respective git repositories:
 
@@ -294,8 +298,9 @@ Then, customize the default configuration to:
 
 In the Buildroot configuration menus change the following options:
 
-    Build options -> Enable compiler cache -> yes
     Build options -> Download dir -> $(BR2_EXTERNAL)/dl
+    Build options -> Enable compiler cache -> yes
+    Build options -> Compiler cache location -> $(BR2_EXTERNAL)/.buildroot-ccache
     System configuration -> System hostname -> sab4z
     System configuration -> System banner -> Welcome to SAB4Z (c) Telecom ParisTech
     System configuration -> Root filesystem overlay directories -> $(BR2_EXTERNAL)/overlays
@@ -308,6 +313,14 @@ Quit (save when asked). The overlay directory that we specified will be incorpor
     Host> mkdir -p overlays/etc/profile.d
     Host> echo "export PS1='Sab4z> '" > overlays/etc/profile.d/prompt.sh
     Host> make
+
+---
+
+**Common problem**: [You seem to have the current working directory in your LD_LIBRARY_PATH environment variable. This doesn't work.](#ProblemsBUILDROOTLD_LIBRARY_PATH)
+
+---
+
+**Common problem**: [You seem to have the current working directory in your PATH environment variable. This doesn't work.](#ProblemsBUILDROOTPATH)
 
 ---
 
@@ -358,7 +371,7 @@ Then, build the [kernel](#GlossaryLinuxKernel):
 
 ---
 
-**Note**: select the value to pass to the make `-j` option depending on the characteristics of your host (number of physical / virtual cores).
+**Note**: [select the value to pass to the make `-j` option depending on the characteristics of your host (number of physical / logical cores)](#TipsNcore).
 
 ---
 
@@ -452,7 +465,11 @@ Then, build U-Boot:
 
 ---
 
-**Note**: select the value to pass to the make `-j` option depending on the characteristics of your host (number of physical / virtual cores).
+**Note**: [select the value to pass to the make `-j` option depending on the characteristics of your host (number of physical / logical cores)](#TipsNcore).
+
+---
+
+**Common problem**: [fatal error: openssl/evp.h: No such file or directory](#ProblemsUbootEvp)
 
 ---
 
@@ -1021,6 +1038,50 @@ Another option is to add a udev rule to create the [character device](#GlossaryF
     Host# rule='SUBSYSTEMS=="usb", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6010", MODE="0666"'
     Host# echo $rule > /etc/udev/rules.d/99-ft2232h.rules
 
+#### <a name="ProblemsBUILDROOTLD_LIBRARY_PATH"></a>You seem to have the current working directory in your LD_LIBRARY_PATH environment variable. This doesn't work.
+
+The LD_LIBRARY_PATH environment variable is a colon-separated list of directories where the system searches for C libraries when it needs them. This error message tells you that the LD_LIBRARY_PATH environment variable contains the current working directory (`.`) and that this is not supported by the tool that issued the message. If you look at the value of LD_LIBRARY_PATH:
+
+    Host> printenv LD_LIBRARY_PATH
+    /usr/local/lib:/usr/lib:.:/lib
+
+you may see that it actually contains `.`, but sometimes not:
+
+    Host> printenv LD_LIBRARY_PATH
+    /usr/local/lib:/usr/lib:/lib:
+
+which is quite surprising. The trailing colon, in this second example, is treated as if it were `.`. In the first case, simply redefine the variable without the `.` and , in the second case, remove the trailing `:`:
+
+    Host> export LD_LIBRARY_PATH=/usr/local/lib:/usr/lib:/lib
+
+#### <a name="ProblemsBUILDROOTLDPATH"></a>You seem to have the current working directory in your PATH environment variable. This doesn't work.
+
+The PATH environment variable is a colon-separated list of directories where the system searches for the commands you type. This error message tells you that the PATH environment variable contains the current working directory (`.`) and that this is not supported by the tool that issued the message:
+
+    Host> printenv PATH
+    /usr/local/sbin:/usr/local/bin:/usr/sbin:.:/usr/bin:/sbin:/bin
+
+Redefine the variable without the `.`:
+
+    Host> export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+#### <a name="ProblemsUbootEvp"></a>fatal error: openssl/evp.h: No such file or directory
+
+U-Boot is configured in such a way that its compilation requires the openssl header files to be installed on your host. Either they are not or the U-Boot build system looked for them in the wrong location. The simplest way to fix this is to configure U-Boot such that it does not need the host openssl any more:
+
+    Host> cd $SAB4Z/build/uboot
+    Host> make menuconfig
+
+In the U-Boot configuration menus change the following options:
+
+    Boot images -> Enable signature verification of FIT uImages -> no
+    Library routines -> Use RSA Library -> no
+
+But of course, if you absolutely need these two options, the best workaround is to install the openssl development package on your host. Once you did one or the other, simply relaunch the U-Boot build:
+
+    Host> cd $SAB4Z/build/uboot
+    Host> make -j8
+
 # <a name="Tips"></a>Tips and tricks
 
 #### <a name="TipsChangeEthAddr"></a>Change the Ethernet MAC address of the Zybo
@@ -1039,6 +1100,36 @@ If needed, for instance to avoid conflicts, you can change the Ethernet MAC addr
     Erasing SPI flash...Writing to SPI flash...done
 
 The new Ethernet MAC address has been changed and stored in the on-board SPI Flash memory, from where it will be read again by U-Boot the next time we reboot the board.
+
+#### <a name="TipsNcore"></a>Select the value to pass to the make `-j` option depending on the characteristics of your host (number of physical / logical cores)
+
+The `-jN` option (or, equivalently, `--jobs=N`) of make, where `N` is an integer, tells make to launch up to `N` jobs in parallel. The default is 1, meaning that make will always wait for the completion of the current job before launching another one. On multi-core CPU architectures this option can really make a difference on the total time taken by make. Under GNU/Linux use the lscpu utility to discover how many cores your CPU has and set the `-jN` option accordingly. If your CPU architecture supports hyperthreading (two logical cores per physical core) and if your machine is not heavily loaded by other tasks you can even double that number. Examples:
+
+    Host> lscpu
+    Architecture:          x86_64
+    CPU op-mode(s):        32-bit, 64-bit
+    Byte Order:            Little Endian
+    CPU(s):                4
+    On-line CPU(s) list:   0-3
+    Thread(s) per core:    1
+    Core(s) per socket:    4
+    Socket(s):             1
+    ...
+
+This machine has one processor (`Socket(s)`) with 4 cores (`Core(s) per socket`) but no hyperthreading (`Thread(s) per core`). The `-j4` make option is probably a good choice. While this other one:
+
+    Host> lscpu
+    Architecture:          x86_64
+    CPU op-mode(s):        32-bit, 64-bit
+    Byte Order:            Little Endian
+    CPU(s):                12
+    On-line CPU(s) list:   0-11
+    Thread(s) per core:    2
+    Core(s) per socket:    6
+    Socket(s):             1
+    ...
+
+has one processor with 6 cores and hyperthreading, that is, a total of 12 logical CPUs. The `-j12` is probably the best choice if the machine is not loaded by other heavy tasks but `-j6` may be better if it is. Increasing the value of `N` above the total number of logical cores usually does not provide any benefit.
 
 # <a name="Glossary"></a>Glossary
 
