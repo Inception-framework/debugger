@@ -1037,6 +1037,7 @@ Another option is to add a udev rule to create the [character device](#GlossaryF
 
     Host# rule='SUBSYSTEMS=="usb", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6010", MODE="0666"'
     Host# echo $rule > /etc/udev/rules.d/99-ft2232h.rules
+    Host# udevadm control --reload-rules
 
 #### <a name="ProblemsBUILDROOTLD_LIBRARY_PATH"></a>You seem to have the current working directory in your LD_LIBRARY_PATH environment variable. This doesn't work.
 
