@@ -155,7 +155,7 @@ Eject the MicroSD card.
 
 ---
 
-**Common problem**: [FATAL: cannot open /dev/ttyUSB1: Permission denied](#ProblemsChaDevAccessRights)
+**Common problem**: [FATAL: cannot open /dev/ttyUSB1: Permission denied](#ProblemsCharDevAccessRights)
 
 ---
 
