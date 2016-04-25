@@ -257,6 +257,11 @@ Clone all components from their respective git repositories:
     Host> git clone http://github.com/Xilinx/device-tree-xlnx.git $XDTS
     Host> git clone http://git.buildroot.net/git/buildroot.git $BUILDROOT
 
+---
+
+**Common problem**: [server certificate verification failed.](#ProblemsServerCertificate)
+
+---
 ## <a name="BuildSynthesis"></a>Hardware synthesis
 
 The hardware synthesis produces a bitstream file from the VHDL source code (in `$SAB4Z/hdl`). It is done by the Xilinx Vivado tools. SAB4Z comes with a Makefile and a synthesis script that automate the synthesis:
@@ -1096,7 +1101,31 @@ But of course, if you absolutely need these two options, the best workaround is 
     Host> cd $SAB4Z/build/uboot
     Host> make -j8
 
-# <a name="Tips"></a>Tips and tricks
+### <a name="ProblemsServerCertificate"></a>server certificate verification failed
+
+This error message indicates that the verification of the SSL certificate of the remote git server failed. For security reasons git refuses to perform the action you requested because there is a risk that the server is not what you think and you are under attack. This can be caused by the current date/time of your own computer being out of sync: the certificates verification uses the time:
+
+    Host> date
+    Mon 25 Apr 08:49:33 CEST 1983
+
+If you are out of sync, fix the problem. It can also be that your computer does not trust the SSL certificate of the remote git server, either because it is self-signed or because it was issued by a Certification Authority (CA) but the CA's certificate is not installed on your host. Or the certificate of the CA of the CA. Or...
+
+To investigate more and fix this on the long term, you can fetch the server's certificates and understand why they are not trusted by your host:
+
+    Host> openssl s_client -CApath <path-to-local-certificates> -showcerts -connect <server>:<port>
+
+Example on a Debian host (the certificates you trust are in `/etc/ssl/certs`), for the SAB4Z gitlab server (`gitlab.eurecom.fr) using https (port `443`):
+
+    Host> openssl s_client -CApath /etc/ssl/certs -showcerts -connect gitlab.eurecom.fr:443
+    CONNECTED(00000003)
+    depth=2 C = US, O = DigiCert Inc, OU = www.digicert.com, CN = DigiCert High Assurance EV Root CA
+    ...
+
+**Note**: you can temporarily disable the certificate checking with:
+
+    Host> GIT_SSL_NO_VERIFY=1 git clone <remote repository> <local destination>
+
+But of course, this is not the recommended way to fix this security problem. Use this quick and dirty workaround just to check that the problem is really this one and do not trust what you fetched without SSL certificates verification.
 
 ### <a name="TipsChangeEthAddr"></a>Change the Ethernet MAC address of the Zybo
 
