@@ -1103,12 +1103,11 @@ But of course, if you absolutely need these two options, the best workaround is 
 
 ### <a name="ProblemsServerCertificate"></a>server certificate verification failed
 
-This error message indicates that the verification of the SSL certificate of the remote git server failed. For security reasons git refuses to perform the action you requested because there is a risk that the server is not what you think and you are under attack. This can be caused by the current date/time of your own computer being out of sync: the certificates verification uses the time:
+This error message indicates that the verification of the SSL certificate of the remote git server failed. For security reasons git refuses to perform the action you requested because there is a risk that the server is not what you think and you are under attack.
 
-    Host> date
-    Mon 25 Apr 08:49:33 CEST 1983
+This can be caused by the current date/time of your own computer being out of sync: the certificates verification uses the time. Under GNU/Linux use the date command (or the equivalent under other OSes) to check the current date and time of your host and, if you are out of sync, fix the problem.
 
-If you are out of sync, fix the problem. It can also be that your computer does not trust the SSL certificate of the remote git server, either because it is self-signed or because it was issued by a Certification Authority (CA) but the CA's certificate is not installed on your host. Or the certificate of the CA of the CA. Or...
+It can also be that your computer does not trust the SSL certificate of the remote git server, either because it is self-signed or because it was issued by a Certification Authority (CA) but the CA's certificate is not installed on your host. Or the certificate of the CA of the CA. Or...
 
 To investigate more and fix this on the long term, you can fetch the server's certificates and understand why they are not trusted by your host:
 
