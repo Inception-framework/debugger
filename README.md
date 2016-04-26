@@ -262,6 +262,7 @@ Clone all components from their respective git repositories:
 **Common problem**: [server certificate verification failed.](#ProblemsServerCertificate)
 
 ---
+
 ## <a name="BuildSynthesis"></a>Hardware synthesis
 
 The hardware synthesis produces a bitstream file from the VHDL source code (in `$SAB4Z/hdl`). It is done by the Xilinx Vivado tools. SAB4Z comes with a Makefile and a synthesis script that automate the synthesis:
@@ -269,6 +270,12 @@ The hardware synthesis produces a bitstream file from the VHDL source code (in `
     Host-Xilinx> SAB4Z=<some-path>/sab4z
     Host-Xilinx> cd $SAB4Z
     Host-Xilinx> make vv-all
+
+---
+
+**Common problem**: [ERROR: [Board 49-71] The board_part definition was not found for digilentinc.com:zybo:part0:1.0.](#ProblemsZyboBoardNotFound)
+
+---
 
 The generated bitstream is `$SAB4Z/build/vv/top.runs/impl_1/top_wrapper.bit`. This binary file is used to configure the FPGA part of the Zynq core of the Zybo board such that it implements our VHDL design. A binary description of our hardware design is also available in `$SAB4Z/build/vv/top.runs/impl_1/top_wrapper.sysdef`. It is not human-readable but we will use it later to generate the [device tree](#GlossaryDeviceTree) sources and the [First Stage Boot Loader](#GlossaryFsbl) (FSBL) sources.
 
@@ -1125,6 +1132,10 @@ Example on a Debian host (the certificates you trust are in `/etc/ssl/certs`), f
     Host> GIT_SSL_NO_VERIFY=1 git clone <remote repository> <local destination>
 
 But of course, this is not the recommended way to fix this security problem. Use this quick and dirty workaround just to check that the problem is really this one and do not trust what you fetched without SSL certificates verification.
+
+### <a name="#ProblemsZyboBoardNotFound"></a>[ERROR: [Board 49-71] The board_part definition was not found for digilentinc.com:zybo:part0:1.0.](#ProblemsZyboBoardNotFound)
+
+The configuration files for the Zybo board are not properly installed on your Vivado installation. Download and install them according to the [instructions by Digilent](https://reference.digilentinc.com/vivado:boardfiles).
 
 ### <a name="TipsChangeEthAddr"></a>Change the Ethernet MAC address of the Zybo
 
