@@ -1113,7 +1113,7 @@ To investigate more and fix this on the long term, you can fetch the server's ce
 
     Host> openssl s_client -CApath <path-to-local-certificates> -showcerts -connect <server>:<port>
 
-Example on a Debian host (the certificates you trust are in `/etc/ssl/certs`), for the SAB4Z gitlab server (`gitlab.eurecom.fr) using https (port `443`):
+Example on a Debian host (the certificates you trust are in `/etc/ssl/certs`), for the SAB4Z gitlab server (`gitlab.eurecom.fr`) using https (port `443`):
 
     Host> openssl s_client -CApath /etc/ssl/certs -showcerts -connect gitlab.eurecom.fr:443
     CONNECTED(00000003)
