@@ -273,7 +273,7 @@ The hardware synthesis produces a bitstream file from the VHDL source code (in `
 
 ---
 
-**Common problem**: [ERROR: [Board 49-71] The board_part definition was not found for digilentinc.com:zybo:part0:1.0.](#ProblemsZyboBoardNotFound)
+**Common problem**: [The board_part definition was not found for digilentinc.com:zybo:part0:1.0.](#ProblemsZyboBoardNotFound)
 
 ---
 
@@ -1133,7 +1133,7 @@ Example on a Debian host (the certificates you trust are in `/etc/ssl/certs`), f
 
 But of course, this is not the recommended way to fix this security problem. Use this quick and dirty workaround just to check that the problem is really this one and do not trust what you fetched without SSL certificates verification.
 
-### <a name="#ProblemsZyboBoardNotFound"></a>[ERROR: [Board 49-71] The board_part definition was not found for digilentinc.com:zybo:part0:1.0.]
+### <a name="#ProblemsZyboBoardNotFound"></a>The board_part definition was not found for digilentinc.com:zybo:part0:1.0.
 
 The configuration files for the Zybo board are not properly installed on your Vivado installation. Download and install them according to the [instructions by Digilent](https://reference.digilentinc.com/vivado:boardfiles).
 
