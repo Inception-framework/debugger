@@ -142,7 +142,7 @@ Eject the MicroSD card.
 * Plug the MicroSD card in the Zybo and connect the USB cable.
 * Check the position of the jumper that selects the power source (USB or power adapter).
 * Check the position of the jumper that selects the boot medium (MicroSD card).
-* Power on. A new [character device](#GlossaryFt2232hCharDev) should show up (`/dev/ttyUSB1` by default) on the host PC for the serial link with the Zybo.
+* Power on. Two new [character devices](#GlossaryFt2232hCharDev) should show up (`/dev/ttyUSB0` and `/dev/ttyUSB1` by default) on the host PC. `/dev/ttyUSB1` is teh one corresponding to the serial link with the Zybo.
 * Launch a [terminal emulator](#GlossaryTerminalEmulator) (picocom, minicom...) and attach it to the new [character device](#GlossaryFt2232hCharDev), with a 115200 baudrate, no flow control, no parity, 8 bits characters, no port reset and no port locking: `picocom -b115200 -fn -pn -d8 -r -l /dev/ttyUSB1`.
 * Wait until [Linux](#GlossaryLinuxKernel) boots, log in as root (there is no password) and start interacting with SAB4Z.
 
@@ -156,6 +156,10 @@ Eject the MicroSD card.
 ---
 
 **Common problem**: [FATAL: cannot open /dev/ttyUSB1: Permission denied](#ProblemsCharDevAccessRights)
+
+---
+
+**Common problem**: [The terminal emulator launches normally but looks frozen](#ProblemsTerminalEmulatorFrozen)
 
 ---
 
@@ -1058,11 +1062,24 @@ Of course, you could work as root but this is never a good solution. A better on
 
     Host> sudo adduser mary dialout
 
-Another option is to add a udev rule to create the [character device](#GlossaryFt2232hCharDev) with read/write permissions for all users when a FT2232H chip is discovered:
+Another option is to add a udev rule to create the [character device](#GlossaryFt2232hCharDev) with read/write permissions for all users when a FT2232H chip is discovered. In the same udev rule we will also create a symbolic link with meaningful name on the newly created character device:
 
-    Host# rule='SUBSYSTEMS=="usb", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6010", MODE="0666"'
-    Host# echo $rule > /etc/udev/rules.d/99-ft2232h.rules
+    Host# sub='SUBSYSTEMS=="usb"'
+    Host# itf='ATTRS{interface}=="Digilent Adept USB Device"'
+    Host# ifn='ATTRS{bInterfaceNumber}=="01"'
+    Host# mod='MODE="0666"'
+    Host# sym='SYMLINK+="zybo%n"'
+    Host# echo "$sub, $itf, $ifn, $mod, $sym" > /etc/udev/rules.d/99-ft2232h.rules
     Host# udevadm control --reload-rules
+
+The `ATTRS{interface}=="Digilent Adept USB Device"` test of the udev rule selects the correct USB device. The `ATTRS{bInterfaceNumber}=="01"` selects the correct port of the USB device (the FT2232H chip has two ports). The next time we connect the Zybo board and power it up, the [character device](#GlossaryFt2232hCharDev) should be created with read/write permission for all users and a symbolic link `/dev/zybo1` should also be created, pointing to `/dev/ttyUSB1`.
+
+### <a name="ProblemsTerminalEmulatorFrozen"></a>The terminal emulator launches normally but looks frozen
+
+If, when launching your [terminal emulator](#GlossaryTerminalEmulator), it looks frozen and you cannot interact with the board, it can be that:
+
+* You booted from the wrong medium and there is no running software stack to interact with on the Zybo. Check the position of the jumper that selects the boot medium (MicroSD card).
+* You attached the terminal emulator to the wrong character device. Remember that `/dev/ttyUSB1` is only the _default_ name of the character device corresponding to the serial link with the Zybo. If, for any reason, a `/dev/ttyUSB0` and/or `/dev/ttyUSB1` character device already exists when you attach the Zybo and power it up, the naming can be different. You can find out which character device to use by a combination of lsusb, udevadm, dmesg... commands. As two character devices are created and the one we are interested in is the second, select the last `/dev/ttyUSBx` (where x is an integer). Adding a udev rule, as explained in the solution of the [FATAL: cannot open /dev/ttyUSB1: Permission denied](#ProblemsCharDevAccessRights) problem, is another option: a symbolic link named `/dev/zybox` (where x is an integer), pointing to `/dev/ttyUSBx` will also be created. Attach your terminal emulator to the most recently created `/dev/zybox` link.
 
 ### <a name="ProblemsBUILDROOTLD_LIBRARY_PATH"></a>You seem to have the current working directory in your LD_LIBRARY_PATH environment variable. This doesn't work.
 
