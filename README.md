@@ -1084,7 +1084,7 @@ If, when launching your [terminal emulator](#GlossaryTerminalEmulator), it looks
 
 ### <a name="FAQ_ServerCertificate"></a>Git: server certificate verification failed
 
-This error message indicates that the verification of the SSL certificate of the remote git server failed. For security reasons git refuses to perform the action you requested because there is a risk that the server is not what you think and you are under attack.
+This error message indicates that the verification of the SSL certificate of the remote git server failed. For security reasons git refuses to perform the action you requested because there is a risk that the server is not what you think and you are under, let's say, a man-in-the-middle attack.
 
 This can be caused by the current date/time of your own computer being out of sync: the certificates verification uses the time. Under GNU/Linux use the date command (or the equivalent under other OSes) to check the current date and time of your host and, if you are out of sync, fix the problem.
 
@@ -1102,19 +1102,36 @@ Example on a Debian host (the certificates you trust are in `/etc/ssl/certs`), f
     ...
 
 There are several solutions to this problem, from best to worse:
-* If you have an account on the git server, add your ssh public key to your account and clone using ssh instead of https. Example with the SAB4Z git repository:
-````
-Host> git clone git@gitlab.eurecom.fr:renaud.pacalet/sab4z.git
-````
-* Add the git server's certificate to the list of trusted certificates of your host. Example with the SAB4Z git server:
-````
-Host# echo -n | openssl s_client -showcerts -connect gitlab.eurecom.fr:443 2>/dev/null | \
-sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' >> /etc/ssl/certs/ca-certificates.crt
-````
-* Temporarily disable all certificates checking with:
-````
-Host> GIT_SSL_NO_VERIFY=1 git clone <remote repository> <local destination>
-````
+
+1. If you have an account on the git server, add your ssh public key to your account and clone using ssh instead of https. Example with the SAB4Z git repository:
+
+    ````
+    Host> git clone git@gitlab.eurecom.fr:renaud.pacalet/sab4z.git
+    ````
+
+1. If you are definitely confident that you are talking to the right server and if you definitely trust it, you can download the server's certificate, store it somewhere and instruct git to accept it. Example for the SAB4Z gitlab server (`gitlab.eurecom.fr`), using https (port `443`), for user `mary` (home directory `/home/mary`):
+
+    ````
+    Host> mkdir ~/certs
+    Host> openssl s_client -connect gitlab.eurecom.fr:443 2> /dev/null < /dev/null | \
+    awk '/^-*BEGIN CERTIFICATE-*/,/^-*END CERTIFICATE-*/ {print}' > \
+    ~/certs/eurecom.pem
+    Host> git config --global http.sslCAInfo /home/mary/certs/eurecom.pem
+    ````
+
+1. You can also add the git server's certificate to the list of trusted certificates of your host. Example with the SAB4Z git server:
+
+    ````
+    Host# openssl s_client -connect gitlab.eurecom.fr:443 2> /dev/null < /dev/null | \
+    awk '/^-*BEGIN CERTIFICATE-*/,/^-*END CERTIFICATE-*/ {print}' >> \
+    /etc/ssl/certs/ca-certificates.crt
+    ````
+
+1. And you can also temporarily disable all certificates checking with:
+
+    ````
+    Host> GIT_SSL_NO_VERIFY=1 git clone <remote repository> <local destination>
+    ````
 
 ### <a name="FAQ_ZyboBoardNotFound"></a>Hardware synthesis: ERROR: \[Board 49-71\] The board_part definition was not found for digilentinc.com:zybo:part0:1.0.
 
