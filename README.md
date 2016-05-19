@@ -34,6 +34,7 @@ Please signal errors and send suggestions for improvements to renaud.pacalet@tel
     * [U-Boot: fatal error: openssl/evp.h: No such file or directory](#FAQ_UbootEvp)
     * [How can I change the Ethernet MAC address of the Zybo?](#FAQ_ChangeEthAddr)
     * [What value should I use for the `-j` make option?](#FAQ_Ncore)
+    * [Vivado: ERROR: \[Labtoolstcl 44-26\] No hardware targets exist on the server \[localhost\]](#FAQ_HWTargetNotFound)
 * [Glossary](#Glossary)
 
 # <a name="License"></a>License
@@ -366,7 +367,7 @@ Then, build the [kernel](#GlossaryLinuxKernel):
 
 ---
 
-**Note**: [select the value to pass to the make `-j` option depending on the characteristics of your host (number of physical / logical cores)](#TipsNcore).
+**Note**: select the value to pass to the make `-j` option depending on the characteristics of your host: number of physical / logical cores (see the [What value should I use for the -j make option?](#FAQ_Ncore) FAQ entry).
 
 ---
 
@@ -460,7 +461,7 @@ Then, build U-Boot:
 
 ---
 
-**Note**: [select the value to pass to the make `-j` option depending on the characteristics of your host (number of physical / logical cores)](#TipsNcore).
+**Note**: select the value to pass to the make `-j` option depending on the characteristics of your host: number of physical / logical cores (see the [What value should I use for the -j make option?](#FAQ_Ncore) FAQ entry).
 
 ---
 
@@ -626,12 +627,38 @@ Note the Ethernet MAC address (`00:0a:35:00:01:81` in our example). Create a dns
 
     Host# cat <<! > /etc/dnsmasq.d/sab4z.conf
     interface=eth0
+    dhcp-range=10.42.0.129,10.42.0.255,infinite
     dhcp-host=00:0A:35:00:01:81,sab4z,10.42.0.129,infinite
     !
     Host# echo "10.42.0.129    sab4z" >> /etc/hosts
     Host# /etc/init.d/dnsmasq reload
 
-If needed, for instance to avoid conflicts, you can [change the Ethernet MAC address of your Zybo](#TipsChangeEthAddr).
+Next, use the network manager of your host to create a new network connection for our small wired local network. Configure it with a fixed IP (e.g. 10.42.0.254), set the netmask to 255.255.255.0 and the gateway to 0.0.0.0. Enable this new network connection, connect to the Zybo using your [terminal emulator](#GlossaryTerminalEmulator) and enable the network interface:
+
+    Host> picocom -b115200 -fn -pn -d8 -r -l /dev/ttyUSB1
+    Sab4z> ifup eth0
+    udhcpc (v1.24.2) started
+    Sending discover...
+    Sending select for 10.42.0.129...
+    Lease of 10.42.0.129 obtained, lease time 268435455
+    deleting routers
+    adding dns 10.42.0.254
+
+Et voilà. You should now be able to ssh to the Zybo from you host:
+
+    Host> ssh root@sab4z
+    Sab4z> whoami
+    root
+    Sab4z> hostname
+    sab4z
+
+And of course, you can also scp:
+
+    Host> scp foo root@sab4z:/tmp
+    Host> ssh root@sab4z ls -l /tmp
+    ...
+    -rw-------    1 root     root             0 Jan  1 00:03 foo
+    ...
 
 ## <a name="FurtherFileTransfer"></a>Transfer files from host PC to Zybo without a network interface
 
@@ -1183,6 +1210,13 @@ This machine has one processor (`Socket(s)`) with 4 cores (`Core(s) per socket`)
     ...
 
 has one processor with 6 cores and hyperthreading, that is, a total of 12 logical CPUs. The `-j12` is probably the best choice if the machine is not loaded by other heavy tasks but `-j6` may be better if it is. Increasing the value of `N` above the total number of logical cores usually does not provide any benefit.
+
+### <a name="FAQ_HWTargetNotFound"></a>Vivado: ERROR: \[Labtoolstcl 44-26\] No hardware targets exist on the server \[localhost\]
+
+If you get this error message when trying to connect to the ILA core in the PL of the Zynq of the Zybo from Vivado, it is probably because the JTAG device drivers are not properly installed on your host. You probably did not select their installation when installing Vivado. In order to install them you need to be root. Quit Vivado, power down the Zybo, disconnect the USB cable and install the drivers:
+
+    Host# cd <vivado-install-directory>/data/xicom/cable_drivers/<lin64|lin>/install_script/install_drivers
+    Host# ./install_drivers
 
 # <a name="Glossary"></a>Glossary
 
