@@ -24,8 +24,16 @@ Please signal errors and send suggestions for improvements to renaud.pacalet@tel
     * [Access SAB4Z from a user application on the Zybo](#FurtherSab4zApp)
     * [Run the complete software stack across SAB4Z](#FurtherRunAcrossSab4z)
     * [Debug hardware using ILA](#FurtherIla)
-* [Common problems and solutions](#Problems)
-* [Tips and Tricks](#Tips)
+* [Frequently Asked Questions (FAQ)](#FAQ)
+    * [Terminal emulator: FATAL: cannot open /dev/ttyUSB1: Permission denied](#FAQ_CharDevAccessRights)
+    * [Terminal emulator: launches normally but looks frozen](#FAQ_TerminalEmulatorFrozen)
+    * [Git: server certificate verification failed](#FAQ_ServerCertificate)
+    * [Hardware synthesis: ERROR: \[Board 49-71\] The board_part definition was not found for digilentinc.com:zybo:part0:1.0](#FAQ_ZyboBoardNotFound)
+    * [Buildroot: You seem to have the current working directory in your LD\_LIBRARY\_PATH environment variable. This doesn't work.](#FAQ_BUILDROOTLD_LIBRARY_PATH)
+    * [Buildroot: You seem to have the current working directory in your PATH environment variable. This doesn't work.](#FAQ_BUILDROOTPATH)
+    * [U-Boot: fatal error: openssl/evp.h: No such file or directory](#FAQ_UbootEvp)
+    * [How can I change the Ethernet MAC address of the Zybo?](#FAQ_ChangeEthAddr)
+    * [What value should I use for the `-j` make option?](#FAQ_Ncore)
 * [Glossary](#Glossary)
 
 # <a name="License"></a>License
@@ -122,7 +130,7 @@ Accesses to the unmapped region of the S0_AXI `[1G+8..2G[` address space raise D
 In the following example code blocks we will use different prompts for the different contexts:
 
 * `Host>` is the shell prompt of the regular user (you) on the host PC.
-* `Host-Xilinx>` is the prompt of the regular user (you) on the host PC, for the shell that has been configured to use Xilinx tools: the Xilinx initialization script redefines the LD_LIBRARY_PATH environment variable to point to Xilinx shared libraries. A consequence is that many utilities of your host PC cannot be used any more from this shell without crashing with more or less accurate error messages. To avoid this, run the Xilinx tools, and only them, in a separate, dedicated shell.
+* `Host-Xilinx>` is the prompt of the regular user (you) on the host PC, for the shell that has been configured to use Xilinx tools: the Xilinx initialization script redefines the LD\_LIBRARY\_PATH environment variable to point to Xilinx shared libraries. A consequence is that many utilities of your host PC cannot be used any more from this shell without crashing with more or less accurate error messages. To avoid this, run the Xilinx tools, and only them, in a separate, dedicated shell.
 * `Host#` is the shell prompt of the root user on the host PC (some actions must be run as root on the host).
 * `Zynq>` is the U-Boot prompt on the Zybo board (more on U-Boot later).
 * `Sab4z>` is the shell prompt of the root user on the Zybo board (the only one we will use on the Zybo).
@@ -152,16 +160,6 @@ Eject the MicroSD card.
     Welcome to SAB4Z (c) Telecom ParisTech
     sab4z login: root
     Sab4z>
-
----
-
-**Common problem**: [FATAL: cannot open /dev/ttyUSB1: Permission denied](#ProblemsCharDevAccessRights)
-
----
-
-**Common problem**: [The terminal emulator launches normally but looks frozen](#ProblemsTerminalEmulatorFrozen)
-
----
 
 ### <a name="RunReadStatus"></a>Read the STATUS register (address `0x4000_0000`)
 
@@ -261,12 +259,6 @@ Clone all components from their respective git repositories:
     Host> git clone http://github.com/Xilinx/device-tree-xlnx.git $XDTS
     Host> git clone http://git.buildroot.net/git/buildroot.git $BUILDROOT
 
----
-
-**Common problem**: [server certificate verification failed.](#ProblemsServerCertificate)
-
----
-
 ## <a name="BuildSynthesis"></a>Hardware synthesis
 
 The hardware synthesis produces a bitstream file from the VHDL source code (in `$SAB4Z/hdl`). It is done by the Xilinx Vivado tools. SAB4Z comes with a Makefile and a synthesis script that automate the synthesis:
@@ -274,12 +266,6 @@ The hardware synthesis produces a bitstream file from the VHDL source code (in `
     Host-Xilinx> SAB4Z=<some-path>/sab4z
     Host-Xilinx> cd $SAB4Z
     Host-Xilinx> make vv-all
-
----
-
-**Common problem**: [ERROR: \[Board 49-71\] The board_part definition was not found for digilentinc.com:zybo:part0:1.0.](#ProblemsZyboBoardNotFound)
-
----
 
 The generated bitstream is `$SAB4Z/build/vv/top.runs/impl_1/top_wrapper.bit`. This binary file is used to configure the FPGA part of the Zynq core of the Zybo board such that it implements our VHDL design. A binary description of our hardware design is also available in `$SAB4Z/build/vv/top.runs/impl_1/top_wrapper.sysdef`. It is not human-readable but we will use it later to generate the [device tree](#GlossaryDeviceTree) sources and the [First Stage Boot Loader](#GlossaryFsbl) (FSBL) sources.
 
@@ -330,14 +316,6 @@ Quit (save when asked). The overlay directory that we specified will be incorpor
     Host> mkdir -p overlays/etc/profile.d
     Host> echo "export PS1='Sab4z> '" > overlays/etc/profile.d/prompt.sh
     Host> make
-
----
-
-**Common problem**: [You seem to have the current working directory in your LD_LIBRARY_PATH environment variable. This doesn't work.](#ProblemsBUILDROOTLD_LIBRARY_PATH)
-
----
-
-**Common problem**: [You seem to have the current working directory in your PATH environment variable. This doesn't work.](#ProblemsBUILDROOTPATH)
 
 ---
 
@@ -483,10 +461,6 @@ Then, build U-Boot:
 ---
 
 **Note**: [select the value to pass to the make `-j` option depending on the characteristics of your host (number of physical / logical cores)](#TipsNcore).
-
----
-
-**Common problem**: [fatal error: openssl/evp.h: No such file or directory](#ProblemsUbootEvp)
 
 ---
 
@@ -1049,20 +1023,20 @@ Debug kernel module
 
 --->
 
-# <a name="Problems"></a>Common problems
+# <a name="FAQ"></a>Frequently Asked Questions (FAQ)
 
-### <a name="ProblemsCharDevAccessRights"></a>FATAL: cannot open /dev/ttyUSB1: Permission denied
+### <a name="FAQ_CharDevAccessRights"></a>Terminal emulator: FATAL: cannot open /dev/ttyUSB1: Permission denied
 
 If, when launching your [terminal emulator](#GlossaryTerminalEmulator), you get this error message, it is probably because the [character device](#GlossaryFt2232hCharDev) that was created when the FT2232H chip was discovered was created with limited access rights:
 
     Host> ls -l /dev/ttyUSB1
     crw-rw---- 1 root dialout 188, 1 Apr 11 14:53 /dev/ttyUSB1 
 
-Of course, you could work as root but this is never a good solution. A better one is to add yourself to the group owning the serial device (if, as in our example, the group has read/write permissions):
+Of course, you could work as root but this is never a good solution. A better one is to add yourself to the group owning the [character device](#GlossaryFt2232hCharDev) (if, as in our example, the group has read/write permissions):
 
     Host> sudo adduser mary dialout
 
-Another option is to add a udev rule to create the [character device](#GlossaryFt2232hCharDev) with read/write permissions for all users when a FT2232H chip is discovered. In the same udev rule we will also create a symbolic link with meaningful name on the newly created character device:
+Another option is to add a udev rule to create the [character device](#GlossaryFt2232hCharDev) with read/write permissions for all users when a FT2232H chip is discovered. In the same udev rule we will also create a symbolic link with meaningful name on the newly created [character device](#GlossaryFt2232hCharDev):
 
     Host# sub='SUBSYSTEMS=="usb"'
     Host# itf='ATTRS{interface}=="Digilent Adept USB Device"'
@@ -1072,60 +1046,16 @@ Another option is to add a udev rule to create the [character device](#GlossaryF
     Host# echo "$sub, $itf, $ifn, $mod, $sym" > /etc/udev/rules.d/99-ft2232h.rules
     Host# udevadm control --reload-rules
 
-The `ATTRS{interface}=="Digilent Adept USB Device"` test of the udev rule selects the correct USB device. The `ATTRS{bInterfaceNumber}=="01"` selects the correct port of the USB device (the FT2232H chip has two ports). The next time we connect the Zybo board and power it up, the [character device](#GlossaryFt2232hCharDev) should be created with read/write permission for all users and a symbolic link `/dev/zybo1` should also be created, pointing to `/dev/ttyUSB1`.
+The `ATTRS{interface}=="Digilent Adept USB Device"` test of the udev rule selects the correct [character device](#GlossaryFt2232hCharDev). The `ATTRS{bInterfaceNumber}=="01"` selects the correct port of the [character device](#GlossaryFt2232hCharDev) (the FT2232H chip has two ports). The next time we connect the Zybo board and power it up, the [character device](#GlossaryFt2232hCharDev) should be created with read/write permission for all users and a symbolic link `/dev/zybo1` should also be created, pointing to `/dev/ttyUSB1`.
 
-### <a name="ProblemsTerminalEmulatorFrozen"></a>The terminal emulator launches normally but looks frozen
+### <a name="FAQ_TerminalEmulatorFrozen"></a>Terminal emulator: launches normally but looks frozen
 
 If, when launching your [terminal emulator](#GlossaryTerminalEmulator), it looks frozen and you cannot interact with the board, it can be that:
 
 * You booted from the wrong medium and there is no running software stack to interact with on the Zybo. Check the position of the jumper that selects the boot medium (MicroSD card).
-* You attached the terminal emulator to the wrong character device. Remember that `/dev/ttyUSB1` is only the _default_ name of the character device corresponding to the serial link with the Zybo. If, for any reason, a `/dev/ttyUSB0` and/or `/dev/ttyUSB1` character device already exists when you attach the Zybo and power it up, the naming can be different. You can find out which character device to use by a combination of lsusb, udevadm, dmesg... commands. As two character devices are created and the one we are interested in is the second, select the last `/dev/ttyUSBx` (where x is an integer). Adding a udev rule, as explained in the solution of the [FATAL: cannot open /dev/ttyUSB1: Permission denied](#ProblemsCharDevAccessRights) problem, is another option: a symbolic link named `/dev/zybox` (where x is an integer), pointing to `/dev/ttyUSBx` will also be created. Attach your terminal emulator to the most recently created `/dev/zybox` link.
+* You attached the terminal emulator to the wrong [character device](#GlossaryFt2232hCharDev). Remember that `/dev/ttyUSB1` is only the _default_ name of the [character device](#GlossaryFt2232hCharDev) corresponding to the serial link with the Zybo. If, for any reason, a `/dev/ttyUSB0` and/or `/dev/ttyUSB1` [character device](#GlossaryFt2232hCharDev) already exists when you attach the Zybo and power it up, the naming can be different. You can find out which [character device](#GlossaryFt2232hCharDev) to use by a combination of lsusb, udevadm, dmesg... commands. As two [character devices](#GlossaryFt2232hCharDev) are created and the one we are interested in is the second, select the last `/dev/ttyUSBx` (where x is an integer). Adding a udev rule, as explained in the solution of the [Terminal emulator: FATAL: cannot open /dev/ttyUSB1: Permission denied](#FAQ_CharDevAccessRights) question, is another option: a symbolic link named `/dev/zybox` (where x is an integer), pointing to `/dev/ttyUSBx` will also be created. Attach your terminal emulator to the most recently created `/dev/zybox` link.
 
-### <a name="ProblemsBUILDROOTLD_LIBRARY_PATH"></a>You seem to have the current working directory in your LD_LIBRARY_PATH environment variable. This doesn't work.
-
-The LD_LIBRARY_PATH environment variable is a colon-separated list of directories where the system searches for C libraries when it needs them. This error message tells you that the LD_LIBRARY_PATH environment variable contains the current working directory (`.`) and that this is not supported by the tool that issued the message. If you look at the value of LD_LIBRARY_PATH:
-
-    Host> printenv LD_LIBRARY_PATH
-    /usr/local/lib:/usr/lib:.:/lib
-
-you may see that it actually contains `.`, but sometimes not:
-
-    Host> printenv LD_LIBRARY_PATH
-    /usr/local/lib:/usr/lib:/lib:
-
-which is quite surprising. The trailing colon, in this second example, is treated as if it were `.`. In the first case, simply redefine the variable without the `.` and , in the second case, remove the trailing `:`:
-
-    Host> export LD_LIBRARY_PATH=/usr/local/lib:/usr/lib:/lib
-
-### <a name="ProblemsBUILDROOTPATH"></a>You seem to have the current working directory in your PATH environment variable. This doesn't work.
-
-The PATH environment variable is a colon-separated list of directories where the system searches for the commands you type. This error message tells you that the PATH environment variable contains the current working directory (`.`) and that this is not supported by the tool that issued the message:
-
-    Host> printenv PATH
-    /usr/local/sbin:/usr/local/bin:/usr/sbin:.:/usr/bin:/sbin:/bin
-
-Redefine the variable without the `.`:
-
-    Host> export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-
-### <a name="ProblemsUbootEvp"></a>fatal error: openssl/evp.h: No such file or directory
-
-If you get this error message when building U-Boot, it is probably because U-Boot has been configured in such a way that its compilation requires the openssl header files to be installed on your host. Either they are not or the U-Boot build system looked for them in the wrong location. The simplest way to fix this is to configure U-Boot such that it does not need the host openssl any more:
-
-    Host> cd $SAB4Z/build/uboot
-    Host> make menuconfig
-
-In the U-Boot configuration menus change the following options:
-
-    Boot images -> Enable signature verification of FIT uImages -> no
-    Library routines -> Use RSA Library -> no
-
-But of course, if you absolutely need these two options, the best workaround is to install the openssl development package on your host. Once you did one or the other, simply relaunch the U-Boot build:
-
-    Host> cd $SAB4Z/build/uboot
-    Host> make -j8
-
-### <a name="ProblemsServerCertificate"></a>server certificate verification failed
+### <a name="FAQ_ServerCertificate"></a>Git: server certificate verification failed
 
 This error message indicates that the verification of the SSL certificate of the remote git server failed. For security reasons git refuses to perform the action you requested because there is a risk that the server is not what you think and you are under attack.
 
@@ -1144,17 +1074,70 @@ Example on a Debian host (the certificates you trust are in `/etc/ssl/certs`), f
     depth=2 C = US, O = DigiCert Inc, OU = www.digicert.com, CN = DigiCert High Assurance EV Root CA
     ...
 
-**Note**: you can temporarily disable the certificate checking with:
+There are several solutions to this problem, from best to worse:
+* If you have an account on the git server, add your ssh public key to your account and clone using ssh instead of https. Example with the SAB4Z git repository:
+````
+Host> git clone git@gitlab.eurecom.fr:renaud.pacalet/sab4z.git
+````
+* Add the git server's certificate to the list of trusted certificates of your host. Example with the SAB4Z git server:
+````
+Host# echo -n | openssl s_client -showcerts -connect gitlab.eurecom.fr:443 2>/dev/null | \
+sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' >> /etc/ssl/certs/ca-certificates.crt
+````
+* Temporarily disable all certificates checking with:
+````
+Host> GIT_SSL_NO_VERIFY=1 git clone <remote repository> <local destination>
+````
 
-    Host> GIT_SSL_NO_VERIFY=1 git clone <remote repository> <local destination>
-
-But of course, this is not the recommended way to fix this security problem. Use this quick and dirty workaround just to check that the problem is really this one and do not trust what you fetched without SSL certificates verification.
-
-### <a name="ProblemsZyboBoardNotFound"></a>ERROR: \[Board 49-71\] The board_part definition was not found for digilentinc.com:zybo:part0:1.0.
+### <a name="FAQ_ZyboBoardNotFound"></a>Hardware synthesis: ERROR: \[Board 49-71\] The board_part definition was not found for digilentinc.com:zybo:part0:1.0.
 
 The configuration files for the Zybo board are not properly installed on your Vivado installation. Download and install them according to the [instructions by Digilent](https://reference.digilentinc.com/vivado:boardfiles).
 
-### <a name="TipsChangeEthAddr"></a>Change the Ethernet MAC address of the Zybo
+### <a name="FAQ_BUILDROOTLD_LIBRARY_PATH"></a>Buildroot: You seem to have the current working directory in your LD\_LIBRARY\_PATH environment variable. This doesn't work.
+
+The LD\_LIBRARY\_PATH environment variable is a colon-separated list of directories where the system searches for C libraries when it needs them. This error message tells you that the LD\_LIBRARY\_PATH environment variable contains the current working directory (`.`) and that this is not supported by the tool that issued the message. If you look at the value of LD\_LIBRARY\_PATH:
+
+    Host> printenv LD_LIBRARY_PATH
+    /usr/local/lib:/usr/lib:.:/lib
+
+you may see that it actually contains `.`, but sometimes not:
+
+    Host> printenv LD_LIBRARY_PATH
+    /usr/local/lib:/usr/lib:/lib:
+
+which is quite surprising. The trailing colon, in this second example, is treated as if it were `.`. In the first case, simply redefine the variable without the `.` and , in the second case, remove the trailing `:`:
+
+    Host> export LD_LIBRARY_PATH=/usr/local/lib:/usr/lib:/lib
+
+### <a name="FAQ_BUILDROOTPATH"></a>Buildroot: You seem to have the current working directory in your PATH environment variable. This doesn't work.
+
+The PATH environment variable is a colon-separated list of directories where the system searches for the commands you type. This error message tells you that the PATH environment variable contains the current working directory (`.`) and that this is not supported by the tool that issued the message:
+
+    Host> printenv PATH
+    /usr/local/sbin:/usr/local/bin:/usr/sbin:.:/usr/bin:/sbin:/bin
+
+Redefine the variable without the `.`:
+
+    Host> export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+### <a name="FAQ_UbootEvp"></a>U-Boot: fatal error: openssl/evp.h: No such file or directory
+
+If you get this error message when building U-Boot, it is probably because U-Boot has been configured in such a way that its compilation requires the openssl header files to be installed on your host. Either they are not or the U-Boot build system looked for them in the wrong location. The simplest way to fix this is to configure U-Boot such that it does not need the host openssl any more:
+
+    Host> cd $SAB4Z/build/uboot
+    Host> make menuconfig
+
+In the U-Boot configuration menus change the following options:
+
+    Boot images -> Enable signature verification of FIT uImages -> no
+    Library routines -> Use RSA Library -> no
+
+But of course, if you absolutely need these two options, the best workaround is to install the openssl development package on your host. Once you did one or the other, simply relaunch the U-Boot build:
+
+    Host> cd $SAB4Z/build/uboot
+    Host> make -j8
+
+### <a name="FAQ_ChangeEthAddr"></a>How can I change the Ethernet MAC address of the Zybo?
 
 If needed, for instance to avoid conflicts, you can change the Ethernet MAC address of your Zybo from the U-Boot command line:
 
@@ -1171,7 +1154,7 @@ If needed, for instance to avoid conflicts, you can change the Ethernet MAC addr
 
 The new Ethernet MAC address has been changed and stored in the on-board SPI Flash memory, from where it will be read again by U-Boot the next time we reboot the board.
 
-### <a name="TipsNcore"></a>Select the value to pass to the make `-j` option depending on the characteristics of your host (number of physical / logical cores)
+### <a name="FAQ_Ncore"></a>What value should I use for the `-j` make option?
 
 The `-jN` option (or, equivalently, `--jobs=N`) of make, where `N` is an integer, tells make to launch up to `N` jobs in parallel. The default is 1, meaning that make will always wait for the completion of the current job before launching another one. On multi-core architectures this option can really make a difference on the total time taken by make. Under GNU/Linux use the lscpu utility to discover how many cores your machine has and set the `-jN` option accordingly. If your architecture supports hyperthreading (two logical cores per physical core) and if your machine is not heavily loaded by other tasks you can even double that number. Examples:
 
@@ -1259,7 +1242,7 @@ The BootROM code loads the FSBL in the On-Chip RAM (OCR) of the Zynq core and ju
 
 A gdb server is a tiny application that runs on the same target as the application to debug. It communicates with a full gdb running on a remote host, either through a serial link or a network interface. The remote gdb sends commands to the gdb server that executes them locally and sends back their outputs to the remote gdb. This setting allows to debug an application running on the target, from a remote host, without running the complete gdb on the target. We could also have added the complete gdb to our root [file system](#GlossaryFileSystem), instead of the tiny gdb server, and thus debugged our applications directly on the Zybo board. But the complete gdb is a rather large application and the size of our [initramfs](#GlossaryInitramfs) - memory limited - root [file system](#GlossaryFileSystem) would have been increased by a significant amount.
 
-### <a name="GlossaryInitramfs"></a>initramfs root file system
+### <a name="GlossaryInitramfs"></a>initramfs root [file system](#GlossaryFileSystem)
 
 An initramfs root [file system](#GlossaryFileSystem) is loaded entirely in RAM at boot time, while the more classical root [file system](#GlossaryFileSystem) of your host probably resides on a Hard Disk Drive (HDD). With initramfs, a portion of the available memory is presented and used just like if it was mass storage. This portion is initialized at boot time from a binary file, the root [file system](#GlossaryFileSystem) image, stored on the boot medium (the MicroSD card in our case). The good point with initramfs is that it is ultra-fast because memory accesses are much faster than accesses to HDDs. The drawbacks are that it is not persistent across reboot (it is restored to its original state every time you boot) and that its size is limited by the available memory (512 MB on the Zybo - and even less because we need some working memory too - compared to the multi-GB capacity of the HDD of your host).
 
