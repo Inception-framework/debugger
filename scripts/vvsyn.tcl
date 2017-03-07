@@ -33,7 +33,7 @@ source $rootdir/scripts/ila.tcl
 ###################
 # Create SAB4Z IP #
 ###################
-create_project -part xc7z010clg400-1 -force sab4z sab4z
+create_project -part xc7z020clg484-1 -force sab4z sab4z
 add_files $rootdir/hdl/axi_pkg.vhd $rootdir/hdl/debouncer.vhd $rootdir/hdl/sab4z.vhd
 import_files -force -norecurse
 ipx::package_project -root_dir sab4z -vendor www.telecom-paristech.fr -library SAB4Z -force sab4z
@@ -43,8 +43,8 @@ close_project
 ## Create top level design #
 ############################
 set top top
-create_project -part xc7z010clg400-1 -force $top .
-set_property board_part digilentinc.com:zybo:part0:1.0 [current_project]
+create_project -part xc7z020clg484-1 -force $top .
+set_property board_part em.avnet.com:zed:part0:1.3 [current_project]
 set_property ip_repo_paths { ./sab4z } [current_fileset]
 update_ip_catalog
 create_bd_design "$top"
@@ -53,11 +53,7 @@ set ps7 [create_bd_cell -type ip -vlnv [get_ipdefs *xilinx.com:ip:processing_sys
 apply_bd_automation -rule xilinx.com:bd_rule:processing_system7 -config {make_external "FIXED_IO, DDR" apply_board_preset "1" Master "Disable" Slave "Disable" } $ps7
 set_property -dict [list CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {100.000000}] $ps7
 set_property -dict [list CONFIG.PCW_USE_M_AXI_GP0 {1}] $ps7
-set_property -dict [list CONFIG.PCW_USE_M_AXI_GP1 {1}] $ps7
 set_property -dict [list CONFIG.PCW_M_AXI_GP0_ENABLE_STATIC_REMAP {1}] $ps7
-set_property -dict [list CONFIG.PCW_M_AXI_GP1_ENABLE_STATIC_REMAP {1}] $ps7
-set_property -dict [list CONFIG.PCW_USE_S_AXI_HP0 {1}] $ps7
-set_property -dict [list CONFIG.PCW_S_AXI_HP0_DATA_WIDTH {32}] $ps7
 
 # Interconnections
 # Primary IOs
@@ -69,16 +65,10 @@ create_bd_port -dir I btn
 connect_bd_net [get_bd_pins /sab4z/btn] [get_bd_ports btn]
 # ps7 - sab4z
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/ps7/M_AXI_GP0" Clk "Auto" }  [get_bd_intf_pins /sab4z/s0_axi]
-apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/ps7/M_AXI_GP1" Clk "Auto" }  [get_bd_intf_pins /sab4z/s1_axi]
-apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/sab4z/m_axi" Clk "Auto" }  [get_bd_intf_pins /ps7/S_AXI_HP0]
 
 # Addresses ranges
 set_property offset 0x40000000 [get_bd_addr_segs -of_object [get_bd_intf_pins /ps7/M_AXI_GP0]]
 set_property range 1G [get_bd_addr_segs -of_object [get_bd_intf_pins /ps7/M_AXI_GP0]]
-set_property offset 0x80000000 [get_bd_addr_segs -of_object [get_bd_intf_pins /ps7/M_AXI_GP1]]
-set_property range 1G [get_bd_addr_segs -of_object [get_bd_intf_pins /ps7/M_AXI_GP1]]
-set_property offset 0x00000000 [get_bd_addr_segs -of_object [get_bd_intf_pins /sab4z/m_axi]]
-set_property range 1G [get_bd_addr_segs -of_object [get_bd_intf_pins /sab4z/m_axi]]
 
 # In-circuit debugging
 if { $ila == 1 } {
@@ -121,16 +111,16 @@ if { $ila == 1 } {
 
 # IOs
 array set ios {
-	"sw[0]"		{ "G15" "LVCMOS33" }
-	"sw[1]"		{ "P15" "LVCMOS33" }
-	"sw[2]"		{ "W13" "LVCMOS33" }
-	"sw[3]"		{ "T16" "LVCMOS33" }
-	"led[0]"	{ "M14" "LVCMOS33" }
-	"led[1]"	{ "M15" "LVCMOS33" }
-	"led[2]"	{ "G14" "LVCMOS33" }
-	"led[3]"	{ "D18" "LVCMOS33" }
-	"btn"		{ "R18" "LVCMOS33" }
-}
+	"sw[0]"         { "F22"  "LVCMOS25" }
+	"sw[1]"         { "G22"  "LVCMOS25" }
+	"sw[2]"         { "H22"  "LVCMOS25" }
+	"sw[3]"         { "F21"  "LVCMOS25" }
+	"led[0]"        { "T22"  "LVCMOS33" }
+	"led[1]"        { "T21"  "LVCMOS33" }
+	"led[2]"        { "U22"  "LVCMOS33" }
+	"led[3]"        { "U21"  "LVCMOS33" }
+	"btn"           { "T18"  "LVCMOS25" }
+	}
 foreach io [ array names ios ] {
 	set pin [ lindex $ios($io) 0 ]
 	set std [ lindex $ios($io) 1 ]
