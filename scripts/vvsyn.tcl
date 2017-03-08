@@ -63,6 +63,29 @@ create_bd_port -dir I -from 3 -to 0 sw
 connect_bd_net [get_bd_pins /sab4z/sw] [get_bd_ports sw]
 create_bd_port -dir I btn
 connect_bd_net [get_bd_pins /sab4z/btn] [get_bd_ports btn]
+
+create_bd_port -dir O di_a
+create_bd_port -dir O di_b
+
+connect_bd_net [get_bd_pins /sab4z/di_a] [get_bd_ports di_a]
+connect_bd_net [get_bd_pins /sab4z/di_b] [get_bd_ports di_b]
+
+create_bd_port -dir I do_a
+create_bd_port -dir I do_b
+create_bd_port -dir I en_a
+create_bd_port -dir I en_b
+
+connect_bd_net [get_bd_pins /sab4z/do_a] [get_bd_ports do_a]
+connect_bd_net [get_bd_pins /sab4z/do_b] [get_bd_ports do_b]
+connect_bd_net [get_bd_pins /sab4z/en_a] [get_bd_ports en_a]
+connect_bd_net [get_bd_pins /sab4z/en_b] [get_bd_ports en_b]
+
+create_bd_port -dir IO data_bus_a
+create_bd_port -dir IO data_bus_b
+
+connect_bd_net [get_bd_pins /sab4z/data_bus_a] [get_bd_ports data_bus_a]
+connect_bd_net [get_bd_pins /sab4z/data_bus_b] [get_bd_ports data_bus_b]
+
 # ps7 - sab4z
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/ps7/M_AXI_GP0" Clk "Auto" }  [get_bd_intf_pins /sab4z/s0_axi]
 
@@ -120,6 +143,14 @@ array set ios {
 	"led[2]"        { "U22"  "LVCMOS33" }
 	"led[3]"        { "U21"  "LVCMOS33" }
 	"btn"           { "T18"  "LVCMOS25" }
+        "di_a"          { "U14"  "LVCMOS25" } 
+        "di_b"          { "W22"  "LVCMOS25" } 
+        "do_a"          { "M15"  "LVCMOS25" } 
+        "do_b"          { "H17"  "LVCMOS25" } 
+        "en_a"          { "H18"  "LVCMOS25" } 
+        "en_b"          { "H19"  "LVCMOS25" } 
+        "data_bus_a"    { "H4"  "LVCMOS18" } 
+        "data_bus_b"    { "H7"  "LVCMOS18" } 
 	}
 foreach io [ array names ios ] {
 	set pin [ lindex $ios($io) 0 ]
@@ -132,6 +163,15 @@ foreach io [ array names ios ] {
 set clock [get_clocks]
 set_false_path -from $clock -to [get_ports {led[*]}]
 set_false_path -from [get_ports {btn sw[*]}] -to $clock
+
+set_false_path -from $clock -to [get_ports {di_a}]
+set_false_path -from $clock -to [get_ports {di_b}]
+
+set_false_path -from [get_ports {btn do_a}] -to $clock
+set_false_path -from [get_ports {btn do_b}] -to $clock
+set_false_path -from [get_ports {btn en_a}] -to $clock
+set_false_path -from [get_ports {btn en_b}] -to $clock
+
 
 # Implementation
 save_constraints

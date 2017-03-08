@@ -23,6 +23,26 @@ entity sab4z is
     btn:        in std_logic;  -- Command button
     sw:         in  std_logic_vector(3 downto 0); -- Slide switches
     led:        out std_logic_vector(3 downto 0); -- LEDs
+    
+    data_bus_a:  inout std_logic;
+    data_bus_b:  inout std_logic;
+
+    en_a,en_b:    in std_logic;
+    do_a,do_b:   in std_logic;
+    di_a,di_b:   out std_logic;    
+
+    -------------------------------
+    -- FMC port
+    -------------------------------
+ --    pclk:       out std_logic; -- master clock
+ --    
+ --    we:         out std_logic; -- write enable
+ --    oe:         out std_logic; -- output enable
+ --    dack:       out std_logic; -- ack data read
+ --    
+ --    drq:        in  std_logic; -- read data redy
+ --
+ --    data_bus:   inout std_logic; -- tristate bus line (to change to 32 bits)
 
     --------------------------------
     -- AXI lite slave port s0_axi --
@@ -102,7 +122,55 @@ architecture rtl of sab4z is
   signal btn_sd: std_logic;  -- Synchronized and debounced command button
   signal btn_re: std_logic;  -- Rising edge of command button
 
-begin
+
+ --  type receiver_state_t is (read_wait, command_received);
+ --  signal receiver_state: receiver_state_t;
+ --  signal data_in_q: std_logic; 
+ --  signal tristate_en: std_logic;
+
+ begin
+
+    data_bus_a <= do_a when(en_a='1') else 'z';
+    data_bus_b <= do_b when(en_b='1') else 'z';
+
+
+--  pclk <= aclk;
+--
+--  data_bus <= '1' when(tristate_en) else 'z';
+--  
+--  receiver_state_proc: process(aclk) 
+--  begin
+--    if(aclk'event and aclk='1') then
+--      if(aresetn='0') then
+--        receiver_state <= read_wait;
+--        data_in_q <= '0';
+--      else
+--        case receiver_state is
+--          when read_wait => if(drq='1') then 
+--                              receiver_state <= command_received;
+--			      data_in_q <= data_bus;
+--                            end if;
+--          when command_received => receiver_state <= read_wait;
+--          when else receiver_state <= read_wait;
+--      end if;
+--    end if;
+--  end process reveiver_proc;
+--
+--  receiver_out_proc: process(receiver_state)
+--  begin
+--    
+--    if(receiver_state=read_wait) then
+--      we <= '0';
+--      oe <= '1';
+--      dack <= '0';
+--      tristate_en <= '0';
+--    else 
+--      we <= '0';
+--      oe <= '1';
+--      dack <= '1';
+--      tristate_en <= '0';
+--    end if;
+--  end process receiver_out_proc;
 
   -- Synchronizer - debouncer
   sd: entity work.debouncer(rtl)
