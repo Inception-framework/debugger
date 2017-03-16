@@ -23,26 +23,26 @@ entity sab4z is
     btn:        in std_logic;  -- Command button
     sw:         in  std_logic_vector(3 downto 0); -- Slide switches
     led:        out std_logic_vector(3 downto 0); -- LEDs
-    
---    data_bus_a:  inout std_logic;
---    data_bus_b:  inout std_logic;
---
---    en_a,en_b:    in std_logic;
---    do_a,do_b:   in std_logic;
---    di_a,di_b:   out std_logic;    
 
-    -------------------------------
-    -- FMC port
-    -------------------------------
- --    pclk:       out std_logic; -- master clock
- --    
- --    we:         out std_logic; -- write enable
- --    oe:         out std_logic; -- output enable
- --    dack:       out std_logic; -- ack data read
- --    
- --    drq:        in  std_logic; -- read data redy
- --
- --    data_bus:   inout std_logic; -- tristate bus line (to change to 32 bits)
+    -----------------------
+    -- slave fifo master --
+    -----------------------
+    clk_out	   : out std_logic;                               ---output clk 100 Mhz and 180 phase shift 
+    clk_original   : out std_logic;      
+    slcs 	   : out std_logic;                               ---output chip select
+    fdata          : inout std_logic_vector(31 downto 0);         
+    faddr          : out std_logic_vector(1 downto 0);            ---output fifo address
+    slrd	   : out std_logic;                               ---output read select
+    sloe	   : out std_logic;                               ---output output enable select
+    slwr	   : out std_logic;                               ---output write select
+        
+    flaga	   : in std_logic;                                
+    flagb	   : in std_logic;
+    flagc	   : in std_logic;
+    flagd	   : in std_logic;
+
+    pktend	   : out std_logic;                               ---output pkt end 
+    mode_p         : in std_logic_vector(2 downto 0);  
 
     --------------------------------
     -- AXI lite slave port s0_axi --
@@ -121,64 +121,83 @@ architecture rtl of sab4z is
 
   signal btn_sd: std_logic;  -- Synchronized and debounced command button
   signal btn_re: std_logic;  -- Rising edge of command button
+ 
+  signal aclkn : std_logic;
+  signal clk:    std_logic;
+
+  component ODDR2                       
+	port(   
+	        D0	: in std_logic;              
+	        D1	: in std_logic;
+	        C0	: in std_logic;
+	        C1	: in std_logic;
+	        Q 	: out std_logic;
+	        CE      : in std_logic;
+	        S       : in std_logic; 
+	        R 	: in std_logic
+		);     
+  end component;
+
+  component slaveFIFO2b_fpga_top is
+	port(
+		aresetn : in std_logic;                                ---input reset active low
+		aclk    : in std_logic;
+		slcs 	   : out std_logic;                               ---output chip select
+		fdata      : inout std_logic_vector(31 downto 0);         
+		faddr      : out std_logic_vector(1 downto 0);            ---output fifo address
+		slrd	   : out std_logic;                               ---output read select
+		sloe	   : out std_logic;                               ---output output enable select
+		slwr	   : out std_logic;                               ---output write select
+                    
+		flaga	   : in std_logic;                                
+		flagb	   : in std_logic;
+		flagc	   : in std_logic;
+		flagd	   : in std_logic;
 
 
- --  type receiver_state_t is (read_wait, command_received);
- --  signal receiver_state: receiver_state_t;
- --  signal data_in_q: std_logic; 
- --  signal tristate_en: std_logic;
-  begin
-
---   tristate_a: entity work.tristate(beh)
---    port map(oe  => en_a,
---             dio => data_bus_a,
---             di  => do_a,
---             do  => di_a);
--- 
---  tristate_b: entity work.tristate(beh)
---    port map(oe  => en_b,
---             dio => data_bus_b,
---             di  => do_b,
---             do  => di_b);
+		pktend	   : out std_logic;                               ---output pkt end 
+		mode_p     : in std_logic_vector(2 downto 0)              ----signals for debugging
+	    );
+  end component;
 
 
---  pclk <= aclk;
---
---  data_bus <= '1' when(tristate_en) else 'z';
---  
---  receiver_state_proc: process(aclk) 
---  begin
---    if(aclk'event and aclk='1') then
---      if(aresetn='0') then
---        receiver_state <= read_wait;
---        data_in_q <= '0';
---      else
---        case receiver_state is
---          when read_wait => if(drq='1') then 
---                              receiver_state <= command_received;
---			      data_in_q <= data_bus;
---                            end if;
---          when command_received => receiver_state <= read_wait;
---          when else receiver_state <= read_wait;
---      end if;
---    end if;
---  end process reveiver_proc;
---
---  receiver_out_proc: process(receiver_state)
---  begin
---    
---    if(receiver_state=read_wait) then
---      we <= '0';
---      oe <= '1';
---      dack <= '0';
---      tristate_en <= '0';
---    else 
---      we <= '0';
---      oe <= '1';
---      dack <= '1';
---      tristate_en <= '0';
---    end if;
---  end process receiver_out_proc;
+begin
+
+  sl_inst: slaveFIFO2b_fpga_top 
+    port map(
+      aresetn => aresetn,
+      aclk    => aclk,
+      slcs    => slcs,
+      fdata   => fdata,         
+      faddr   => faddr,
+      slrd    => slrd,
+      sloe    => sloe,
+      slwr    => slwr,
+          
+      flaga   => flaga,	                                  
+      flagb   => flagb,	   
+      flagc   => flagc,	   
+      flagd   => flagd,	   
+      
+      
+      pktend  => pktend,	    
+      mode_p  => mode_p   
+   );
+
+  clk_original <= aclk;  
+  aclkn <= not aclk;
+  oddr_inst : ODDR2
+    port map (   
+      D0     => '0',                
+      D1     => '1',
+      C0     => aclk,
+      C1     => aclkn,
+      Q      => clk_out,
+      CE     => '1',
+      S      => '0',
+      R      => '0'
+    );     
+
 
   -- Synchronizer - debouncer
   sd: entity work.debouncer(rtl)
@@ -369,3 +388,4 @@ architecture rtl of sab4z is
   s0_axi_bresp       <= std_logic_vector(s0_axi_s2m.bresp);
 
 end architecture rtl;
+
