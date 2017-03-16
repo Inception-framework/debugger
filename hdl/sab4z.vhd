@@ -24,12 +24,12 @@ entity sab4z is
     sw:         in  std_logic_vector(3 downto 0); -- Slide switches
     led:        out std_logic_vector(3 downto 0); -- LEDs
     
-    data_bus_a:  inout std_logic;
-    data_bus_b:  inout std_logic;
-
-    en_a,en_b:    in std_logic;
-    do_a,do_b:   in std_logic;
-    di_a,di_b:   out std_logic;    
+--    data_bus_a:  inout std_logic;
+--    data_bus_b:  inout std_logic;
+--
+--    en_a,en_b:    in std_logic;
+--    do_a,do_b:   in std_logic;
+--    di_a,di_b:   out std_logic;    
 
     -------------------------------
     -- FMC port
@@ -127,11 +127,19 @@ architecture rtl of sab4z is
  --  signal receiver_state: receiver_state_t;
  --  signal data_in_q: std_logic; 
  --  signal tristate_en: std_logic;
+  begin
 
- begin
-
-    data_bus_a <= do_a when(en_a='1') else 'z';
-    data_bus_b <= do_b when(en_b='1') else 'z';
+--   tristate_a: entity work.tristate(beh)
+--    port map(oe  => en_a,
+--             dio => data_bus_a,
+--             di  => do_a,
+--             do  => di_a);
+-- 
+--  tristate_b: entity work.tristate(beh)
+--    port map(oe  => en_b,
+--             dio => data_bus_b,
+--             di  => do_b,
+--             do  => di_b);
 
 
 --  pclk <= aclk;
