@@ -67,8 +67,8 @@ architecture beh of inception is
   signal jtag_state_start:   std_logic_vector(3 downto 0);
   signal jtag_state_end:     std_logic_vector(3 downto 0);
   signal jtag_state_current: std_logic_vector(3 downto 0);
-  signal jtag_di:       std_logic_vector(35 downto 0);
-  signal jtag_do:       std_logic_vector(35 downto 0);
+  signal jtag_di:       std_logic_vector(31 downto 0);
+  signal jtag_do:       std_logic_vector(31 downto 0);
 
   component ODDR2                       
   port(   
@@ -103,8 +103,8 @@ architecture beh of inception is
       StateEnd			: in	 std_logic_vector(3 downto 0);
       StateCurrent		: out	 std_logic_vector(3 downto 0);
       -- Ram Part
-      Din		        : in  STD_LOGIC_VECTOR (35 downto 0);
-      Dout			: out STD_LOGIC_VECTOR (35 downto 0)
+      Din		        : in  STD_LOGIC_VECTOR (31 downto 0);
+      Dout			: out STD_LOGIC_VECTOR (31 downto 0)
   );
   end component;
   
@@ -313,7 +313,7 @@ architecture beh of inception is
     jtag_bit_count    <= std_logic_vector(to_unsigned(0,16));
     jtag_state_start  <= x"0";
     jtag_state_end    <= x"0";
-    jtag_di           <= std_logic_vector(to_unsigned(0,36));
+    jtag_di           <= std_logic_vector(to_unsigned(0,32));
     cmd_get           <= '0';
     data_put          <= '0';
     
@@ -334,7 +334,7 @@ architecture beh of inception is
             jtag_bit_count    <= std_logic_vector(to_unsigned(4,16));
             jtag_state_start  <= x"b";
             jtag_state_end    <= x"4";
-            jtag_di           <= std_logic_vector(to_unsigned(11,36));
+            jtag_di           <= std_logic_vector(to_unsigned(11,32));
             if(jtag_state.op = write)then
               cmd_get           <= '1';
             end if;
@@ -344,25 +344,25 @@ architecture beh of inception is
             jtag_bit_count    <= std_logic_vector(to_unsigned(36,16));
             jtag_state_start  <= x"4";
             jtag_state_end    <= x"0";
-            jtag_di           <= "0000"&jtag_state.addr;
+            jtag_di           <= jtag_state.addr;
           when 2 => 
             jtag_state_led <= "0101";
             jtag_bit_count    <= std_logic_vector(to_unsigned(36,16));
             jtag_state_start  <= x"4";
             jtag_state_end    <= x"0";
-            jtag_di           <= "0100"&cmd_dout;
+            jtag_di           <= cmd_dout;
           when 3 => 
             jtag_state_led <= "0110";
             jtag_bit_count    <= std_logic_vector(to_unsigned(36,16));
             jtag_state_start  <= x"4";
             jtag_state_end    <= x"0";
-            jtag_di           <= "1100"&cmd_dout;
+            jtag_di           <= cmd_dout;
           when others =>
             jtag_state_led <= "0111";
             jtag_bit_count    <= std_logic_vector(to_unsigned(0,16));
             jtag_state_start  <= x"0";
             jtag_state_end    <= x"0";
-            jtag_di           <= std_logic_vector(to_unsigned(0,36));
+            jtag_di           <= std_logic_vector(to_unsigned(0,32));
         end case;
       when wait_cmd =>
         case jtag_state.step is
@@ -387,7 +387,7 @@ architecture beh of inception is
         jtag_bit_count    <= std_logic_vector(to_unsigned(0,16));
         jtag_state_start  <= x"0";
         jtag_state_end    <= x"0";
-        jtag_di           <= std_logic_vector(to_unsigned(0,36));
+        jtag_di           <= std_logic_vector(to_unsigned(0,32));
 
     end case;
   end process jtag_out_proc;
