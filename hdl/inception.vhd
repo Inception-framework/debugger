@@ -341,19 +341,19 @@ architecture beh of inception is
 
           when 1 => 
             jtag_state_led <= "0100";
-            jtag_bit_count    <= std_logic_vector(to_unsigned(36,16));
+            jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
             jtag_state_start  <= x"4";
             jtag_state_end    <= x"0";
             jtag_di           <= jtag_state.addr;
           when 2 => 
             jtag_state_led <= "0101";
-            jtag_bit_count    <= std_logic_vector(to_unsigned(36,16));
+            jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
             jtag_state_start  <= x"4";
             jtag_state_end    <= x"0";
             jtag_di           <= cmd_dout;
           when 3 => 
             jtag_state_led <= "0110";
-            jtag_bit_count    <= std_logic_vector(to_unsigned(36,16));
+            jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
             jtag_state_start  <= x"4";
             jtag_state_end    <= x"0";
             jtag_di           <= cmd_dout;
@@ -368,14 +368,17 @@ architecture beh of inception is
         case jtag_state.step is
           when 0 => 
             jtag_state_led <= "0011";
+            jtag_bit_count    <= std_logic_vector(to_unsigned(4,16));
           when 1 => 
             jtag_state_led <= "0100";
+            jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
           when 2 => 
             jtag_state_led <= "0101";
-            jtag_bit_count    <= std_logic_vector(to_unsigned(36,16));
+            jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
           when 3 => 
             data_put       <= '1';
             jtag_state_led <= "0110";
+            jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
           when others =>
             jtag_state_led <= "0111";
         end case;
