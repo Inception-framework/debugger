@@ -62,7 +62,6 @@ end entity inception;
 architecture beh of inception is
   
   -- Jtag ctrl signals
-  signal en:                 std_logic;
   signal jtag_bit_count:     std_logic_vector(15 downto 0);
   signal jtag_shift_strobe:  std_logic;
   signal jtag_busy:          std_logic;
@@ -92,7 +91,7 @@ architecture beh of inception is
     );
     Port (
       CLK			: in  STD_LOGIC;
-      en                        : in  STD_LOGIC;
+      aresetn                   : in  STD_LOGIC;
       -- JTAG Part
       BitCount			: in  STD_LOGIC_VECTOR (15 downto 0);
       Shift_Strobe		: in  STD_LOGIC;								-- eins aktiv...
@@ -254,36 +253,6 @@ architecture beh of inception is
     dout     => data_dout
   );
  
-
-  -- freq divider process
-  en_proc: process(down_cnt,jtag_state.st)
-  begin
-    if(jtag_state.st = wait_cmd)then
-      if(down_cnt=0)then
-        en <= '1';
-      else
-        en <= '0';
-      end if;
-    else
-        en <= '1';
-    end if;
-  end process;
-
-  freq_div_proc: process(aclk)
-  begin
-    if(aclk'event and aclk='1')then
-      if(aresetn='0')then
-        down_cnt <= period; 
-      else
-        if(down_cnt = 0 or jtag_state.st = run_cmd)then
-          down_cnt <= period;
-        elsif(jtag_state.st = wait_cmd)then
-          down_cnt <= down_cnt - 1;
-        end if;
-      end if;
-  end if;
-
-  end process freq_div_proc;
   -- JTAG converter
   jtag_state_proc: process(aclk)
   begin
@@ -438,7 +407,7 @@ architecture beh of inception is
   jtag_ctrl_mater_inst: JTAG_Ctrl_Master
     port map(
       CLK          => aclk,
-      en           => en,
+      aresetn      => aresetn,
       BitCount     => jtag_bit_count,
       Shift_Strobe => jtag_shift_strobe,
       TDO          => TDO,

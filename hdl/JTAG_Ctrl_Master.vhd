@@ -51,7 +51,7 @@ entity JTAG_Ctrl_Master is
            );
     Port (
 	   CLK					: in  STD_LOGIC;
-           en                                   : in std_logic;
+           aresetn                              : in std_logic;
 
 				-- JTAG Part
            BitCount			: in  STD_LOGIC_VECTOR (15 downto 0);
@@ -96,31 +96,57 @@ architecture Behavioral of JTAG_Ctrl_Master is
 	signal StateJTAGMaster : TypeStateJTAGMaster := State_IDLE;
 
 --Signal fuer TMS
-	signal int_TMS_CurrState	: std_logic_vector(3 downto 0) := TEST_LOGIC_RESET;
+	signal int_TMS_CurrState	: std_logic_vector(3 downto 0);
 	signal int_TMS_StateIn		: std_logic_vector(3 downto 0);
-	signal int_TMS_SoftResetCnt	: std_logic_vector(3 downto 0) := "0000";
+	signal int_TMS_SoftResetCnt	: std_logic_vector(3 downto 0);
 	type TypeTMSStates is (idle, prepare_for_working, working_normal1, working_normal2, working_normal3 ,
 									working_softreset1, working_softreset2, working_softreset3 );
-	signal TMSState : TypeTMSStates := idle;
+	signal TMSState : TypeTMSStates;
 
 --Signal fuer TDI/TDO
 	type TypeShiftStates is (idle, prepare_for_working, shifting1, shifting2, shifting3, shifting4 );
-	signal ShiftState : TypeShiftStates := idle;
+	signal ShiftState : TypeShiftStates;
 	signal int_BitCount				:	std_logic_vector( 15 downto 0 );
 
         signal slow_down: std_logic;
+        
+        signal down_cnt: natural range 0 to 31;
 begin
   --TRst <= '1';
 
 	StateCurrent <= int_TMS_CurrState;
 
         slow_down <= '1' when StateJTAGMAster = State_TapToStart or StateJTAGMAster = State_Shift or StateJTAGMAster = State_TapToEnd else '0';
+        
+        slow_down_proc: process(clk)
+        begin
+          if(clk'event and clk='1')then
+            if(aresetn='0')then
+              down_cnt <= 3;
+            else
+              if(StateJTAGMaster = State_IDLE or down_cnt =0)then
+                down_cnt <= 3;
+              else
+                down_cnt <= down_cnt - 1;
+              end if;
+            end if;
+          end if;
+        end process;
 
 	Process ( CLK )
 	begin
 
 		if rising_edge( CLK ) then
-                if((en='1' and slow_down = '1') or slow_down = '0')then
+                if(aresetn='0')then
+                  TCK <= '0';
+                  TMS <= '0';
+                  TDI <= '0';
+                  TMSState <= idle;
+                  ShiftState <= idle;
+                  int_TMS_SoftResetCnt <= "0000";
+                  int_TMS_CurrState <= TEST_LOGIC_RESET;
+                else
+                if((down_cnt = 0 and slow_down = '1') or slow_down = '0')then
 		TRST <= '1';
 
 ------------------------------------------
@@ -458,7 +484,7 @@ begin
 
 			end case;
 
-
+                end if;
                 end if;
 		end if;
 
