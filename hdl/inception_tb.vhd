@@ -36,6 +36,7 @@ architecture beh of inception_tb is
     ----------------------
     -- jtag ctrl master --
     ----------------------
+    period          : in  natural range 1 to 31;
     TDO		    : in  STD_LOGIC;
     TCK		    : out  STD_LOGIC;
     TMS		    : out  STD_LOGIC;
@@ -78,6 +79,7 @@ architecture beh of inception_tb is
     ----------------------
     -- jtag ctrl master --
     ----------------------
+    signal period           :   natural range 1 to 31;
     signal TDO		    :   STD_LOGIC;
     signal TCK		    :   STD_LOGIC;
     signal TMS		    :   STD_LOGIC;
@@ -107,6 +109,7 @@ architecture beh of inception_tb is
  begin
   
  mode_p <= "101"; --loopback
+ period <= 16; --jtag freq ~3MHz
  dut: inception 
   port map(
     aclk => aclk,
@@ -122,6 +125,7 @@ architecture beh of inception_tb is
     ----------------------
     -- jtag ctrl master --
     ----------------------
+    period        => period,
     TDO		  => TDO,
     TCK		  => TCK, 
     TMS		  => TMS,

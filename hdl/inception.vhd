@@ -29,6 +29,7 @@ entity inception is
     ----------------------
     -- jtag ctrl master --
     ----------------------
+    period          : in  natural range 1 to 31;
     TDO		    : in  STD_LOGIC;
     TCK		    : out  STD_LOGIC;
     TMS		    : out  STD_LOGIC;
@@ -61,6 +62,7 @@ end entity inception;
 architecture beh of inception is
   
   -- Jtag ctrl signals
+  signal en:                 std_logic;
   signal jtag_bit_count:     std_logic_vector(15 downto 0);
   signal jtag_shift_strobe:  std_logic;
   signal jtag_busy:          std_logic;
@@ -90,6 +92,7 @@ architecture beh of inception is
     );
     Port (
       CLK			: in  STD_LOGIC;
+      en                        : in  STD_LOGIC;
       -- JTAG Part
       BitCount			: in  STD_LOGIC_VECTOR (15 downto 0);
       Shift_Strobe		: in  STD_LOGIC;								-- eins aktiv...
@@ -170,7 +173,9 @@ architecture beh of inception is
   signal cmd_dout,data_dout:   std_logic_vector(31 downto 0);
   
   signal aclkn: std_logic;
-
+  
+  signal down_cnt: natural range 0 to 31;
+  
  begin
   
   -- Slave FIFO
@@ -249,6 +254,24 @@ architecture beh of inception is
     dout     => data_dout
   );
  
+
+  -- freq divider process
+  en <= '1' when down_cnt=0 else '0';
+  freq_div_proc: process(aclk)
+  begin
+    if(aclk'event and aclk='1')then
+      if(aresetn='0')then
+        down_cnt <= period; 
+      else
+        if(down_cnt = 0)then
+          down_cnt <= period;
+        else
+          down_cnt <= down_cnt - 1;
+        end if;
+      end if;
+  end if;
+
+  end process freq_div_proc;
   -- JTAG converter
   jtag_state_proc: process(aclk)
   begin
@@ -369,18 +392,23 @@ architecture beh of inception is
           when 0 => 
             jtag_state_led <= "0011";
             jtag_bit_count    <= std_logic_vector(to_unsigned(4,16));
+            jtag_di           <= std_logic_vector(to_unsigned(11,32));
           when 1 => 
             jtag_state_led <= "0100";
             jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
+            jtag_di           <= jtag_state.addr;
           when 2 => 
             jtag_state_led <= "0101";
             jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
+            jtag_di           <= cmd_dout;
           when 3 => 
             data_put       <= '1';
             jtag_state_led <= "0110";
             jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
+            jtag_di           <= cmd_dout;
           when others =>
             jtag_state_led <= "0111";
+            jtag_di           <= std_logic_vector(to_unsigned(0,32));
         end case;
       when done =>
         jtag_state_led <= "1000";
@@ -398,6 +426,7 @@ architecture beh of inception is
   jtag_ctrl_mater_inst: JTAG_Ctrl_Master
     port map(
       CLK          => aclk,
+      en           => en,
       BitCount     => jtag_bit_count,
       Shift_Strobe => jtag_shift_strobe,
       TDO          => TDO,

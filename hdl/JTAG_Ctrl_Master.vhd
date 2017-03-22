@@ -50,7 +50,8 @@ entity JTAG_Ctrl_Master is
            Wortbreite  : natural := 8
            );
     Port (
-				CLK					: in  STD_LOGIC;
+	   CLK					: in  STD_LOGIC;
+           en                                   : in std_logic;
 
 				-- JTAG Part
            BitCount			: in  STD_LOGIC_VECTOR (15 downto 0);
@@ -117,7 +118,7 @@ begin
 	begin
 
 		if rising_edge( CLK ) then
-
+                if(en='1')then
 		TRST <= '1';
 
 ------------------------------------------
@@ -456,7 +457,7 @@ begin
 			end case;
 
 
-
+                end if;
 		end if;
 
 
