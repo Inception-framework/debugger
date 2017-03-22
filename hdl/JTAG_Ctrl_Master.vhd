@@ -54,6 +54,7 @@ entity JTAG_Ctrl_Master is
            aresetn                              : in std_logic;
 
 				-- JTAG Part
+           period          : in  natural range 1 to 31;
            BitCount			: in  STD_LOGIC_VECTOR (15 downto 0);
            Shift_Strobe		: in  STD_LOGIC;								-- eins aktiv...
            TDO				: in  STD_LOGIC;
@@ -122,10 +123,10 @@ begin
         begin
           if(clk'event and clk='1')then
             if(aresetn='0')then
-              down_cnt <= 3;
+              down_cnt <= period;
             else
               if(StateJTAGMaster = State_IDLE or down_cnt =0)then
-                down_cnt <= 3;
+                down_cnt <= period;
               else
                 down_cnt <= down_cnt - 1;
               end if;

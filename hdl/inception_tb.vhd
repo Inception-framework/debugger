@@ -109,7 +109,7 @@ architecture beh of inception_tb is
  begin
   
  mode_p <= "101"; --loopback
- period <= 16; --jtag freq ~3MHz
+ period <= 3; -- small value for simulation, for real code chose 15 so that jtag freq ~3MHz
  dut: inception 
   port map(
     aclk => aclk,
