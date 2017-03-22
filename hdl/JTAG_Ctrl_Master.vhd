@@ -110,7 +110,7 @@ architecture Behavioral of JTAG_Ctrl_Master is
 	signal int_BitCount				:	std_logic_vector( 15 downto 0 );
 
         signal slow_down: std_logic;
-        
+
         signal down_cnt: natural range 0 to 31;
 begin
   --TRst <= '1';
@@ -118,7 +118,7 @@ begin
 	StateCurrent <= int_TMS_CurrState;
 
         slow_down <= '1' when StateJTAGMAster = State_TapToStart or StateJTAGMAster = State_Shift or StateJTAGMAster = State_TapToEnd else '0';
-        
+
         slow_down_proc: process(clk)
         begin
           if(clk'event and clk='1')then

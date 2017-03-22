@@ -375,22 +375,27 @@ architecture beh of inception is
             jtag_state_led <= "0011";
             jtag_bit_count    <= std_logic_vector(to_unsigned(4,16));
             jtag_di           <= std_logic_vector(to_unsigned(11,32));
+            jtag_state_end    <= x"4";
           when 1 => 
             jtag_state_led <= "0100";
             jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
             jtag_di           <= jtag_state.addr;
+            jtag_state_end    <= x"0";
           when 2 => 
             jtag_state_led <= "0101";
             jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
             jtag_di           <= cmd_dout;
+            jtag_state_end    <= x"0";
           when 3 => 
             data_put       <= '1';
             jtag_state_led <= "0110";
             jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
             jtag_di           <= cmd_dout;
+            jtag_state_end    <= x"0";
           when others =>
             jtag_state_led <= "0111";
             jtag_di           <= std_logic_vector(to_unsigned(0,32));
+            jtag_state_end    <= x"0";
         end case;
       when done =>
         jtag_state_led <= "1000";
