@@ -289,10 +289,8 @@ architecture beh of inception is
             if(cmd_empty='0' and jtag_busy='0') then
               case jtag_state.step is
                 when 3 =>
-                  if(data_full='0')then
-                    jtag_state.st <= done;
-                    jtag_state.step <= 0;
-                  end if;
+                  jtag_state.st <= done;
+                  jtag_state.step <= 0;
                   data_din      <= jtag_do(31 downto 0);
                 when others =>
                   jtag_state.st <= run_cmd;
@@ -300,7 +298,7 @@ architecture beh of inception is
               end case;
             end if;
           when done =>
-            if(cmd_empty='0') then
+            if(data_full='0') then
               jtag_state.st <= idle;
             end if;
           when others =>
@@ -310,7 +308,7 @@ architecture beh of inception is
     end if;
   end process jtag_state_proc;
 
-  jtag_out_proc: process(jtag_state,r) is
+  jtag_out_proc: process(jtag_state) is
   begin
 
     jtag_state_led <= "1000";
@@ -357,7 +355,7 @@ architecture beh of inception is
             jtag_state_start  <= x"4";
             jtag_state_end    <= x"0";
             jtag_di           <= cmd_dout;
-          when 3 => 
+          when 3 =>
             jtag_state_led <= "0110";
             jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
             jtag_state_start  <= x"4";
@@ -388,7 +386,6 @@ architecture beh of inception is
             jtag_di           <= cmd_dout;
             jtag_state_end    <= x"0";
           when 3 => 
-            data_put       <= '1';
             jtag_state_led <= "0110";
             jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
             jtag_di           <= cmd_dout;
@@ -397,10 +394,10 @@ architecture beh of inception is
             jtag_state_led <= "0111";
             jtag_di           <= std_logic_vector(to_unsigned(0,32));
             jtag_state_end    <= x"0";
-            data_put       <= '0';
         end case;
       when done =>
         jtag_state_led <= "1000";
+	data_put <= '1';
       when others =>
         jtag_state_led <= "1000";
         jtag_shift_strobe <= '0';
@@ -408,7 +405,7 @@ architecture beh of inception is
         jtag_state_start  <= x"0";
         jtag_state_end    <= x"0";
         jtag_di           <= std_logic_vector(to_unsigned(0,32));
-
+        data_put          <= '0';
     end case;
   end process jtag_out_proc;
 

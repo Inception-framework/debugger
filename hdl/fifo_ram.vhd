@@ -95,16 +95,7 @@ begin
     end if;
   end process state_proc;
   
-  out_proc: process(state)
-  begin
-    if(state.cnt = 0)then
-      empty <= '1';
-    elsif(state.cnt = 2**addr_size)then
-      full <= '1';
-    else
-      empty <= '0';
-      full  <= '0';
-    end if;
-  end process out_proc;
-  
+  empty <= '1' when state.cnt = 0 else '0';
+  full  <= '1' when state.cnt = 2**addr_size else '0';
+ 
 end architecture beh;
