@@ -14,6 +14,9 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+USE std.textio.all;
+use ieee.std_logic_textio.all; 
+
 entity inception_tb is
 end entity inception_tb;
 
@@ -162,6 +165,23 @@ architecture beh of inception_tb is
    aclk <= '0';
    wait for 5 ns;
  end process;
+
+ o_proc: process(TCK)
+
+    file output_fp: text open write_mode is "output.txt";
+    variable output_line: line;
+    variable output_data: std_logic_vector(1 downto 0);
+  begin
+ 
+    if(TCK'event and TCK='1')then
+      output_data := TMS&TDI;
+      write(output_line,output_data);
+      writeline(output_fp,output_line);
+    end if;
+
+  end process;
+
+ 
   
 end architecture beh;
 
