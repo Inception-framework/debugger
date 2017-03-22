@@ -256,16 +256,28 @@ architecture beh of inception is
  
 
   -- freq divider process
-  en <= '1' when down_cnt=0 else '0';
+  en_proc: process(down_cnt,jtag_state.st)
+  begin
+    if(jtag_state.st = wait_cmd)then
+      if(down_cnt=0)then
+        en <= '1';
+      else
+        en <= '0';
+      end if;
+    else
+        en <= '1';
+    end if;
+  end process;
+
   freq_div_proc: process(aclk)
   begin
     if(aclk'event and aclk='1')then
       if(aresetn='0')then
         down_cnt <= period; 
       else
-        if(down_cnt = 0)then
+        if(down_cnt = 0 or jtag_state.st = run_cmd)then
           down_cnt <= period;
-        else
+        elsif(jtag_state.st = wait_cmd)then
           down_cnt <= down_cnt - 1;
         end if;
       end if;

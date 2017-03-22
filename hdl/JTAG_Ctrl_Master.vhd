@@ -108,17 +108,19 @@ architecture Behavioral of JTAG_Ctrl_Master is
 	signal ShiftState : TypeShiftStates := idle;
 	signal int_BitCount				:	std_logic_vector( 15 downto 0 );
 
+        signal slow_down: std_logic;
 begin
   --TRst <= '1';
 
 	StateCurrent <= int_TMS_CurrState;
 
+        slow_down <= '1' when StateJTAGMAster = State_TapToStart or StateJTAGMAster = State_Shift or StateJTAGMAster = State_TapToEnd else '0';
 
 	Process ( CLK )
 	begin
 
 		if rising_edge( CLK ) then
-                if(en='1')then
+                if((en='1' and slow_down = '1') or slow_down = '0')then
 		TRST <= '1';
 
 ------------------------------------------
