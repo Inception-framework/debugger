@@ -321,6 +321,7 @@ architecture beh of inception is
     jtag_di           <= std_logic_vector(to_unsigned(0,32));
     cmd_get           <= '0';
     data_put          <= '0';
+    data_get          <= '0';
     
     case jtag_state.st is
       when idle =>
@@ -396,6 +397,7 @@ architecture beh of inception is
             jtag_state_led <= "0111";
             jtag_di           <= std_logic_vector(to_unsigned(0,32));
             jtag_state_end    <= x"0";
+            data_put       <= '0';
         end case;
       when done =>
         jtag_state_led <= "1000";

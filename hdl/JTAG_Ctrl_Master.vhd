@@ -146,6 +146,7 @@ begin
                   ShiftState <= idle;
                   int_TMS_SoftResetCnt <= "0000";
                   int_TMS_CurrState <= TEST_LOGIC_RESET;
+                  Dout <= (others=>'0');
                 else
                 if((down_cnt = 0 and slow_down = '1') or slow_down = '0')then
 		TRST <= '1';
@@ -158,7 +159,7 @@ begin
 				when State_IDLE =>
 
 					Busy <= '0';
-
+                                        Dout <= (others =>'0');
 					if (Shift_Strobe='1') then
 						Busy <= '1';
 						int_TMS_StateIn <= StateStart;
@@ -239,7 +240,6 @@ begin
 					-- TDO schieben
 					ShiftState <= shifting4;
 					Dout(CONV_INTEGER( int_BitCount )) <= TDO;
-          
 				when shifting4 =>
 
 					TCK <= '1';
