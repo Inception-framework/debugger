@@ -16,6 +16,9 @@ use ieee.numeric_std.all;
 
 use work.inception_pkg.all;
 
+USE std.textio.all;
+use ieee.std_logic_textio.all; 
+
 entity inception is
   port(
     aclk:       in std_logic;  -- Clock
@@ -203,19 +206,20 @@ architecture beh of inception is
   );
   
   stub_input_proc: process
+    file input_fp: text open read_mode is "../../io/input.txt";
+    variable input_line : line;
+    variable input_data : std_logic_vector(31 downto 0);
   begin
-    cmd_gen_loop: for i in 0 to 349 loop
+      cmd_gen_loop: while(endfile(input_fp) = false) loop
       cmd_put <= '0';
       wait for 15 ns;
       if(cmd_full='1')then
         wait until cmd_full='0';
       end if;
+      readline(input_fp,input_line);
+      hread(input_line,input_data);
       cmd_put <= '1';
-      cmd_din <= "0"&"0000001"&"000000000000000000000000";
-      wait for 10 ns;
-      cmd_din  <= x"f00ff00f";
-      wait for 10 ns;
-      cmd_din  <= x"ffffffff";
+      cmd_din <= input_data;
       wait for 10 ns;
     end loop cmd_gen_loop;
     cmd_put <='0';

@@ -168,7 +168,7 @@ architecture beh of inception_tb is
 
  o_proc: process(TCK)
 
-    file output_fp: text open write_mode is "output.txt";
+    file output_fp: text open write_mode is "../../io/output.txt";
     variable output_line: line;
     variable output_data: std_logic_vector(1 downto 0);
   begin
