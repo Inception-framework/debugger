@@ -274,7 +274,7 @@ architecture beh of inception is
           when read_cmd =>
             if(cmd_empty='0') then
               jtag_state.st     <= read_addr;
-              case cmd_dout(31 downto 0) is
+              case cmd_dout(31 downto 28) is
                 when x"1" =>  
                   jtag_state.op <= read;
                 when x"0" =>
@@ -358,14 +358,14 @@ architecture beh of inception is
                  jtag_di           <= std_logic_vector(to_unsigned(11,32));
                  jtag_state_end    <= SHIFT_DR;
                  if(jtag_state.op = write and jtag_state.st = run_cmd)then
-                   cmd_get           <= '1';
+                   cmd_get <= '1';
                  end if;
 
                when 1 => 
                  jtag_state_led <= "0100";
                  jtag_bit_count    <= std_logic_vector(to_unsigned(3,16));
                  jtag_state_start  <= SHIFT_DR;
-                 jtag_di           <= x"00000001" when jtag_state.op = read else x"00000000";
+                 if(jtag_state.op = read) then jtag_di <= x"00000001"; else jtag_di <= x"00000000"; end if;
                  jtag_state_end    <= SHIFT_DR;
                when 2 => 
                  jtag_state_led <= "0100";
@@ -377,7 +377,7 @@ architecture beh of inception is
                  jtag_state_led <= "0100";
                  jtag_bit_count    <= std_logic_vector(to_unsigned(3,16));
                  jtag_state_start  <= SHIFT_DR;
-                 jtag_di           <= x"00000003" when jtag_state.op = read else x"00000002";
+                 if(jtag_state.op = read) then jtag_di <= x"00000003"; else jtag_di <= x"00000002"; end if;
                  jtag_state_end    <= RUN_TEST_IDLE;
                when 4 => 
                  jtag_state_led <= "0100";
@@ -389,13 +389,13 @@ architecture beh of inception is
                  jtag_state_led <= "0100";
                  jtag_bit_count    <= std_logic_vector(to_unsigned(3,16));
                  jtag_state_start  <= SHIFT_DR;
-                 jtag_di           <= x"00000007" when jtag_state.op = read else x"00000006";
+                 if(jtag_state.op = read) then jtag_di <= x"00000007"; else jtag_di <= x"00000006"; end if;
                  jtag_state_end    <= RUN_TEST_IDLE;
                when 6 => 
                  jtag_state_led <= "0100";
                  jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
                  jtag_state_start  <= SHIFT_DR;
-                 jtag_di           <= x"00000000" when jtag_state.op = read else cmd_dout;
+                 if(jtag_state.op = read) then jtag_di <= x"00000000"; else jtag_di <= cmd_dout; end if;
                  jtag_state_end    <= RUN_TEST_IDLE;
                when others =>
                  jtag_state_start  <= TEST_LOGIC_RESET;
