@@ -220,7 +220,7 @@ architecture beh of inception is
     wait;
   end process;
    
-  data_get <= '0', '1' after 800000 ns;
+  data_get <= '0', '1' after 80000 ns;
 
   -- Command FIFO
   cmd_fifo_inst: fifo_ram
@@ -281,12 +281,14 @@ architecture beh of inception is
               jtag_state.number <= to_integer(unsigned(cmd_dout(23 downto  0)));
             end if;
           when read_addr =>
-            --if(cmd_empty='0') then
+            --if(jtag_state.op = write and cmd_empty='0') then
               jtag_state.st   <= run_cmd;
               jtag_state.addr <= cmd_dout; 
             --end if;
           when run_cmd =>
-              jtag_state.st <= wait_cmd;
+              if((jtag_state.op = write and cmd_empty='0') or jtag_state.op=read)then
+                jtag_state.st <= wait_cmd;
+              end if;
           when wait_cmd  =>
             if(cmd_empty='0' and jtag_busy='0') then
               case jtag_state.step is
@@ -331,7 +333,7 @@ architecture beh of inception is
         cmd_get        <= '1';
       when read_addr =>
         jtag_state_led <= "0010";
-      when run_cmd =>
+      when run_cmd | wait_cmd =>
         jtag_shift_strobe <= '1';
         case jtag_state.step is
           when 0 => 
@@ -340,7 +342,7 @@ architecture beh of inception is
             jtag_state_start  <= x"b";
             jtag_state_end    <= x"4";
             jtag_di           <= std_logic_vector(to_unsigned(11,32));
-            if(jtag_state.op = write)then
+            if(jtag_state.op = write and jtag_state.st = run_cmd)then
               cmd_get           <= '1';
             end if;
 
@@ -368,33 +370,6 @@ architecture beh of inception is
             jtag_state_start  <= x"0";
             jtag_state_end    <= x"0";
             jtag_di           <= std_logic_vector(to_unsigned(0,32));
-        end case;
-      when wait_cmd =>
-        case jtag_state.step is
-          when 0 => 
-            jtag_state_led <= "0011";
-            jtag_bit_count    <= std_logic_vector(to_unsigned(4,16));
-            jtag_di           <= std_logic_vector(to_unsigned(11,32));
-            jtag_state_end    <= x"4";
-          when 1 => 
-            jtag_state_led <= "0100";
-            jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
-            jtag_di           <= jtag_state.addr;
-            jtag_state_end    <= x"0";
-          when 2 => 
-            jtag_state_led <= "0101";
-            jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
-            jtag_di           <= cmd_dout;
-            jtag_state_end    <= x"0";
-          when 3 => 
-            jtag_state_led <= "0110";
-            jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
-            jtag_di           <= cmd_dout;
-            jtag_state_end    <= x"0";
-          when others =>
-            jtag_state_led <= "0111";
-            jtag_di           <= std_logic_vector(to_unsigned(0,32));
-            jtag_state_end    <= x"0";
         end case;
       when done =>
         jtag_state_led <= "1000";
