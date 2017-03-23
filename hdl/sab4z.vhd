@@ -23,6 +23,16 @@ entity sab4z is
     btn1,btn2:  in std_logic;  -- Command button
     sw:         in  std_logic_vector(3 downto 0); -- Slide switches
     led:        out std_logic_vector(3 downto 0); -- LEDs
+   
+    ----------------------
+    -- jtag ctrl master --
+    ----------------------
+    jtag_state_led: out std_logic_vector(3 downto 0);
+    TDO		    : in  STD_LOGIC;
+    TCK		    : out  STD_LOGIC;
+    TMS		    : out  STD_LOGIC;
+    TDI		    : out  STD_LOGIC;
+    TRST            : out  STD_LOGIC;
 
     -----------------------
     -- slave fifo master --
@@ -170,7 +180,6 @@ architecture rtl of sab4z is
   );
   end component;
 
-
 begin
 
   inception_inst: inception
@@ -188,7 +197,7 @@ begin
     ----------------------
     -- jtag ctrl master --
     ----------------------
-    period => period, 
+    period => 15, 
     TDO => TDO,	
     TCK	=> TCK,	
     TMS => TMS,		
@@ -227,7 +236,7 @@ begin
              f     => open,
              a     => open);
  -- Synchronizer - debouncer
-  sd1: entity work.debouncer(rtl)
+  sd2: entity work.debouncer(rtl)
     port map(clk   => aclk,
              srstn => aresetn,
              d     => btn2,

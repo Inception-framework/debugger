@@ -1,4 +1,4 @@
-##
+#
 # Copyright (C) Telecom ParisTech
 #
 # This file must be used under the terms of the CeCILL. This source
@@ -30,15 +30,13 @@ if { $argc == 3 } {
 cd $builddir
 source $rootdir/scripts/ila.tcl
 
-
 ###################
 # Create SAB4Z IP #
 ###################
 create_project -part xc7z020clg484-1 -force sab4z sab4z
-add_files $rootdir/hdl/axi_pkg.vhd $rootdir/hdl/debouncer.vhd $rootdir/hdl/sab4z.vhd
-set sources { JTAG_Ctrl_Master fifo slaveFIFO2b_loopback slaveFIFO2b_streamIN slaveFIFO2b_ZLP slaveFIFO2b_fpga_top slaveFIFO2b_partial slaveFIFO2b_streamOUT axi_pkg debouncer inception sab4z }
+set sources { fifo slaveFIFO2b_streamOUT axi_pkg inception_pkg sab4z slaveFIFO2b_ZLP inception slaveFIFO2b_fpga_top JTAG_Ctrl_Master slaveFIFO2b_loopback debouncer slaveFIFO2b_partial fifo_ram slaveFIFO2b_streamIN }
 foreach f $sources {
-	add_files $rootdir/hdl/SlaveFIFO2b/$f.vhd
+	add_files $rootdir/hdl/$f.vhd
 }
 import_files -force -norecurse
 ipx::package_project -root_dir sab4z -vendor www.telecom-paristech.fr -library SAB4Z -force sab4z
@@ -50,12 +48,9 @@ close_project
 set top top
 create_project -part xc7z020clg484-1 -force $top .
 set_property board_part em.avnet.com:zed:part0:1.3 [current_project]
-set_property ip_repo_paths { ./slaveFIFO2b_fpga_top ./sab4z } [current_fileset]
+set_property ip_repo_paths { ./sab4z } [current_fileset]
 update_ip_catalog
 create_bd_design "$top"
-
-set slave_fifo [create_bd_cell -type ip -vlnv [get_ipdefs *www.telecom-paristech.fr:SAB4Z:slaveFIFO2b_fpga_top:*] slave_fifo]
-
 set sab4z [create_bd_cell -type ip -vlnv [get_ipdefs *www.telecom-paristech.fr:SAB4Z:sab4z:*] sab4z]
 set ps7 [create_bd_cell -type ip -vlnv [get_ipdefs *xilinx.com:ip:processing_system7:*] ps7]
 apply_bd_automation -rule xilinx.com:bd_rule:processing_system7 -config {make_external "FIXED_IO, DDR" apply_board_preset "1" Master "Disable" Slave "Disable" } $ps7
@@ -64,9 +59,72 @@ set_property -dict [list CONFIG.PCW_USE_M_AXI_GP0 {1}] $ps7
 set_property -dict [list CONFIG.PCW_M_AXI_GP0_ENABLE_STATIC_REMAP {1}] $ps7
 
 # Interconnections
+
+# JTAG ctlr master
+create_bd_port -dir O TCK
+connect_bd_net [get_bd_pins /sab4z/TCK] [get_bd_ports TCK]
+
+create_bd_port -dir O TRST
+connect_bd_net [get_bd_pins /sab4z/TRST] [get_bd_ports TRST]
+
+create_bd_port -dir I TDO
+connect_bd_net [get_bd_pins /sab4z/TDO] [get_bd_ports TDO]
+
+create_bd_port -dir O TMS
+connect_bd_net [get_bd_pins /sab4z/TMS] [get_bd_ports TMS]
+
+create_bd_port -dir O TDI
+connect_bd_net [get_bd_pins /sab4z/TDI] [get_bd_ports TDI]
+
+# Slave FIFO
+create_bd_port -dir O clk_out
+connect_bd_net [get_bd_pins /sab4z/clk_out] [get_bd_ports clk_out]
+
+create_bd_port -dir O clk_original
+connect_bd_net [get_bd_pins /sab4z/clk_original] [get_bd_ports clk_original]
+
+create_bd_port -dir IO -from 31 -to 0 fdata
+connect_bd_net [get_bd_pins /sab4z/fdata] [get_bd_ports fdata]
+
+create_bd_port -dir O -from 1 -to 0 faddr
+connect_bd_net [get_bd_pins /sab4z/faddr] [get_bd_ports faddr]
+
+create_bd_port -dir O slcs
+connect_bd_net [get_bd_pins /sab4z/slcs] [get_bd_ports slcs]
+
+create_bd_port -dir O slrd
+connect_bd_net [get_bd_pins /sab4z/slrd] [get_bd_ports slrd]
+
+create_bd_port -dir O sloe
+connect_bd_net [get_bd_pins /sab4z/sloe] [get_bd_ports sloe]
+
+create_bd_port -dir O slwr
+connect_bd_net [get_bd_pins /sab4z/slwr] [get_bd_ports slwr]
+
+create_bd_port -dir O pktend
+connect_bd_net [get_bd_pins /sab4z/pktend] [get_bd_ports pktend]
+
+create_bd_port -dir I flaga
+connect_bd_net [get_bd_pins /sab4z/flaga] [get_bd_ports flaga]
+
+create_bd_port -dir I flagb
+connect_bd_net [get_bd_pins /sab4z/flagb] [get_bd_ports flagb]
+
+create_bd_port -dir I flagc
+connect_bd_net [get_bd_pins /sab4z/flagc] [get_bd_ports flagc]
+
+create_bd_port -dir I flagd
+connect_bd_net [get_bd_pins /sab4z/flagd] [get_bd_ports flagd]
+
+create_bd_port -dir I -from 2 -to 0 mode_p
+connect_bd_net [get_bd_pins /sab4z/mode_p] [get_bd_ports mode_p]
+
+
 # Primary IOs
 create_bd_port -dir O -from 3 -to 0 led
 connect_bd_net [get_bd_pins /sab4z/led] [get_bd_ports led]
+create_bd_port -dir O -from 3 -to 0 jtag_state_led
+connect_bd_net [get_bd_pins /sab4z/jtag_state_led] [get_bd_ports jtag_state_led]
 create_bd_port -dir I -from 3 -to 0 sw
 connect_bd_net [get_bd_pins /sab4z/sw] [get_bd_ports sw]
 create_bd_port -dir I btn1
@@ -74,75 +132,17 @@ connect_bd_net [get_bd_pins /sab4z/btn1] [get_bd_ports btn1]
 create_bd_port -dir I btn2
 connect_bd_net [get_bd_pins /sab4z/btn2] [get_bd_ports btn2]
 
-connect_bd_net [get_bd_pins slave_fifo/aclk] [get_bd_pins ps7/FCLK_CLK0]
-
-create_bd_port -dir IO -from 31 -to 0 fdata
-connect_bd_net [get_bd_pins /slave_fifo/fdata] [get_bd_ports fdata]
-
-create_bd_port -dir O -from 1 -to 0 faddr
-connect_bd_net [get_bd_pins /slave_fifo/faddr] [get_bd_ports faddr]
-
-create_bd_port -dir O clk_out
-connect_bd_net [get_bd_pins /slave_fifo/clk_out] [get_bd_ports clk_out]
-#connect_bd_net [get_bd_ports clk_out] [get_bd_pins ps7/FCLK_CLK0]
-
-create_bd_port -dir O slcs
-connect_bd_net [get_bd_pins /slave_fifo/slcs] [get_bd_ports slcs]
-
-create_bd_port -dir O slrd
-connect_bd_net [get_bd_pins /slave_fifo/slrd] [get_bd_ports slrd]
-
-create_bd_port -dir O sloe
-connect_bd_net [get_bd_pins /slave_fifo/sloe] [get_bd_ports sloe]
-
-create_bd_port -dir O slwr
-connect_bd_net [get_bd_pins /slave_fifo/slwr] [get_bd_ports slwr]
-
-create_bd_port -dir O pktend
-connect_bd_net [get_bd_pins /slave_fifo/pktend] [get_bd_ports pktend]
-
-create_bd_port -dir I flaga
-connect_bd_net [get_bd_pins /slave_fifo/flaga] [get_bd_ports flaga]
-
-create_bd_port -dir I flagb
-connect_bd_net [get_bd_pins /slave_fifo/flagb] [get_bd_ports flagb]
-
-create_bd_port -dir I flagc
-connect_bd_net [get_bd_pins /slave_fifo/flagc] [get_bd_ports flagc]
-
-create_bd_port -dir I flagd
-connect_bd_net [get_bd_pins /slave_fifo/flagd] [get_bd_ports flagd]
-
-create_bd_port -dir I -from 2 -to 0 mode_p
-connect_bd_net [get_bd_pins /slave_fifo/mode_p] [get_bd_ports mode_p]
-
 # ps7 - sab4z
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/ps7/M_AXI_GP0" Clk "Auto" }  [get_bd_intf_pins /sab4z/s0_axi]
 
-
-connect_bd_net [get_bd_pins slave_fifo/aresetn] [get_bd_pins rst_ps7_100M/peripheral_aresetn]
-#connect_bd_net [get_bd_pins slave_fifo/aresetn] [get_bd_pins ps7/FCLK_RESET0_N]
-
-# Addresses rangesf
+# Addresses ranges
 set_property offset 0x40000000 [get_bd_addr_segs -of_object [get_bd_intf_pins /ps7/M_AXI_GP0]]
 set_property range 1G [get_bd_addr_segs -of_object [get_bd_intf_pins /ps7/M_AXI_GP0]]
 
 # In-circuit debugging
 if { $ila == 1 } {
-	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_ports clk_out]
-	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_ports fdata]
-	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_ports faddr]
-	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_ports flaga]
-	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_ports flagb]
-	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_ports flagc]
-	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_ports flagd]
-	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_ports slcs]
-	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_ports slrd]
-	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_ports sloe]
-	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_ports slwr]
-	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_ports pktend]
+	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_intf_nets -of_objects [get_bd_intf_pins /sab4z/m_axi]]
 }
-
 
 # Synthesis flow
 validate_bd_design
@@ -151,7 +151,7 @@ generate_target all $files
 add_files -norecurse -force [make_wrapper -files $files -top]
 save_bd_design
 set run [get_runs synth*]
-set_property STEPS.SYNTH_DESIGN.ARGS.FLATTEN_HIERARCHY full $run
+set_property STEPS.SYNTH_DESIGN.ARGS.FLATTEN_HIERARCHY none $run
 launch_runs $run
 wait_on_run $run
 open_run $run
@@ -161,10 +161,19 @@ if { $ila == 1 } {
 	set topcell [get_cells $top*]
 	set nets {}
 	set suffixes {
-		clk_out fdata faddr flaga flagb flagc flagd slcs slrd sloe slwr pktend
+		ARID ARADDR ARLEN ARSIZE ARBURST ARLOCK ARCACHE ARPROT ARQOS ARVALID
+		RREADY
+		AWID AWADDR AWLEN AWSIZE AWBURST AWLOCK AWCACHE AWPROT AWQOS AWVALID
+		WID WDATA WSTRB WLAST WVALID
+		BREADY
+		ARREADY
+		RID RDATA RRESP RLAST RVALID
+		AWREADY
+		WREADY
+		BID BRESP BVALID
 	}
 	foreach suffix $suffixes {
-		lappend nets $topcell/slave_fifo/${suffix}
+		lappend nets $topcell/sab4z_m_axi_${suffix}
 	}
 	add_ila_core dc $topcell/ps7_FCLK_CLK0 $nets
 }
@@ -179,9 +188,14 @@ array set ios {
 	"led[1]"        { "T21"  "LVCMOS33" }
 	"led[2]"        { "U22"  "LVCMOS33" }
 	"led[3]"        { "U21"  "LVCMOS33" }
+	"jtag_state_led[3]"   { "U14"  "LVCMOS33" }
+	"jtag_state_led[2]"   { "U19"  "LVCMOS33" }
+	"jtag_state_led[1]"   { "W22"  "LVCMOS33" }
+	"jtag_state_led[0]"   { "V22"  "LVCMOS33" }
 	"btn1"           { "T18"  "LVCMOS25" }
-	"btn2"           { "TR16"  "LVCMOS25" }
+	"btn2"           { "R16"  "LVCMOS25" }
         "clk_out"       { "M19"  "LVCMOS25" }
+        "clk_original"  { "B16"  "LVCMOS25" }
         "sloe"          { "G21"  "LVCMOS25" }
         "slcs"          { "K21"  "LVCMOS25" }
         "slwr"          { "G20"  "LVCMOS25" }
@@ -228,6 +242,11 @@ array set ios {
         "fdata[29]"     { "P20"  "LVCMOS25" }
         "fdata[30]"     { "P21"  "LVCMOS25" }
         "fdata[31]"     { "J20"  "LVCMOS25" }
+        "TCK"           { "Y11"  "LVCMOS25" }
+        "TRST"          { "AA8"  "LVCMOS25" }
+        "TDO"           { "AA11"  "LVCMOS25" }
+        "TMS"           { "Y10"  "LVCMOS25" }
+        "TDI"           { "AA9"  "LVCMOS25" }
 	}
 
 foreach io [ array names ios ] {
@@ -237,31 +256,30 @@ foreach io [ array names ios ] {
 	set_property iostandard $std [get_ports [list $io]]
 }
 
-#set_property iostandard LVCMOS25 [get_ports [get_iobanks 34]]
-# Location constraints
-#set_property IOB TRUE [get_cells -hierarchical -regexp .*slave_fifo.*data_out_d.*]
-#phys_opt_design -force_replication_on_nets [get_cells -hierarchical -regexp .*slave_fifo.*slwr_n_d.*]
-#set_property IOB TRUE [get_cells -hierarchical -regexp .*slave_fifo.*slwr_n_d.*]
-#set_property IOB TRUE [all_inputs]
-#set_property IOB TRUE [all_outputs]
-
-#set_property IOB TRUE [get_cells -hierarchical -regexp .*slave_fifo.*fdata_d.*]
-#set_property IOB TRUE [get_cells -hierarchical -regexp .*slave_fifo.*flaga_d.*]
-#set_property IOB TRUE [get_cells -hierarchical -regexp .*slave_fifo.*flagb_d.*]
-#set_property IOB TRUE [get_cells -hierarchical -regexp .*slave_fifo.*flagc_d.*]
-#set_property IOB TRUE [get_cells -hierarchical -regexp .*slave_fifo.*flagd_d.*]
-
 # Timing constraints
 set clock [get_clocks]
 set_false_path -from $clock -to [get_ports {led[*]}]
 set_false_path -from [get_ports {btn1 btn2 sw[*]}] -to $clock
 
-create_generated_clock -source [get_pins -hierarchical slave_fifo/aclk] -master_clock [get_clocks] -add -name clk_out [get_ports clk_out] -edges {2 3 4}
+create_generated_clock -source [get_pins -hierarchical sab4z/aclk] -master_clock [get_clocks] -add -name clk_out [get_ports clk_out] -edges {2 3 4}
 
-set clock [get_clocks clk_out]
+set clock [get_clocks clk_fpga_0]
+set_input_delay -clock $clock 2 [get_ports TDO]
+set_input_delay -clock $clock 2 [get_ports fdata]
+set_input_delay -clock $clock 2 [get_ports flaga]
+set_input_delay -clock $clock 2 [get_ports flagb]
+set_input_delay -clock $clock 2 [get_ports flagc]
+set_input_delay -clock $clock 2 [get_ports flagd]
+
+
+#set clock [get_clocks clk_out]
 
 # add timing constraints for fifo
 set_false_path -from [get_ports {mode_p sw[*]}] -to $clock
+set_output_delay -clock $clock 1 [get_ports TCK]
+set_output_delay -clock $clock 1 [get_ports TRST]
+set_output_delay -clock $clock 1 [get_ports TMS]
+set_output_delay -clock $clock 1 [get_ports TDI]
 set_output_delay -clock $clock 1 [get_ports slcs]
 set_output_delay -clock $clock 1 [get_ports fdata]
 set_output_delay -clock $clock 1 [get_ports faddr]
@@ -269,12 +287,6 @@ set_output_delay -clock $clock 1 [get_ports slrd]
 set_output_delay -clock $clock 1 [get_ports slwr]
 set_output_delay -clock $clock 1 [get_ports sloe]
 set_output_delay -clock $clock 1 [get_ports pktend]
-set_input_delay -clock $clock 7.5 [get_ports fdata]
-#set_input_delay -clock $clock 7.5 [get_ports mode_p]
-set_input_delay -clock $clock 7.5 [get_ports flaga]
-set_input_delay -clock $clock 7.5 [get_ports flagb]
-set_input_delay -clock $clock 7.5 [get_ports flagc]
-set_input_delay -clock $clock 7.5 [get_ports flagd]
 
 
 # Implementation
@@ -292,3 +304,4 @@ puts "\[VIVADO\]: done"
 puts "  bitstream in $rundir/${top}_wrapper.bit"
 puts "  resource utilization report in $rundir/${top}_wrapper_utilization_placed.rpt"
 puts "  timing report in $rundir/${top}_wrapper_timing_summary_routed.rpt"
+
