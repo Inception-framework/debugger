@@ -36,21 +36,12 @@ source $rootdir/scripts/ila.tcl
 ###################
 create_project -part xc7z020clg484-1 -force sab4z sab4z
 add_files $rootdir/hdl/axi_pkg.vhd $rootdir/hdl/debouncer.vhd $rootdir/hdl/sab4z.vhd
-import_files -force -norecurse
-ipx::package_project -root_dir sab4z -vendor www.telecom-paristech.fr -library SAB4Z -force sab4z
-close_project
-
-########################
-# Create SLAVE FIFO IP #
-########################
-create_project -part xc7z020clg484-1 -force slaveFIFO2b_fpga_top slaveFIFO2b_fpga_top
-set sources { fifo slaveFIFO2b_loopback slaveFIFO2b_streamIN slaveFIFO2b_ZLP slaveFIFO2b_fpga_top slaveFIFO2b_partial slaveFIFO2b_streamOUT }
+set sources { JTAG_Ctrl_Master fifo slaveFIFO2b_loopback slaveFIFO2b_streamIN slaveFIFO2b_ZLP slaveFIFO2b_fpga_top slaveFIFO2b_partial slaveFIFO2b_streamOUT axi_pkg debouncer inception sab4z }
 foreach f $sources {
 	add_files $rootdir/hdl/SlaveFIFO2b/$f.vhd
 }
-set_property top slaveFIFO2b_fpga_top [current_fileset]
 import_files -force -norecurse
-ipx::package_project -root_dir slaveFIFO2b_fpga_top -vendor www.telecom-paristech.fr -library SAB4Z -force slaveFIFO2b_fpga_top
+ipx::package_project -root_dir sab4z -vendor www.telecom-paristech.fr -library SAB4Z -force sab4z
 close_project
 
 ############################
@@ -78,8 +69,10 @@ create_bd_port -dir O -from 3 -to 0 led
 connect_bd_net [get_bd_pins /sab4z/led] [get_bd_ports led]
 create_bd_port -dir I -from 3 -to 0 sw
 connect_bd_net [get_bd_pins /sab4z/sw] [get_bd_ports sw]
-create_bd_port -dir I btn
-connect_bd_net [get_bd_pins /sab4z/btn] [get_bd_ports btn]
+create_bd_port -dir I btn1
+connect_bd_net [get_bd_pins /sab4z/btn1] [get_bd_ports btn1]
+create_bd_port -dir I btn2
+connect_bd_net [get_bd_pins /sab4z/btn2] [get_bd_ports btn2]
 
 connect_bd_net [get_bd_pins slave_fifo/aclk] [get_bd_pins ps7/FCLK_CLK0]
 
@@ -186,7 +179,8 @@ array set ios {
 	"led[1]"        { "T21"  "LVCMOS33" }
 	"led[2]"        { "U22"  "LVCMOS33" }
 	"led[3]"        { "U21"  "LVCMOS33" }
-	"btn"           { "T18"  "LVCMOS25" }
+	"btn1"           { "T18"  "LVCMOS25" }
+	"btn2"           { "TR16"  "LVCMOS25" }
         "clk_out"       { "M19"  "LVCMOS25" }
         "sloe"          { "G21"  "LVCMOS25" }
         "slcs"          { "K21"  "LVCMOS25" }
@@ -260,7 +254,7 @@ foreach io [ array names ios ] {
 # Timing constraints
 set clock [get_clocks]
 set_false_path -from $clock -to [get_ports {led[*]}]
-set_false_path -from [get_ports {btn sw[*]}] -to $clock
+set_false_path -from [get_ports {btn1 btn2 sw[*]}] -to $clock
 
 create_generated_clock -source [get_pins -hierarchical slave_fifo/aclk] -master_clock [get_clocks] -add -name clk_out [get_ports clk_out] -edges {2 3 4}
 

@@ -3,7 +3,15 @@ use ieee.std_logic_1164.all;
 
 package inception_pkg is
 
-  -- JTAG TAP STATES
+  ----------------
+  -- PARAMETERS --
+  ----------------
+  constant SYN_DEBUG         : boolean := true; -- enable led/sw etc. hardware for debug
+  constant SIM_SYN_N         : boolean := false; -- 1 simulation 0 synthesizable
+
+  ---------------------
+  -- JTAG TAP STATES --
+  ---------------------
   constant TEST_LOGIC_RESET  : std_logic_vector(3 downto 0) := x"0";
   constant RUN_TEST_IDLE     : std_logic_vector(3 downto 0) := x"1";
   constant SELECT_DR	     : std_logic_vector(3 downto 0) := x"2";

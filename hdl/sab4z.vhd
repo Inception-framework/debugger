@@ -20,7 +20,7 @@ entity sab4z is
   port(
     aclk:       in std_logic;  -- Clock
     aresetn:    in std_logic;  -- Synchronous, active low, reset
-    btn:        in std_logic;  -- Command button
+    btn1,btn2:  in std_logic;  -- Command button
     sw:         in  std_logic_vector(3 downto 0); -- Slide switches
     led:        out std_logic_vector(3 downto 0); -- LEDs
 
@@ -119,175 +119,123 @@ architecture rtl of sab4z is
     end if;
   end function or_reduce;
 
-  signal btn_sd: std_logic;  -- Synchronized and debounced command button
-  signal btn_re: std_logic;  -- Rising edge of command button
+  signal btn1_sd,btn2_sd: std_logic;  -- Synchronized and debounced command button
+  signal btn1_re,btn2_re: std_logic;  -- Rising edge of command button
  
   signal aclkn : std_logic;
   signal clk:    std_logic;
 
-  component ODDR2                       
-	port(   
-	        D0	: in std_logic;              
-	        D1	: in std_logic;
-	        C0	: in std_logic;
-	        C1	: in std_logic;
-	        Q 	: out std_logic;
-	        CE      : in std_logic;
-	        S       : in std_logic; 
-	        R 	: in std_logic
-		);     
-  end component;
+  component inception is
+  port(
+    aclk:       in std_logic;  -- Clock
+    aresetn:    in std_logic;  -- Synchronous, active low, reset
+    
+    btn1_re,btn2_re:in std_logic;  -- Command button
+    sw:             in  std_logic_vector(3 downto 0); -- Slide switches
+    led:            out std_logic_vector(3 downto 0); -- LEDs
+    jtag_state_led: out std_logic_vector(3 downto 0);
+    r:              in std_ulogic_vector(31 downto 0);
+    status:         out std_ulogic_vector(31 downto 0);
+    
+    ----------------------
+    -- jtag ctrl master --
+    ----------------------
+    period          : in  natural range 1 to 31;
+    TDO		    : in  STD_LOGIC;
+    TCK		    : out  STD_LOGIC;
+    TMS		    : out  STD_LOGIC;
+    TDI		    : out  STD_LOGIC;
+    TRST            : out  STD_LOGIC;
 
-  component slaveFIFO2b_fpga_top is
-	port(
-		aresetn : in std_logic;                                ---input reset active low
-		aclk    : in std_logic;
-		slcs 	   : out std_logic;                               ---output chip select
-		fdata      : inout std_logic_vector(31 downto 0);         
-		faddr      : out std_logic_vector(1 downto 0);            ---output fifo address
-		slrd	   : out std_logic;                               ---output read select
-		sloe	   : out std_logic;                               ---output output enable select
-		slwr	   : out std_logic;                               ---output write select
-                    
-		flaga	   : in std_logic;                                
-		flagb	   : in std_logic;
-		flagc	   : in std_logic;
-		flagd	   : in std_logic;
+    -----------------------
+    -- slave fifo master --
+    -----------------------
+    clk_out	   : out std_logic;                               ---output clk 100 Mhz and 180 phase shift 
+    clk_original   : out std_logic;      
+    slcs 	   : out std_logic;                               ---output chip select
+    fdata          : inout std_logic_vector(31 downto 0);         
+    faddr          : out std_logic_vector(1 downto 0);            ---output fifo address
+    slrd	   : out std_logic;                               ---output read select
+    sloe	   : out std_logic;                               ---output output enable select
+    slwr	   : out std_logic;                               ---output write select
+        
+    flaga	   : in std_logic;                                
+    flagb	   : in std_logic;
+    flagc	   : in std_logic;
+    flagd	   : in std_logic;
 
-
-		pktend	   : out std_logic;                               ---output pkt end 
-		mode_p     : in std_logic_vector(2 downto 0)              ----signals for debugging
-	    );
+    pktend	   : out std_logic;                               ---output pkt end 
+    mode_p    : in std_logic_vector(2 downto 0)
+    
+  );
   end component;
 
 
 begin
 
-  sl_inst: slaveFIFO2b_fpga_top 
-    port map(
-      aresetn => aresetn,
-      aclk    => aclk,
-      slcs    => slcs,
-      fdata   => fdata,         
-      faddr   => faddr,
-      slrd    => slrd,
-      sloe    => sloe,
-      slwr    => slwr,
-          
-      flaga   => flaga,	                                  
-      flagb   => flagb,	   
-      flagc   => flagc,	   
-      flagd   => flagd,	   
-      
-      
-      pktend  => pktend,	    
-      mode_p  => mode_p   
-   );
+  inception_inst: inception
+  port map(
+    aclk => aclk,  -- Clock
+    aresetn => aresetn,  -- Synchronous, active low, reset
+    
+    btn1_re=>btn1_re,btn2_re=>btn2_re,  -- Command button
+    sw => sw,-- Slide switches
+    led => led, -- LEDs
+    jtag_state_led => jtag_state_led,
+    r => r,
+    status => status,
+    
+    ----------------------
+    -- jtag ctrl master --
+    ----------------------
+    period => period, 
+    TDO => TDO,	
+    TCK	=> TCK,	
+    TMS => TMS,		
+    TDI	=> TDI,	   
+    TRST => TRST, 
 
-  clk_original <= aclk;  
-  aclkn <= not aclk;
-  oddr_inst : ODDR2
-    port map (   
-      D0     => '0',                
-      D1     => '1',
-      C0     => aclk,
-      C1     => aclkn,
-      Q      => clk_out,
-      CE     => '1',
-      S      => '0',
-      R      => '0'
-    );     
+    -----------------------
+    -- slave fifo master --
+    -----------------------
+    clk_out	 => clk_out,                               ---output clk 100 Mhz and 180 phase shift 
+    clk_original => clk_original,      
+    slcs 	 => slcs,                               ---output chip select
+    fdata        => fdata,         
+    faddr        => faddr,            ---output fifo address
+    slrd	 => slrd,                               ---output read select
+    sloe	 => sloe,                               ---output output enable select
+    slwr	 => slwr,                               ---output write select
+        
+    flaga	 => flaga,                                 
+    flagb	 => flagb,
+    flagc	 => flagc,
+    flagd	 => flagd,
+    pktend	 => pktend,   
+    mode_p       => mode_p
+    
+  );
 
 
   -- Synchronizer - debouncer
-  sd: entity work.debouncer(rtl)
+  sd1: entity work.debouncer(rtl)
     port map(clk   => aclk,
              srstn => aresetn,
-             d     => btn,
-             q     => btn_sd,
-             r     => btn_re,
+             d     => btn1,
+             q     => btn1_sd,
+             r     => btn1_re,
              f     => open,
              a     => open);
-
-  -- LED outputs
-  process(status, r, btn_sd)
-    variable m0: std_ulogic_vector(63 downto 0);
-    variable m1: std_ulogic_vector(31 downto 0);
-    variable m2: std_ulogic_vector(15 downto 0);
-    variable m3: std_ulogic_vector(7 downto 0);
-    variable m4: std_ulogic_vector(3 downto 0);
-  begin
-    m0 := r & status;
-    if cnt(3) = '1' then
-      m1 := m0(63 downto 32);
-    else
-      m1 := m0(31 downto 0);
-    end if;
-    if cnt(2) = '1' then
-      m2 := m1(31 downto 16);
-    else
-      m2 := m1(15 downto 0);
-    end if;
-    if cnt(1) = '1' then
-      m3 := m2(15 downto 8);
-    else
-      m3 := m2(7 downto 0);
-    end if;
-    if cnt(0) = '1' then
-      m4 := m3(7 downto 4);
-    else
-      m4 := m3(3 downto 0);
-    end if;
-    if btn_sd = '1' then
-      m4 := cnt;
-    end if;
-    led <= std_logic_vector(m4);
-  end process;
-
-  -- Status register
-  process(aclk)
-    constant lifecntwidth: positive := 25;
-    variable lifecnt: unsigned(lifecntwidth - 1 downto 0); -- Life monitor counter
-    variable lifeleft2right: boolean;
-  begin
-    if rising_edge(aclk) then
-      if aresetn = '0' then
-        life  <= X"1";
-        cnt   <= X"0";
-        arcnt <= X"0";
-        rcnt  <= X"0";
-        awcnt <= X"0";
-        wcnt  <= X"0";
-        bcnt  <= X"0";
-        lifecnt := (others => '0');
-        lifeleft2right := true;
-      else
-        -- Life monitor
-        lifecnt := lifecnt + 1;
-        if lifecnt(lifecntwidth - 1) = '1' then
-          lifecnt(lifecntwidth - 1) := '0';
-          if lifeleft2right then
-            life <= life(0) & life(3 downto 1);
-            if life(1) = '1' then
-              lifeleft2right := not lifeleft2right;
-            end if;
-          else
-            life <= life(2 downto 0) & life(3);
-            if life(2) = '1' then
-              lifeleft2right := not lifeleft2right;
-            end if;
-          end if;
-        end if;
-        -- BTN event counter
-        if btn_re = '1' then
-          cnt <= std_ulogic_vector(unsigned(cnt) + 1);
-        end if;
-        -- Slide switches
-        slsw <= std_ulogic_vector(sw);
-      end if;
-    end if;
-  end process;
-
+ -- Synchronizer - debouncer
+  sd1: entity work.debouncer(rtl)
+    port map(clk   => aclk,
+             srstn => aresetn,
+             d     => btn2,
+             q     => btn2_sd,
+             r     => btn2_re,
+             f     => open,
+             a     => open);
+ 
   -- S0_AXI read-write requests
   s0_axi_pr: process(aclk)
     -- idle: waiting for AXI master requests: when receiving write address and data valid (higher priority than read), perform the write, assert write address

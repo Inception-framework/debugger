@@ -29,7 +29,7 @@ architecture beh of inception_tb is
     aclk:       in std_logic;  -- Clock
     aresetn:    in std_logic;  -- Synchronous, active low, reset
     
-    btn_re:         in std_logic;  -- Command button
+    btn1_re,btn2_re:in std_logic;  -- Command button
     sw:             in  std_logic_vector(3 downto 0); -- Slide switches
     led:            out std_logic_vector(3 downto 0); -- LEDs
     jtag_state_led: out std_logic_vector(3 downto 0);

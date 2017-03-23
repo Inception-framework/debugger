@@ -44,7 +44,7 @@ MSTAGS		:= $(patsubst $(HDLDIR)/%.vhd,$(MSBUILD)/%.tag,$(HDLSRCS))
 # Xilinx Vivado
 ILA		?= 0
 VVMODE		?= batch
-VIVADO		:= /home/enoname/Tools/Vivado/2016.4/bin/vivado
+VIVADO		:= vivado
 VVBUILD		:= $(BUILD)/vv
 VVSCRIPT	:= $(SCRIPTS)/vvsyn.tcl
 VIVADOFLAGS	:= -mode $(VVMODE) -notrace -source $(VVSCRIPT) -tempDir /tmp -journal $(VVBUILD)/vivado.jou -log $(VVBUILD)/vivado.log -tclargs $(rootdir) $(VVBUILD) $(ILA)

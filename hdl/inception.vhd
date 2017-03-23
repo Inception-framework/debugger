@@ -24,7 +24,7 @@ entity inception is
     aclk:       in std_logic;  -- Clock
     aresetn:    in std_logic;  -- Synchronous, active low, reset
     
-    btn_re:         in std_logic;  -- Command button
+    btn1_re,btn2_re:in std_logic;  -- Command button
     sw:             in  std_logic_vector(3 downto 0); -- Slide switches
     led:            out std_logic_vector(3 downto 0); -- LEDs
     jtag_state_led: out std_logic_vector(3 downto 0);
@@ -205,28 +205,41 @@ architecture beh of inception is
     mode_p  => mode_p
   );
   
-  stub_input_proc: process
-    file input_fp: text open read_mode is "../../io/input.txt";
-    variable input_line : line;
-    variable input_data : std_logic_vector(31 downto 0);
-  begin
-      cmd_gen_loop: while(endfile(input_fp) = false) loop
-      cmd_put <= '0';
-      wait for 15 ns;
-      if(cmd_full='1')then
-        wait until cmd_full='0';
-      end if;
-      readline(input_fp,input_line);
-      hread(input_line,input_data);
-      cmd_put <= '1';
-      cmd_din <= input_data;
-      wait for 10 ns;
-    end loop cmd_gen_loop;
-    cmd_put <='0';
-    wait;
-  end process;
-   
-  data_get <= '0', '1' after 80000 ns;
+  fifo_sim_io_gen: if SIM_SYN_N generate
+
+    stub_input_proc: process
+      file input_fp: text open read_mode is "../../io/input.txt";
+      variable input_line : line;
+      variable input_data : std_logic_vector(31 downto 0);
+    begin
+        cmd_gen_loop: while(endfile(input_fp) = false) loop
+        cmd_put <= '0';
+        wait for 15 ns;
+        if(cmd_full='1')then
+          wait until cmd_full='0';
+        end if;
+        readline(input_fp,input_line);
+        hread(input_line,input_data);
+        cmd_put <= '1';
+        cmd_din <= input_data;
+        wait for 10 ns;
+      end loop cmd_gen_loop;
+      cmd_put <='0';
+      wait;
+    end process;
+     
+    data_get <= '0', '1' after 80000 ns;
+
+  end generate fifo_sim_io_gen;
+
+  fifo_syn_io_gen: if SIM_SYN_N = false generate
+    fifo_syn_debug_io_gen: if SYN_DEBUG generate
+      cmd_put  <= btn1_re;
+      cmd_din  <= std_logic_vector(r);
+      data_get <= btn2_re;
+      status   <= std_ulogic_vector(data_dout);
+    end generate fifo_syn_debug_io_gen;
+  end generate fifo_syn_io_gen; 
 
   -- Command FIFO
   cmd_fifo_inst: fifo_ram
@@ -446,27 +459,32 @@ architecture beh of inception is
     );
 
   clk_original <= aclk;  
- -- aclkn <= not aclk;
- -- oddr_inst : ODDR2
- --   port map (   
- --     D0     => '0',                
- --     D1     => '1',
- --     C0     => aclk,
- --     C1     => aclkn,
- --     Q      => clk_out,
- --     CE     => '1',
- --     S      => '0',
- --     R      => '0'
- --   );     
+ 
+ clk_out_syn_gen: if SIM_SYN_N = false generate
+   aclkn <= not aclk;
+   oddr_inst : ODDR2
+     port map (   
+       D0     => '0',                
+       D1     => '1',
+       C0     => aclk,
+       C1     => aclkn,
+       Q      => clk_out,
+       CE     => '1',
+       S      => '0',
+       R      => '0'
+     );     
+  end generate clk_out_syn_gen;
 
-  oddr2_proc: process(aclk)
-  begin
-    if(aclk'event and aclk='1')then
-      clk_out <= '0';
-    elsif(aclk'event and aclk='0')then
-      clk_out <= '1';
-    end if;
-  end process oddr2_proc;
+  clk_out_sim_gen: if SIM_SYN_N generate
+    oddr2_proc: process(aclk)
+    begin
+      if(aclk'event and aclk='1')then
+        clk_out <= '0';
+      elsif(aclk'event and aclk='0')then
+        clk_out <= '1';
+      end if;
+    end process oddr2_proc;
+  end generate clk_out_sim_gen;
   
   -- LED outputs
   led <= jtag_state_current;
