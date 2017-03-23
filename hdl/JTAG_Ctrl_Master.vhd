@@ -39,6 +39,8 @@ use IEEE.STD_LOGIC_ARITH.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
+use work.inception_pkg.all;
+
 ---- Uncomment the following library declaration if instantiating
 ---- any Xilinx primitives in this code.
 --library UNISIM;
@@ -75,22 +77,6 @@ end JTAG_Ctrl_Master;
 
 architecture Behavioral of JTAG_Ctrl_Master is
 
-	constant TEST_LOGIC_RESET		: std_logic_vector(3 downto 0) := x"0";
-	constant RUN_TEST_IDLE				: std_logic_vector(3 downto 0) := x"1";
-	constant SELECT_DR					: std_logic_vector(3 downto 0) := x"2";
-	constant CAPTURE_DR					: std_logic_vector(3 downto 0) := x"3";
-	constant SHIFT_DR						: std_logic_vector(3 downto 0) := x"4";
-	constant EXIT1_DR						: std_logic_vector(3 downto 0) := x"5";
-	constant PAUSE_DR						: std_logic_vector(3 downto 0) := x"6";
-	constant EXIT2_DR						: std_logic_vector(3 downto 0) := x"7";
-	constant UPDATE_DR				: std_logic_vector(3 downto 0) := x"8";
-	constant SELECT_IR					: std_logic_vector(3 downto 0) := x"9";
-	constant CAPTURE_IR					: std_logic_vector(3 downto 0) := x"A";
-	constant SHIFT_IR						: std_logic_vector(3 downto 0) := x"B";
-	constant EXIT1_IR						: std_logic_vector(3 downto 0) := x"C";
-	constant PAUSE_IR						: std_logic_vector(3 downto 0) := x"D";
-	constant EXIT2_IR						: std_logic_vector(3 downto 0) := x"E";
-	constant UPDATE_IR				: std_logic_vector(3 downto 0) := x"F";
 
 --Signal fuer MainThread
 	type TypeStateJTAGMaster is ( State_IDLE, State_TapToStart, State_Shift, State_TapToEnd, State_TapToEnd2 );

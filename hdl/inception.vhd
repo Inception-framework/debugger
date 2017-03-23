@@ -14,6 +14,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+use work.inception_pkg.all;
+
 entity inception is
   port(
     aclk:       in std_logic;  -- Clock
@@ -157,7 +159,7 @@ architecture beh of inception is
   type jtag_state_t is record
     st: jtag_st_t;
     op: jtag_op_t;
-    step:   natural range 0 to 3;
+    step:   natural range 0 to NSTEPS-1;
     size:   natural range 1 to 4;
     number: natural range 0 to 2**24-1;
     addr:   std_logic_vector(31 downto 0);
@@ -292,7 +294,7 @@ architecture beh of inception is
           when wait_cmd  =>
             if(cmd_empty='0' and jtag_busy='0') then
               case jtag_state.step is
-                when 3 =>
+                when NSTEPS-1 =>
                   jtag_state.st <= done;
                   jtag_state.step <= 0;
                   data_din      <= jtag_do(31 downto 0);
