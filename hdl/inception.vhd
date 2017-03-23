@@ -219,6 +219,8 @@ architecture beh of inception is
     cmd_put <='0';
     wait;
   end process;
+   
+  data_get <= '0', '1' after 800000 ns;
 
   -- Command FIFO
   cmd_fifo_inst: fifo_ram
@@ -319,7 +321,6 @@ architecture beh of inception is
     jtag_di           <= std_logic_vector(to_unsigned(0,32));
     cmd_get           <= '0';
     data_put          <= '0';
-    data_get          <= '0';
     
     case jtag_state.st is
       when idle =>
