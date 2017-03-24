@@ -292,9 +292,9 @@ architecture beh of inception is
             if(cmd_empty='0') then
               jtag_state.st     <= read_addr;
               case cmd_dout(31 downto 28) is
-                when x"1" =>  
+                when x"2" =>  
                   jtag_state.op <= read;
-                when x"0" =>
+                when x"1" =>
                   jtag_state.op <= write;
                 when x"3" =>
                   jtag_state.op <= reset;
