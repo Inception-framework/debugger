@@ -162,7 +162,7 @@ architecture beh of inception is
   type jtag_state_t is record
     st: jtag_st_t;
     op: jtag_op_t;
-    step:   natural range 0 to NSTEPS-1;
+    step:   natural range 0 to NSTEPS_RD-1;
     size:   natural range 0 to 4;
     number: natural range 0 to 2**24-1;
     addr:   std_logic_vector(31 downto 0);
@@ -325,7 +325,9 @@ architecture beh of inception is
                   case jtag_state.step is
                     when 0 =>
                       jtag_state.st <= write_back_l;
-                    when others =>
+                    when 4  =>
+                      jtag_state.st <= done;
+                    when others => 
                       jtag_state.st <= write_back_h;
                   end case;
                 end case;
@@ -341,7 +343,15 @@ architecture beh of inception is
           when done_cmd =>
             --if(cmd_empty='0') then
               case jtag_state.step is
-                when NSTEPS-1 =>
+                when NSTEPS_WR-1 =>
+                  if(jtag_state.op = write)then
+                    jtag_state.st <= done;
+                    jtag_state.step <= 0;
+                  else
+                    jtag_state.st <= run_cmd;
+                    jtag_state.step <= jtag_state.step + 1;
+                  end if;
+                when NSTEPS_RD-1 =>
                   jtag_state.st <= done;
                   jtag_state.step <= 0;
                 when others =>
@@ -417,9 +427,21 @@ architecture beh of inception is
                  jtag_state_led <= "0100";
                  jtag_bit_count    <= std_logic_vector(to_unsigned(35,16));
                  jtag_state_start  <= SHIFT_DR;
-                 if(jtag_state.op = read) then jtag_di <= x"00000000"&"111"; else jtag_di <= cmd_dout&"110"; end if;
+                 jtag_di <= cmd_dout&"110";
                  jtag_state_end    <= RUN_TEST_IDLE;
-               when others =>
+               when 4 => 
+                 jtag_state_led <= "0100";
+                 jtag_bit_count    <= std_logic_vector(to_unsigned(16,16));
+                 jtag_state_start  <= RUN_TEST_IDLE;
+                 jtag_di <= x"00000000"&"000";
+                 jtag_state_end    <= RUN_TEST_IDLE;
+               when 5 => 
+                 jtag_state_led <= "0100";
+                 jtag_bit_count    <= std_logic_vector(to_unsigned(35,16));
+                 jtag_state_start  <= SHIFT_DR;
+                 jtag_di <= x"00000000"&"111";
+                 jtag_state_end    <= RUN_TEST_IDLE;
+             when others =>
                  jtag_state_start  <= TEST_LOGIC_RESET;
                  jtag_bit_count    <= std_logic_vector(to_unsigned(1,16));
                  jtag_state_end    <= TEST_LOGIC_RESET;
