@@ -326,7 +326,7 @@ architecture beh of inception is
                     when 0 =>
                       jtag_state.st <= write_back_l;
                     when 4  =>
-                      jtag_state.st <= done;
+                      jtag_state.st <= done_cmd;
                     when others => 
                       jtag_state.st <= write_back_h;
                   end case;
