@@ -336,7 +336,7 @@ architecture beh of inception is
     end if;
   end process jtag_state_proc;
 
-  jtag_out_proc: process(jtag_state) is
+  jtag_out_proc: process(jtag_state,cmd_dout) is
   begin
 
     jtag_state_led <= "1000";
