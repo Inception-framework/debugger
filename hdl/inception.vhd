@@ -310,7 +310,7 @@ architecture beh of inception is
               jtag_state.addr <= cmd_dout; 
             --end if;
           when run_cmd =>
-              if((jtag_state.op = write and cmd_empty='0') or jtag_state.op=read)then
+              if((jtag_state.op = write and cmd_empty='0') or jtag_state.op=read or jtag_state.op=reset)then
                 jtag_state.st <= wait_cmd;
               end if;
           when wait_cmd  =>
