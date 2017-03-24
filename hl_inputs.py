@@ -30,6 +30,8 @@ import binascii
 import os
 import subprocess
 import time
+from collections import OrderedDict
+import collections
 
 #TODO : the path should be passed as command-line argument !
 PATH = "/home/enoname/Tools/altera/13.1/modelsim_ase/linux"
@@ -62,7 +64,7 @@ def start_simu():
 
         pipe = subprocess.Popen([PATH+"/vsim", "-c", "-do", "cd "+PATH+"/../bin/inception/build/ms ; do ../../scripts/sim.do; quit"])
         print(" simulation in progress...")
-        time.sleep(3)
+        time.sleep(10)
 
         print(" simulation successfully done...")
         print(" closing simulator...")
@@ -90,13 +92,19 @@ def set_inputs(input):
 
 if __name__== "__main__":
 
-    HL_COMMANDS = {
-        "RESET" : 0x30000000,
-        "READ"  : 0x24000001,
-        "WRITE" : 0x14000001,
-    }
+    HL_COMMANDS = ([('RESET', 0x30000000), ('READ', 0x24000001), ('WRITE', 0x14000001)])
+
+    # {
+    #     "RESET" : 0x30000000,
+    #     "READ"  : 0x24000001,
+    #     "WRITE" : 0x14000001,
+    # }
 
     commands = []
+
+    HL_COMMANDS = collections.OrderedDict(HL_COMMANDS)
+
+    print(HL_COMMANDS)
 
     for item in HL_COMMANDS:
 
@@ -119,11 +127,14 @@ if __name__== "__main__":
         elif item == "READ" :
             commands.append("{0:0{1}x}".format(address, 8))
 
-        set_inputs(commands)
+        elif item == "RESET" :
+            commands.append("{0:0{1}x}".format(address, 8))
 
-        start_simu()
+    set_inputs(commands)
 
-        print("[Waiting] ....")
-        time.sleep(3)
+    start_simu()
 
-        start_inception()
+    print("[Waiting] ....")
+    time.sleep(3)
+
+    start_inception()
