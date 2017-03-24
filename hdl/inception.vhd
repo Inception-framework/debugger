@@ -157,7 +157,7 @@ architecture beh of inception is
 
  
  
-  type jtag_st_t is (idle,read_cmd,read_addr,run_cmd,wait_cmd,done);
+  type jtag_st_t is (idle,read_cmd,read_addr,run_cmd,wait_cmd,done_cmd,done);
   type jtag_op_t is (read,write,reset);
   type jtag_state_t is record
     st: jtag_st_t;
@@ -321,10 +321,12 @@ architecture beh of inception is
                   jtag_state.step <= 0;
                   data_din      <= jtag_do(31 downto 0);
                 when others =>
-                  jtag_state.st <= run_cmd;
-                  jtag_state.step <= jtag_state.step + 1;
+                  jtag_state.st <= done_cmd;
               end case;
             end if;
+          when done_cmd =>
+            jtag_state.st <= run_cmd;
+            jtag_state.step <= jtag_state.step + 1;
           when done =>
             if(data_full='0') then
               jtag_state.st <= idle;
