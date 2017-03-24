@@ -163,7 +163,7 @@ architecture beh of inception is
     st: jtag_st_t;
     op: jtag_op_t;
     step:   natural range 0 to NSTEPS-1;
-    size:   natural range 1 to 4;
+    size:   natural range 0 to 4;
     number: natural range 0 to 2**24-1;
     addr:   std_logic_vector(31 downto 0);
   end record;
