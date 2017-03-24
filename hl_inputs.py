@@ -119,11 +119,11 @@ if __name__== "__main__":
         elif item == "READ" :
             commands.append("{0:0{1}x}".format(address, 8))
 
-        set_inputs(commands)
+    set_inputs(commands)
 
-        start_simu()
+    start_simu()
 
-        print("[Waiting] ....")
-        time.sleep(3)
+    print("[Waiting] ....")
+    time.sleep(3)
 
-        start_inception()
+    start_inception()
