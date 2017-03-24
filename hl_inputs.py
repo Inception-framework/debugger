@@ -49,6 +49,7 @@ def start_inception():
 
         print(" Inception communication successfully done...")
         print(" closing inception...")
+        pipe.kill()
 
 def start_simu():
 
@@ -59,17 +60,13 @@ def start_simu():
         print("[Simulator]")
         print(" starting...")
 
-        with open(os.devnull, "w") as fnull:
-                pipe = subprocess.Popen([PATH+"/vsim", "-c", "-do", "cd "+PATH+"/../bin/inception/build/ms ; do ../../scripts/sim.do; quit"], stdout=out, stderr=err)
+        pipe = subprocess.Popen([PATH+"/vsim", "-c", "-do", "cd "+PATH+"/../bin/inception/build/ms ; do ../../scripts/sim.do; quit"])
         print(" simulation in progress...")
         time.sleep(3)
 
-        if err != None :
-                print("[ERROR] Unable to run ModelSim : \n\n"+err)
-                exit(-1)
-
         print(" simulation successfully done...")
         print(" closing simulator...")
+        pipe.kill()
 
 def set_inputs(input):
 
@@ -83,26 +80,20 @@ def set_inputs(input):
 
         f.close()
 
-def move_outputs():
-
-        source  = open(PATH+"/../bin/inception/io/output.txt", "r")
-        dest  = open(PATH2+"/input.txt", "w")
-
-        lines = source.readlines()
-
-        for line in lines:
-            print("Writing : "+line)
-            dest.write(line)
-
-        source.close()
-        dest.close()
+# def move_outputs():
+#
+#         source  = PATH+"/../bin/inception/io/output.txt"
+#         dest    = PATH2+"/input.txt"
+#
+#         pipe = subprocess.Popen(["mv", source, dest])
+#         pipe.kill()
 
 if __name__== "__main__":
 
     HL_COMMANDS = {
-        "READ"  : 0x14000001,
-        "WRITE" : 0x24000001,
-        # "RESET" : 0x30000000,
+        "RESET" : 0x30000000,
+        "READ"  : 0x24000001,
+        "WRITE" : 0x14000001,
     }
 
     commands = []
@@ -128,12 +119,11 @@ if __name__== "__main__":
         elif item == "READ" :
             commands.append("{0:0{1}x}".format(address, 8))
 
-        # set_inputs(commands)
+        set_inputs(commands)
 
-        # start_simu()
+        start_simu()
 
-        #move_outputs()
+        print("[Waiting] ....")
+        time.sleep(3)
 
         start_inception()
-
-        exit()
