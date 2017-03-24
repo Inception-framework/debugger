@@ -387,7 +387,7 @@ architecture beh of inception is
            when reset =>
              jtag_state_start  <= TEST_LOGIC_RESET;
              jtag_bit_count    <= std_logic_vector(to_unsigned(1,16));
-             jtag_state_end    <= TEST_LOGIC_RESET;
+             jtag_state_end    <= RUN_TEST_IDLE;
              jtag_di           <= std_logic_vector(to_unsigned(0,35));
            when read | write =>
            
