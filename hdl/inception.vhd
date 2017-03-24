@@ -157,7 +157,7 @@ architecture beh of inception is
 
  
  
-  type jtag_st_t is (idle,read_cmd,read_addr,run_cmd,wait_cmd,done_cmd,done);
+  type jtag_st_t is (idle,read_cmd,read_addr,run_cmd,wait_cmd,write_back_h,write_back_l,done_cmd,done);
   type jtag_op_t is (read,write,reset);
   type jtag_state_t is record
     st: jtag_st_t;
@@ -310,26 +310,44 @@ architecture beh of inception is
               jtag_state.addr <= cmd_dout; 
             --end if;
           when run_cmd =>
-              if((jtag_state.op = write and cmd_empty='0') or jtag_state.op=read or jtag_state.op=reset)then
+              --if((jtag_state.op = write and cmd_empty='0') or jtag_state.op=read or jtag_state.op=reset)then
                 jtag_state.st <= wait_cmd;
+              --end if;
+              if(jtag_state.op = write and jtag_state.step = 0 and cmd_empty='1')then
+                jtag_state.st <= run_cmd;
               end if;
           when wait_cmd  =>
-            if(cmd_empty='0' and jtag_busy='0') then
+            if(jtag_busy = '0')then
+              case jtag_state.step is
+                when 0 =>
+                  jtag_state.st <= write_back_l;
+                when others =>
+                  jtag_state.st <= write_back_h;
+              end case;
+            end if;         
+          when write_back_h =>
+            if(data_full='0')then
+              jtag_state.st <= write_back_l;
+            end if;
+          when write_back_l =>
+            if(data_full='0')then
+              jtag_state.st <= done_cmd;
+            end if;
+          when done_cmd =>
+            --if(cmd_empty='0') then
               case jtag_state.step is
                 when NSTEPS-1 =>
                   jtag_state.st <= done;
                   jtag_state.step <= 0;
                 when others =>
-                  jtag_state.st <= done_cmd;
-              end case;
-            end if;
-          when done_cmd =>
-            jtag_state.st <= run_cmd;
-            jtag_state.step <= jtag_state.step + 1;
+                  jtag_state.st <= run_cmd;
+                  jtag_state.step <= jtag_state.step + 1;
+               end case;
+            --end if;
           when done =>
-            if(data_full='0') then
+            --if(data_full='0') then
               jtag_state.st <= idle;
-            end if;
+            --end if;
           when others =>
               jtag_state.st <= idle;
         end case;
@@ -405,8 +423,12 @@ architecture beh of inception is
              end case;
            when others =>
         end case;
-      when done_cmd => 
-      
+      when write_back_h =>
+        data_din <= x"0000000"&'0'&jtag_do(34 downto 32);
+        data_put <= '1'; 
+      when write_back_l =>
+        data_din <= jtag_do(31 downto 0);
+        data_put <= '1';     
       when done =>
         jtag_state_led <= "1000";
       when others =>
