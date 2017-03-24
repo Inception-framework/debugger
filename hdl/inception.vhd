@@ -73,8 +73,8 @@ architecture beh of inception is
   signal jtag_state_start:   std_logic_vector(3 downto 0);
   signal jtag_state_end:     std_logic_vector(3 downto 0);
   signal jtag_state_current: std_logic_vector(3 downto 0);
-  signal jtag_di:       std_logic_vector(31 downto 0);
-  signal jtag_do:       std_logic_vector(31 downto 0);
+  signal jtag_di:       std_logic_vector(34 downto 0);
+  signal jtag_do:       std_logic_vector(34 downto 0);
 
   component ODDR2                       
   port(   
@@ -111,8 +111,8 @@ architecture beh of inception is
       StateEnd			: in	 std_logic_vector(3 downto 0);
       StateCurrent		: out	 std_logic_vector(3 downto 0);
       -- Ram Part
-      Din		        : in  STD_LOGIC_VECTOR (31 downto 0);
-      Dout			: out STD_LOGIC_VECTOR (31 downto 0)
+      Din		        : in  STD_LOGIC_VECTOR (34 downto 0);
+      Dout			: out STD_LOGIC_VECTOR (34 downto 0)
   );
   end component;
   
@@ -319,7 +319,6 @@ architecture beh of inception is
                 when NSTEPS-1 =>
                   jtag_state.st <= done;
                   jtag_state.step <= 0;
-                  data_din      <= jtag_do(31 downto 0);
                 when others =>
                   jtag_state.st <= done_cmd;
               end case;
@@ -346,7 +345,7 @@ architecture beh of inception is
     jtag_bit_count    <= std_logic_vector(to_unsigned(0,16));
     jtag_state_start  <= x"0";
     jtag_state_end    <= x"0";
-    jtag_di           <= std_logic_vector(to_unsigned(0,32));
+    jtag_di           <= std_logic_vector(to_unsigned(0,35));
     cmd_get           <= '0';
     data_put          <= '0';
     
@@ -366,7 +365,7 @@ architecture beh of inception is
              jtag_state_start  <= TEST_LOGIC_RESET;
              jtag_bit_count    <= std_logic_vector(to_unsigned(1,16));
              jtag_state_end    <= TEST_LOGIC_RESET;
-             jtag_di           <= std_logic_vector(to_unsigned(0,32));
+             jtag_di           <= std_logic_vector(to_unsigned(0,35));
            when read | write =>
            
              case jtag_state.step is
@@ -374,68 +373,49 @@ architecture beh of inception is
                  jtag_state_led <= "0011";
                  jtag_bit_count    <= std_logic_vector(to_unsigned(4,16));
                  jtag_state_start  <= SHIFT_IR;
-                 jtag_di           <= std_logic_vector(to_unsigned(11,32));
+                 jtag_di           <= std_logic_vector(to_unsigned(11,35));
                  jtag_state_end    <= SHIFT_DR;
                  if(jtag_state.op = write and jtag_state.st = run_cmd)then
                    cmd_get <= '1';
                  end if;
-
                when 1 => 
                  jtag_state_led <= "0100";
-                 jtag_bit_count    <= std_logic_vector(to_unsigned(3,16));
+                 jtag_bit_count    <= std_logic_vector(to_unsigned(35,16));
                  jtag_state_start  <= SHIFT_DR;
-                 if(jtag_state.op = read) then jtag_di <= x"00000001"; else jtag_di <= x"00000000"; end if;
-                 jtag_state_end    <= SHIFT_DR;
+                 if(jtag_state.op = read) then jtag_di <= "001"&x"11000001"; else jtag_di <= "000"&x"11000001"; end if;
+                 jtag_state_end    <= RUN_TEST_IDLE;
                when 2 => 
                  jtag_state_led <= "0100";
-                 jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
+                 jtag_bit_count    <= std_logic_vector(to_unsigned(35,16));
                  jtag_state_start  <= SHIFT_DR;
-                 jtag_di           <= x"11000001";
+                 if(jtag_state.op = read) then jtag_di <= "011"&jtag_state.addr; else jtag_di <= "010"&jtag_state.addr; end if;
                  jtag_state_end    <= RUN_TEST_IDLE;
                when 3 => 
                  jtag_state_led <= "0100";
-                 jtag_bit_count    <= std_logic_vector(to_unsigned(3,16));
+                 jtag_bit_count    <= std_logic_vector(to_unsigned(35,16));
                  jtag_state_start  <= SHIFT_DR;
-                 if(jtag_state.op = read) then jtag_di <= x"00000003"; else jtag_di <= x"00000002"; end if;
-                 jtag_state_end    <= RUN_TEST_IDLE;
-               when 4 => 
-                 jtag_state_led <= "0100";
-                 jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
-                 jtag_state_start  <= SHIFT_DR;
-                 jtag_di           <= jtag_state.addr;
-                 jtag_state_end    <= RUN_TEST_IDLE;
-               when 5 => 
-                 jtag_state_led <= "0100";
-                 jtag_bit_count    <= std_logic_vector(to_unsigned(3,16));
-                 jtag_state_start  <= SHIFT_DR;
-                 if(jtag_state.op = read) then jtag_di <= x"00000007"; else jtag_di <= x"00000006"; end if;
-                 jtag_state_end    <= RUN_TEST_IDLE;
-               when 6 => 
-                 jtag_state_led <= "0100";
-                 jtag_bit_count    <= std_logic_vector(to_unsigned(32,16));
-                 jtag_state_start  <= SHIFT_DR;
-                 if(jtag_state.op = read) then jtag_di <= x"00000000"; else jtag_di <= cmd_dout; end if;
+                 if(jtag_state.op = read) then jtag_di <= "111"&x"00000000"; else jtag_di <= "110"&cmd_dout; end if;
                  jtag_state_end    <= RUN_TEST_IDLE;
                when others =>
                  jtag_state_start  <= TEST_LOGIC_RESET;
                  jtag_bit_count    <= std_logic_vector(to_unsigned(1,16));
                  jtag_state_end    <= TEST_LOGIC_RESET;
-                 jtag_di           <= std_logic_vector(to_unsigned(0,32));
+                 jtag_di           <= std_logic_vector(to_unsigned(0,35));
                  jtag_state_led <= "0111";
              end case;
            when others =>
         end case;
+      when done_cmd => 
       
       when done =>
         jtag_state_led <= "1000";
-	data_put <= '1';
       when others =>
         jtag_state_led <= "1000";
         jtag_shift_strobe <= '0';
         jtag_bit_count    <= std_logic_vector(to_unsigned(0,16));
         jtag_state_start  <= x"0";
         jtag_state_end    <= x"0";
-        jtag_di           <= std_logic_vector(to_unsigned(0,32));
+        jtag_di           <= std_logic_vector(to_unsigned(0,35));
         data_put          <= '0';
     end case;
   end process jtag_out_proc;

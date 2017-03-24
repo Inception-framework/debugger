@@ -70,8 +70,8 @@ entity JTAG_Ctrl_Master is
 				   StateCurrent		: out	 std_logic_vector(3 downto 0);
 
 				-- Ram Part
-           Din					: in  STD_LOGIC_VECTOR (31 downto 0);
-           Dout					: out STD_LOGIC_VECTOR (31 downto 0)
+           Din					: in  STD_LOGIC_VECTOR (34 downto 0);
+           Dout					: out STD_LOGIC_VECTOR (34 downto 0)
 				);
 end JTAG_Ctrl_Master;
 
