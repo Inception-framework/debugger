@@ -431,10 +431,10 @@ architecture beh of inception is
                  jtag_state_end    <= RUN_TEST_IDLE;
                when 4 => 
                  jtag_state_led <= "0100";
-                 jtag_bit_count    <= std_logic_vector(to_unsigned(16,16));
-                 jtag_state_start  <= RUN_TEST_IDLE;
+                 jtag_bit_count    <= std_logic_vector(to_unsigned(5,16));
+                 jtag_state_start  <= TEST_LOGIC_RESET;
                  jtag_di <= x"00000000"&"000";
-                 jtag_state_end    <= RUN_TEST_IDLE;
+                 jtag_state_end    <= TEST_LOGIC_RESET;
                when 5 => 
                  jtag_state_led <= "0100";
                  jtag_bit_count    <= std_logic_vector(to_unsigned(35,16));
