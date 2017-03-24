@@ -318,13 +318,18 @@ architecture beh of inception is
               end if;
           when wait_cmd  =>
             if(jtag_busy = '0')then
-              case jtag_state.step is
-                when 0 =>
-                  jtag_state.st <= write_back_l;
+              case jtag_state.op is
+                when reset =>
+                  jtag_state.st <= done;
                 when others =>
-                  jtag_state.st <= write_back_h;
-              end case;
-            end if;         
+                  case jtag_state.step is
+                    when 0 =>
+                      jtag_state.st <= write_back_l;
+                    when others =>
+                      jtag_state.st <= write_back_h;
+                  end case;
+                end case;
+            end if;   
           when write_back_h =>
             if(data_full='0')then
               jtag_state.st <= write_back_l;
