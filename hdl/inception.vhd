@@ -415,19 +415,19 @@ architecture beh of inception is
                  jtag_state_led <= "0100";
                  jtag_bit_count    <= std_logic_vector(to_unsigned(35,16));
                  jtag_state_start  <= SHIFT_DR;
-                 if(jtag_state.op = read) then jtag_di <= x"11000001"&"001"; else jtag_di <= x"11000001"&"000"; end if;
+                 jtag_di <= x"11000002"&"000";
                  jtag_state_end    <= RUN_TEST_IDLE;
                when 2 => 
                  jtag_state_led <= "0100";
                  jtag_bit_count    <= std_logic_vector(to_unsigned(35,16));
                  jtag_state_start  <= SHIFT_DR;
-                 if(jtag_state.op = read) then jtag_di <= jtag_state.addr&"011"; else jtag_di <= jtag_state.addr&"010"; end if;
+                 jtag_di <= jtag_state.addr&"100";
                  jtag_state_end    <= RUN_TEST_IDLE;
                when 3 => 
                  jtag_state_led <= "0100";
                  jtag_bit_count    <= std_logic_vector(to_unsigned(35,16));
                  jtag_state_start  <= SHIFT_DR;
-                 jtag_di <= cmd_dout&"110";
+                 if(jtag_state.op = read)then jtag_di <= cmd_dout&"111"; else jtag_di <= cmd_dout&"110"; end if;
                  jtag_state_end    <= RUN_TEST_IDLE;
                when 4 => 
                  jtag_state_led <= "0100";
@@ -439,7 +439,7 @@ architecture beh of inception is
                  jtag_state_led <= "0100";
                  jtag_bit_count    <= std_logic_vector(to_unsigned(35,16));
                  jtag_state_start  <= SHIFT_DR;
-                 jtag_di <= x"00000000"&"111";
+                 jtag_di <= x"00000000"&"110";
                  jtag_state_end    <= RUN_TEST_IDLE;
              when others =>
                  jtag_state_start  <= TEST_LOGIC_RESET;
