@@ -45,3 +45,10 @@ FLAGC   GPIO23   CTL6    G28    FMC_LA25_N   C22
 FLAGD   GPIO25   CTL8    G31    FMC_LA29_N   C18
 
 CLK              CTL9    G33        LA31 P   B16
+
+
+TCK    yellow JA1    Y11
+TRST          JA10   AA8
+TDO    blue   JA2    AA11
+TMS    green  JA3    Y10
+TDI    orange JA4    AA9
