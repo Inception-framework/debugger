@@ -7,7 +7,7 @@ package inception_pkg is
   -- PARAMETERS --
   ----------------
   constant SYN_DEBUG         : boolean := true; -- enable led/sw etc. hardware for debug
-  constant SIM_SYN_N         : boolean := true; -- 1 simulation 0 synthesizable
+  constant SIM_SYN_N         : boolean := false; -- 1 simulation 0 synthesizable
 
   ---------------------
   -- JTAG TAP STATES --
