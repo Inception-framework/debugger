@@ -421,7 +421,7 @@ architecture beh of inception is
                  jtag_state_led <= "0100";
                  jtag_bit_count    <= std_logic_vector(to_unsigned(35,16));
                  jtag_state_start  <= SHIFT_DR;
-                 jtag_di <= jtag_state.addr&"100";
+                 jtag_di <= jtag_state.addr&"010";
                  jtag_state_end    <= RUN_TEST_IDLE;
                when 3 => 
                  jtag_state_led <= "0100";
