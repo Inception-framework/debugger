@@ -116,28 +116,35 @@ architecture beh of inception is
   );
   end component;
   
-  component slaveFIFO2b_fpga_top is
-  port(
-    aresetn : in std_logic;                                ---input reset active low
-    aclk    : in std_logic;
-    slcs 	  : out std_logic;                               ---output chip select
-    fdata   : inout std_logic_vector(31 downto 0);         
-    faddr   : out std_logic_vector(1 downto 0);            ---output fifo address
-    slrd	   : out std_logic;                               ---output read select
-    sloe	   : out std_logic;                               ---output output enable select
-    slwr	   : out std_logic;                               ---output write select
+ component slaveFIFO2b_fpga_top is
+	port(
+		aresetn : in std_logic;                                ---input reset active low
+		aclk    : in std_logic;
+	        done                                : in std_logic;
+                cmd_dout                            : out std_logic_vector(31 downto 0);
+                cmd_get                             : in std_logic;
+                cmd_empty                           : out std_logic;
+                data_din                            : in std_logic_vector(31 downto 0);
+                data_put                            : in std_logic;
+                data_full                           : out std_logic;
+	        slcs 	   : out std_logic;                               ---output chip select
+		fdata      : inout std_logic_vector(31 downto 0);         
+		faddr      : out std_logic_vector(1 downto 0);            ---output fifo address
+		slrd	   : out std_logic;                               ---output read select
+		sloe	   : out std_logic;                               ---output output enable select
+		slwr	   : out std_logic;                               ---output write select
                     
-    flaga	   : in std_logic;                                
-    flagb	   : in std_logic;
-    flagc	   : in std_logic;
-    flagd	   : in std_logic;
+		flaga	   : in std_logic;                                
+		flagb	   : in std_logic;
+		flagc	   : in std_logic;
+		flagd	   : in std_logic;
 
 
-    pktend	   : out std_logic;                               ---output pkt end 
-    mode_p     : in std_logic_vector(2 downto 0)              ----signals for debugging
-  );
-  end component slaveFIFO2b_fpga_top;
- 
+		pktend	   : out std_logic;                               ---output pkt end 
+		mode_p     : in std_logic_vector(2 downto 0)              ----signals for debugging
+	    );
+end component;
+
   component fifo_ram is
   generic(
     width: natural := 32;
@@ -181,6 +188,7 @@ architecture beh of inception is
   
   signal down_cnt: natural range 0 to 31;
   
+  signal cmd_done: std_logic;
  begin
   
   -- Slave FIFO
@@ -188,6 +196,14 @@ architecture beh of inception is
   port map(
     aresetn => aresetn,
     aclk    => aclk,
+    done    => cmd_done,
+    cmd_dout => cmd_dout,
+    cmd_get  => cmd_get,
+    cmd_empty => cmd_empty,
+    data_din  => data_din,
+    data_put  => data_put,
+--    data_full => data_full,
+
     slcs 	  => slcs,
     fdata   => fdata,
     faddr   => faddr,
@@ -234,29 +250,10 @@ architecture beh of inception is
 
   fifo_syn_io_gen: if SIM_SYN_N = false generate
     fifo_syn_debug_io_gen: if SYN_DEBUG generate
-      cmd_put  <= btn1_re;
-      cmd_din  <= std_logic_vector(r);
       data_get <= btn2_re;
       status   <= std_ulogic_vector(data_dout);
     end generate fifo_syn_debug_io_gen;
   end generate fifo_syn_io_gen; 
-
-  -- Command FIFO
-  cmd_fifo_inst: fifo_ram
-  generic map(
-    width => 32,
-    addr_size => 4
-  ) 
-  port map(
-    aclk     => aclk,
-    aresetn  => aresetn,
-    empty    => cmd_empty,
-    full     => cmd_full,
-    put      => cmd_put,
-    get      => cmd_get,
-    din      => cmd_din,
-    dout     => cmd_dout
-  );
 
   -- Data FIFO
   data_fifo_inst: fifo_ram
@@ -382,6 +379,7 @@ architecture beh of inception is
     cmd_get           <= '0';
     data_put          <= '0';
     data_din          <= (others=>'0');
+    cmd_done          <= '0';
     
     case jtag_state.st is
       when idle =>
@@ -459,6 +457,7 @@ architecture beh of inception is
         data_put <= '1';     
       when done =>
         jtag_state_led <= "1000";
+        cmd_done <= '1';
       when others =>
         jtag_state_led <= "1000";
         jtag_shift_strobe <= '0';
@@ -468,6 +467,7 @@ architecture beh of inception is
         jtag_di           <= std_logic_vector(to_unsigned(0,35));
         data_put          <= '0';
         data_din          <= (others=>'0');
+        cmd_done          <= '0';
     end case;
   end process jtag_out_proc;
 

@@ -7,7 +7,14 @@ use ieee.std_logic_unsigned.all;
 entity slaveFIFO2b_loopback is
 	port(
 		 aresetn                             : in std_logic;
-		 aclk			     : in std_logic;
+		 aclk			             : in std_logic;
+                 done                                : in std_logic;
+                 cmd_dout                            : out std_logic_vector(31 downto 0);
+                 cmd_get                             : in std_logic;
+                 cmd_empty                           : out std_logic;
+                 data_din                            : in std_logic_vector(31 downto 0);
+                 data_put                            : in std_logic;
+                 data_full                           : out std_logic;
                  loopback_mode_selected              : in std_logic;
                  flaga_d                             : in std_logic;
                  flagb_d                             : in std_logic;
@@ -83,9 +90,9 @@ signal fifo_empty	   : std_logic;
 signal rd_oe_delay_cnt     : std_logic_vector(1 downto 0);
 signal oe_delay_cnt        : std_logic_vector(1 downto 0);
 
-signal cmd_din,cmd_dout,data_din,data_dout : std_logic_vector(31 downto 0);
-signal cmd_put,cmd_full,cmd_get,cmd_empty,cmd_flush : std_logic;
-signal data_put,data_full,data_get,data_empty,data_flush : std_logic;
+signal cmd_din,data_dout: std_logic_vector(31 downto 0);
+signal cmd_put,cmd_full,cmd_flush : std_logic;
+signal data_get,data_empty,data_flush : std_logic;
 
 begin  -- architecture begin
 
@@ -108,12 +115,12 @@ fifo_inst : fifo_ram
 port map(
   aclk => aclk,
   aresetn => aresetn,
-  empty => fifo_empty,
+  empty => cmd_empty,
   full => fifo_full,
   put => fifo_push,
-  get => fifo_pop,
+  get => cmd_get,
   din => fifo_data_in,
-  dout => data_out_loopback
+  dout => cmd_din
 );
 
 --cmd_flush <= '0';

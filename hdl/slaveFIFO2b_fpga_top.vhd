@@ -8,7 +8,14 @@ entity slaveFIFO2b_fpga_top is
 	port(
 		aresetn : in std_logic;                                ---input reset active low
 		aclk    : in std_logic;
-		slcs 	   : out std_logic;                               ---output chip select
+	        done                                : in std_logic;
+                cmd_dout                            : out std_logic_vector(31 downto 0);
+                cmd_get                             : in std_logic;
+                cmd_empty                           : out std_logic;
+                data_din                            : in std_logic_vector(31 downto 0);
+                data_put                            : in std_logic;
+                data_full                           : out std_logic;
+	        slcs 	   : out std_logic;                               ---output chip select
 		fdata      : inout std_logic_vector(31 downto 0);         
 		faddr      : out std_logic_vector(1 downto 0);            ---output fifo address
 		slrd	   : out std_logic;                               ---output read select
@@ -83,24 +90,31 @@ component slaveFIFO2b_streamOUT
 	     );
 end component;
 
-component slaveFIFO2b_loopback
-	port(
-		 aresetn                             : in std_logic;
-		 aclk			     : in std_logic;
-                 loopback_mode_selected              : in std_logic;
-                 flaga_d                             : in std_logic;
-                 flagb_d                             : in std_logic;
-                 flagc_d                             : in std_logic;
-                 flagd_d                             : in std_logic;
-                 data_in_loopback                    : in std_logic_vector(31 downto 0);
-                 slrd_loopback_n                     : out std_logic;
-                 sloe_loopback_n                     : out std_logic;
-                 slwr_loopback_n                     : out std_logic;
-                 loopback_rd_select_slavefifo_addr   : out std_logic;
-		 data_out_loopback                   : out std_logic_vector(31 downto 0)
-	    );
+component slaveFIFO2b_loopback is
+port(
+	 aresetn                             : in std_logic;
+	 aclk			             : in std_logic;
+         done                                : in std_logic;
+         cmd_dout                            : out std_logic_vector(31 downto 0);
+         cmd_get                             : in std_logic;
+         cmd_empty                           : out std_logic;
+         data_din                            : in std_logic_vector(31 downto 0);
+         data_put                            : in std_logic;
+         data_full                           : out std_logic;
+         loopback_mode_selected              : in std_logic;
+         flaga_d                             : in std_logic;
+         flagb_d                             : in std_logic;
+         flagc_d                             : in std_logic;
+         flagd_d                             : in std_logic;
+         data_in_loopback                    : in std_logic_vector(31 downto 0);
+         slrd_loopback_n                      : out std_logic;
+         sloe_loopback_n                      : out std_logic;
+         slwr_loopback_n                      : out std_logic;
+         loopback_rd_select_slavefifo_addr   : out std_logic;
+	 data_out_loopback                   : out std_logic_vector(31 downto 0)
+    );
 end component;
-	
+
 
 --fixed transfer mode values
 constant LOOPBACK    : std_logic_vector(2 downto 0) := "101";
@@ -243,7 +257,16 @@ streamOUT_inst : slaveFIFO2b_streamOUT
 loopback_inst : slaveFIFO2b_loopback
 	port map(
 		 aresetn                             => aresetn,                           
-		 aclk			             => aclk,			  
+		 aclk			             => aclk,
+                 
+                 done                                => done,
+                 cmd_dout                            => cmd_dout,
+                 cmd_get                             => cmd_get,
+                 cmd_empty                           => cmd_empty,
+                 data_din                            => data_din,
+                 data_put                            => data_put,
+                 data_full                           => data_full,
+			  
                  loopback_mode_selected              => loopback_mode_selected,           
                  flaga_d                             => flaga_d,                          
                  flagb_d                             => flagb_d,                          
