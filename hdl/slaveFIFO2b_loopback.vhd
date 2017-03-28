@@ -24,20 +24,37 @@ end entity slaveFIFO2b_loopback;
 
 architecture slaveFIFO2b_loopback_arch of slaveFIFO2b_loopback is
 
---component fifo for LoopBack
-component fifo
-	  port(
-	       din           : in std_logic_vector(31 downto 0);
-  	       write_busy    : in std_logic;
-               fifo_full     : out std_logic;
-               dout	     : out std_logic_vector(31 downto 0);
-               read_busy     : in std_logic;
-               fifo_empty    : out std_logic;
-               fifo_clk      : in std_logic;
-               reset_al	     : in std_logic;
-               fifo_flush    : in std_logic
-	      );
-end component;	 
+----component fifo for LoopBack
+--component fifo
+--	  port(
+--	       din           : in std_logic_vector(31 downto 0);
+--  	       write_busy    : in std_logic;
+--               fifo_full     : out std_logic;
+--               dout	     : out std_logic_vector(31 downto 0);
+--               read_busy     : in std_logic;
+--               fifo_empty    : out std_logic;
+--               fifo_clk      : in std_logic;
+--               reset_al	     : in std_logic;
+--               fifo_flush    : in std_logic
+--	      );
+--end component;	 
+  
+component fifo_ram is
+generic(
+  width: natural := 32;
+  addr_size: natural := 10
+);
+port(
+  aclk:  in  std_logic;
+  aresetn: in std_logic;
+  empty: out std_logic;
+  full:  out std_logic;
+  put:   in  std_logic;
+  get:   in  std_logic;
+  din:   in  std_logic_vector(width-1 downto 0);
+  dout:  out std_logic_vector(width-1 downto 0)
+);
+end component;
 
 
 --loopback fsm
@@ -66,24 +83,76 @@ signal fifo_empty	   : std_logic;
 signal rd_oe_delay_cnt     : std_logic_vector(1 downto 0);
 signal oe_delay_cnt        : std_logic_vector(1 downto 0);
 
+signal cmd_din,cmd_dout,data_din,data_dout : std_logic_vector(31 downto 0);
+signal cmd_put,cmd_full,cmd_get,cmd_empty,cmd_flush : std_logic;
+signal data_put,data_full,data_get,data_empty,data_flush : std_logic;
+
 begin  -- architecture begin
 
 
 --fifo instantiation for LoopBack mode
-fifo_inst : fifo
-	port map (
-		   din       	=> fifo_data_in,	
-                   write_busy   => fifo_push,
-                   fifo_full    => fifo_full,
-                   dout	        => data_out_loopback,
-                   read_busy    => fifo_pop,
-                   fifo_empty   => fifo_empty,
-                   fifo_clk     => aclk,
-                   reset_al	=> aresetn,
-                   fifo_flush   => fifo_flush
-		 ); 
+--fifo_inst : fifo
+--	port map (
+--		   din       	=> fifo_data_in,	
+--                   write_busy   => fifo_push,
+--                   fifo_full    => fifo_full,
+--                   dout	        => data_out_loopback,
+--                   read_busy    => fifo_pop,
+--                   fifo_empty   => fifo_empty,
+--                   fifo_clk     => aclk,
+--                   reset_al	=> aresetn,
+--                   fifo_flush   => fifo_flush
+--		 ); 
+--
+fifo_inst : fifo_ram 
+port map(
+  aclk => aclk,
+  aresetn => aresetn,
+  empty => fifo_empty,
+  full => fifo_full,
+  put => fifo_push,
+  get => fifo_pop,
+  din => fifo_data_in,
+  dout => data_out_loopback
+);
 
-
+--cmd_flush <= '0';
+--data_flush <= '0';
+--
+--cmd_din <= fifo_data_in;
+--cmd_put <= fifo_push;
+--
+--data_din <= cmd_dout;
+--data_get <= fifo_pop;
+--data_out_loopback <= data_dout;
+--
+--
+--cmd_fifo_inst : fifo
+--	port map (
+--		   din       	=> cmd_din,	
+--                   write_busy   => cmd_put,
+--                   fifo_full    => cmd_full,
+--                   dout	        => cmd_dout,
+--                   read_busy    => cmd_get,
+--                   fifo_empty   => cmd_empty,
+--                   fifo_clk     => aclk,
+--                   reset_al	=> aresetn,
+--                   fifo_flush   => cmd_flush
+--		 ); 
+--
+--data_fifo_inst : fifo
+--	port map (
+--		   din       	=> data_din,	
+--                   write_busy   => data_put,
+--                   fifo_full    => data_full,
+--                   dout	        => data_dout,
+--                   read_busy    => data_get,
+--                   fifo_empty   => data_empty,
+--                   fifo_clk     => aclk,
+--                   reset_al	=> aresetn,
+--                   fifo_flush   => data_flush
+--		 ); 
+--
 --OUTPUT read control signals generation
 process(current_loop_back_state)begin
 	if((current_loop_back_state = loop_back_read) or (current_loop_back_state = loop_back_read_rd_and_oe_delay))then
