@@ -601,7 +601,7 @@ process(aclk) begin
 
 --fpga_master_data_in <= fdata;
 --process(slwr_n_d, data_out_d)begin
---	if(slwr_n_d = '1')then
+--	if(slwr_n_d(0) = '1')then
 --		fdata <= (others =>'Z');
 --	else
 --		fdata <= data_out_d;

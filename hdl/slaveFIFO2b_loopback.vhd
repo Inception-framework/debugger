@@ -65,7 +65,7 @@ end component;
 
 
 --loopback fsm
-type loop_back_states is (loop_back_idle, loop_back_flagc_rcvd, loop_back_wait_flagd, loop_back_read, loop_back_read_rd_and_oe_delay, loop_back_read_oe_delay, loop_back_wait_flaga, loop_back_wait_flagb, loop_back_write, loop_back_write_wr_delay, loop_back_flush_fifo);
+type loop_back_states is (loop_back_idle, loop_back_flagc_rcvd, loop_back_wait_flagd, loop_back_read, loop_back_read_rd_and_oe_delay, loop_back_read_oe_delay,loop_back_wait, loop_back_wait_flaga, loop_back_wait_flagb, loop_back_write, loop_back_write_wr_delay, loop_back_flush_fifo);
 signal current_loop_back_state, next_loop_back_state : loop_back_states; 
 
 -------------------------------
@@ -120,7 +120,7 @@ port map(
   put => fifo_push,
   get => cmd_get,
   din => fifo_data_in,
-  dout => cmd_din
+  dout => cmd_dout
 );
 
 --cmd_flush <= '0';
@@ -131,7 +131,7 @@ port map(
 --
 --data_din <= cmd_dout;
 --data_get <= fifo_pop;
---data_out_loopback <= data_dout;
+data_out_loopback <= x"55555555"; --data_dout;
 --
 --
 --cmd_fifo_inst : fifo
@@ -272,7 +272,8 @@ process(aclk)begin
                 if(aresetn = '0')then 
 		        oe_delay_cnt <= "00";
 	        else 
-	         	if(current_loop_back_state = loop_back_read_rd_and_oe_delay) then
+	         	--if(current_loop_back_state = loop_back_read_rd_and_oe_delay) then
+	         	if(current_loop_back_state = loop_back_read) then
 	        		oe_delay_cnt <= "01";
                 	elsif((current_loop_back_state = loop_back_read_oe_delay) and (oe_delay_cnt > 0))then
 	        		oe_delay_cnt <= oe_delay_cnt - 1;
@@ -310,18 +311,21 @@ loopback_mode_fsm : process(flaga_d , flagb_d, flagc_d, flagd_d, current_loop_ba
 			next_loop_back_state <= loop_back_wait_flagd;
 
 		when loop_back_wait_flagd =>
-			if(flagd_d = '1')then
-				next_loop_back_state <= loop_back_read;
-			else
-				next_loop_back_state <= loop_back_wait_flagd;
-			end if;
+			--if(flagd_d='1')then
+			if(cmd_full='0')then
+                        	next_loop_back_state <= loop_back_read;
+                        end if;
+			--else
+			--	next_loop_back_state <= loop_back_wait_flagd;
+			--end if;
 
-		when loop_back_read => 
-			if(flagd_d = '0')then
-				next_loop_back_state <= loop_back_read_rd_and_oe_delay;
-			else
-				next_loop_back_state <= loop_back_read;
-			end if;
+		when loop_back_read =>
+                        next_loop_back_state <= loop_back_read_oe_delay;
+			--if(flagd_d = '0')then
+			--	next_loop_back_state <= loop_back_read_rd_and_oe_delay;
+			--else
+			--	next_loop_back_state <= loop_back_read;
+			--end if;
 
 		when loop_back_read_rd_and_oe_delay =>
 			if(rd_oe_delay_cnt = "00")then
@@ -332,11 +336,12 @@ loopback_mode_fsm : process(flaga_d , flagb_d, flagc_d, flagd_d, current_loop_ba
 
 		when loop_back_read_oe_delay =>
 			if(oe_delay_cnt = "00")then
-				next_loop_back_state <= loop_back_wait_flaga;
+				next_loop_back_state <= loop_back_wait;
 			else 
 				next_loop_back_state <= loop_back_read_oe_delay;
 			end if;
-
+                when loop_back_wait =>
+                        next_loop_back_state <= loop_back_idle;
 		when loop_back_wait_flaga =>
 			if(flaga_d = '1')then
 				next_loop_back_state <= loop_back_wait_flagb;

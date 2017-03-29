@@ -370,7 +370,7 @@ end component;
   jtag_out_proc: process(jtag_state,cmd_dout,jtag_do) is
   begin
 
-    jtag_state_led <= "1000";
+    jtag_state_led <= "1111";
     jtag_shift_strobe <= '0';
     jtag_bit_count    <= std_logic_vector(to_unsigned(0,16));
     jtag_state_start  <= x"0";
@@ -459,7 +459,7 @@ end component;
         jtag_state_led <= "1000";
         cmd_done <= '1';
       when others =>
-        jtag_state_led <= "1000";
+        jtag_state_led <= "1111";
         jtag_shift_strobe <= '0';
         jtag_bit_count    <= std_logic_vector(to_unsigned(0,16));
         jtag_state_start  <= x"0";
