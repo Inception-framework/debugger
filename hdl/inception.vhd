@@ -191,6 +191,8 @@ end component;
   signal cmd_done: std_logic;
  begin
   
+  slave_fifo_syn_gen: if SIM_SYN_N = false generate
+
   -- Slave FIFO
   slave_fifo_instance: slaveFIFO2b_fpga_top
   port map(
@@ -220,6 +222,7 @@ end component;
     pktend	 => pktend,
     mode_p  => mode_p
   );
+  end generate slave_fifo_syn_gen;
   
   fifo_sim_io_gen: if SIM_SYN_N generate
 
@@ -245,6 +248,18 @@ end component;
     end process;
      
     data_get <= '0', '1' after 80000 ns;
+
+     cmd_fifo_inst : fifo_ram 
+       port map(
+         aclk => aclk,
+         aresetn => aresetn,
+         empty => cmd_empty,
+         full => cmd_full,
+         put => cmd_put,
+         get => cmd_get,
+         din => cmd_din,
+         dout => cmd_dout
+      );
 
   end generate fifo_sim_io_gen;
 
@@ -317,8 +332,15 @@ end component;
             if(jtag_busy = '0')then
               case jtag_state.op is
                 when reset =>
-                  jtag_state.st <= done;
-                when others =>
+                   case jtag_state.step is
+                    when 1 =>
+                      jtag_state.st <= write_back_l;
+                    when 0 | 4  =>
+                      jtag_state.st <= done_cmd;
+                    when others => 
+                      jtag_state.st <= write_back_h;
+                  end case;
+               when others =>
                   case jtag_state.step is
                     when 0 =>
                       jtag_state.st <= write_back_l;
@@ -341,7 +363,7 @@ end component;
             --if(cmd_empty='0') then
               case jtag_state.step is
                 when NSTEPS_WR-1 =>
-                  if(jtag_state.op = write)then
+                  if(jtag_state.op = write or jtag_state.op = reset)then
                     jtag_state.st <= done;
                     jtag_state.step <= 0;
                   else
@@ -394,10 +416,33 @@ end component;
         jtag_shift_strobe <= '1';
         case jtag_state.op is
            when reset =>
-             jtag_state_start  <= TEST_LOGIC_RESET;
-             jtag_bit_count    <= std_logic_vector(to_unsigned(1,16));
-             jtag_state_end    <= TEST_LOGIC_RESET;
-             jtag_di           <= std_logic_vector(to_unsigned(0,35));
+             case jtag_state.step is
+               when 0 =>
+                 jtag_state_start  <= TEST_LOGIC_RESET;
+                 jtag_bit_count    <= std_logic_vector(to_unsigned(1,16));
+                 jtag_state_end    <= TEST_LOGIC_RESET;
+                 jtag_di           <= std_logic_vector(to_unsigned(0,35));
+                when 1 => 
+                 jtag_bit_count    <= std_logic_vector(to_unsigned(4,16));
+                 jtag_state_start  <= SHIFT_IR;
+                 jtag_di           <= std_logic_vector(to_unsigned(10,35));
+                 jtag_state_end    <= SHIFT_DR;
+               when 2 => 
+                 jtag_bit_count    <= std_logic_vector(to_unsigned(35,16));
+                 jtag_state_start  <= SHIFT_DR;
+                 jtag_di           <= "01010000000000000000000000000000100";
+                 jtag_state_end    <= RUN_TEST_IDLE;
+               when 3 => 
+                 jtag_bit_count    <= std_logic_vector(to_unsigned(35,16));
+                 jtag_state_start  <= SHIFT_DR;
+                 jtag_di           <= x"20000000"&"000";
+                 jtag_state_end    <= RUN_TEST_IDLE;            
+              when others =>
+                 jtag_state_start  <= TEST_LOGIC_RESET;
+                 jtag_bit_count    <= std_logic_vector(to_unsigned(1,16));
+                 jtag_state_end    <= TEST_LOGIC_RESET;
+                 jtag_di           <= std_logic_vector(to_unsigned(0,35));
+            end case;
            when read | write =>
            
              case jtag_state.step is
