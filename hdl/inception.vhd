@@ -430,12 +430,12 @@ end component;
                when 2 => 
                  jtag_bit_count    <= std_logic_vector(to_unsigned(35,16));
                  jtag_state_start  <= SHIFT_DR;
-                 jtag_di           <= "01010000000000000000000000000000100";
+                 jtag_di           <= "01010000000000000000000000000000010";
                  jtag_state_end    <= RUN_TEST_IDLE;
                when 3 => 
                  jtag_bit_count    <= std_logic_vector(to_unsigned(35,16));
                  jtag_state_start  <= SHIFT_DR;
-                 jtag_di           <= x"20000000"&"000";
+                 jtag_di           <= x"00000000"&"100";
                  jtag_state_end    <= RUN_TEST_IDLE;            
               when others =>
                  jtag_state_start  <= TEST_LOGIC_RESET;
