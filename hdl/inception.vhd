@@ -191,7 +191,7 @@ end component;
   signal cmd_done: std_logic;
  begin
   
-  slave_fifo_syn_gen: if SIM_SYN_N = false generate
+  slave_fifo_syn_gen: if SIM_SYN_N = false and SYN_DEBUG = false generate
 
   -- Slave FIFO
   slave_fifo_instance: slaveFIFO2b_fpga_top
@@ -267,6 +267,20 @@ end component;
     fifo_syn_debug_io_gen: if SYN_DEBUG generate
       data_get <= btn2_re;
       status   <= std_ulogic_vector(data_dout);
+      cmd_put <= btn1_re;
+      cmd_din <= std_logic_vector(r);
+      cmd_fifo_inst : fifo_ram 
+        port map(
+          aclk => aclk,
+          aresetn => aresetn,
+          empty => cmd_empty,
+          full => cmd_full,
+          put => cmd_put,
+          get => cmd_get,
+          din => cmd_din,
+          dout => cmd_dout
+      );
+
     end generate fifo_syn_debug_io_gen;
   end generate fifo_syn_io_gen; 
 
