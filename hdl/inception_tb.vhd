@@ -183,11 +183,12 @@ architecture beh of inception_tb is
   end process;
 
   jtag_slave_stub_proc: process(TCK)
-    variable loop_back_data: std_logic :='0';
+    variable loop_back_data: std_logic;
   begin
-    if(TCK'event and TCK='0')then
+    if(TCK'event and TCK='1')then
+      loop_back_data := TDI;
+    elsif(TCK'event and TCK='0')then
       TDO <= loop_back_data;
-      loop_back_data := not loop_back_data;
     end if;
   end process;
   

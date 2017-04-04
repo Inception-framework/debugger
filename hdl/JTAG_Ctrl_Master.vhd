@@ -98,8 +98,13 @@ architecture Behavioral of JTAG_Ctrl_Master is
         signal slow_down: std_logic;
 
         signal down_cnt: natural range 0 to 31;
+
+        signal dout_shift_reg: std_logic_vector(34 downto 0);
+        signal dout_en : std_logic;
 begin
   --TRst <= '1';
+
+        
 
 	StateCurrent <= int_TMS_CurrState;
 
@@ -120,6 +125,25 @@ begin
           end if;
         end process;
 
+        Dout <= dout_shift_reg;
+        dout_en <= '1' when (ShiftState=shifting3) else '0';
+
+        dout_shift_reg_proc: process(CLK)
+        begin
+          if(clk'event and clk='1')then
+            if(aresetn='0')then
+              dout_shift_reg <= (others=>'0');
+            else
+              if(((down_cnt = 0 and slow_down = '1') or slow_down = '0') and dout_en='1')then
+                dout_shift_reg(34) <= TDO;
+                shift_reg_loop: for i in 1 to 34 loop
+                  dout_shift_reg(i-1) <= dout_shift_reg(i);
+                end loop shift_reg_loop;
+              end if;
+            end if;
+          end if;
+        end process dout_shift_reg_proc;
+    
 	Process ( CLK )
 	begin
 
@@ -132,7 +156,6 @@ begin
                   ShiftState <= idle;
                   int_TMS_SoftResetCnt <= "0000";
                   int_TMS_CurrState <= TEST_LOGIC_RESET;
-                  Dout <= (others=>'0');
                 else
                 if((down_cnt = 0 and slow_down = '1') or slow_down = '0')then
 		TRST <= '1';
@@ -145,7 +168,6 @@ begin
 				when State_IDLE =>
 
 					Busy <= '0';
-                                        Dout <= (others =>'0');
 					if (Shift_Strobe='1') then
 						Busy <= '1';
 						int_TMS_StateIn <= StateStart;
@@ -225,7 +247,6 @@ begin
 				when shifting3 =>
 					-- TDO schieben
 					ShiftState <= shifting4;
-					Dout(CONV_INTEGER( int_BitCount )) <= TDO;
 				when shifting4 =>
 
 					TCK <= '1';
