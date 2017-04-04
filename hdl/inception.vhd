@@ -244,12 +244,14 @@ architecture beh of inception is
   end process input_flops_proc;
 
   -- state machine
+  cmd_din <= fdata_in_d;
+  cmd_put <= '1' when (sl_state=read3) else '0';
   fdata_out_d <= data_dout;
   data_get <= '1' when (sl_state=idle and slwr_rdy_d='1' and data_empty='0') else '0'; -- MEALY!!! 
   tristate_en_n <= '0' when (sl_state=write) else '1';
   fx3_sl_master_fsm_proc: process(aclk)
   begin
-    if(aclk'event and aclk='0')then
+    if(aclk'event and aclk='1')then
       if(aresetn='0')then
         sl_state <= idle;
 	slop <= '0';
