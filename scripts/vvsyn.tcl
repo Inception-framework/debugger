@@ -80,45 +80,20 @@ connect_bd_net [get_bd_pins /sab4z/TDI] [get_bd_ports TDI]
 create_bd_port -dir O clk_out
 connect_bd_net [get_bd_pins /sab4z/clk_out] [get_bd_ports clk_out]
 
-create_bd_port -dir O clk_original
-connect_bd_net [get_bd_pins /sab4z/clk_original] [get_bd_ports clk_original]
-
 create_bd_port -dir IO -from 31 -to 0 fdata
 connect_bd_net [get_bd_pins /sab4z/fdata] [get_bd_ports fdata]
-
-create_bd_port -dir O -from 1 -to 0 faddr
-connect_bd_net [get_bd_pins /sab4z/faddr] [get_bd_ports faddr]
-
-create_bd_port -dir O slcs
-connect_bd_net [get_bd_pins /sab4z/slcs] [get_bd_ports slcs]
-
-create_bd_port -dir O slrd
-connect_bd_net [get_bd_pins /sab4z/slrd] [get_bd_ports slrd]
 
 create_bd_port -dir O sloe
 connect_bd_net [get_bd_pins /sab4z/sloe] [get_bd_ports sloe]
 
-create_bd_port -dir O slwr
-connect_bd_net [get_bd_pins /sab4z/slwr] [get_bd_ports slwr]
+create_bd_port -dir O slop
+connect_bd_net [get_bd_pins /sab4z/slop] [get_bd_ports slop]
 
-create_bd_port -dir O pktend
-connect_bd_net [get_bd_pins /sab4z/pktend] [get_bd_ports pktend]
+create_bd_port -dir I slwr_rdy
+connect_bd_net [get_bd_pins /sab4z/slwr_rdy] [get_bd_ports slwr_rdy]
 
-create_bd_port -dir I flaga
-connect_bd_net [get_bd_pins /sab4z/flaga] [get_bd_ports flaga]
-
-create_bd_port -dir I flagb
-connect_bd_net [get_bd_pins /sab4z/flagb] [get_bd_ports flagb]
-
-create_bd_port -dir I flagc
-connect_bd_net [get_bd_pins /sab4z/flagc] [get_bd_ports flagc]
-
-create_bd_port -dir I flagd
-connect_bd_net [get_bd_pins /sab4z/flagd] [get_bd_ports flagd]
-
-create_bd_port -dir I -from 2 -to 0 mode_p
-connect_bd_net [get_bd_pins /sab4z/mode_p] [get_bd_ports mode_p]
-
+create_bd_port -dir I slrd_rdy
+connect_bd_net [get_bd_pins /sab4z/slrd_rdy] [get_bd_ports slrd_rdy]
 
 # Primary IOs
 create_bd_port -dir O -from 3 -to 0 led
@@ -195,21 +170,11 @@ array set ios {
 	"btn1"           { "T18"  "LVCMOS25" }
 	"btn2"           { "R16"  "LVCMOS25" }
         "clk_out"       { "M19"  "LVCMOS25" }
-        "clk_original"  { "B16"  "LVCMOS25" }
         "sloe"          { "G21"  "LVCMOS25" }
-        "slcs"          { "K21"  "LVCMOS25" }
-        "slwr"          { "G20"  "LVCMOS25" }
+        "slop"          { "G20"  "LVCMOS25" }
         "slrd"          { "G19"  "LVCMOS25" }
-        "pktend"        { "C17"  "LVCMOS25" }
-        "faddr[1]"      { "B22"  "LVCMOS25" }
-        "faddr[0]"      { "B21"  "LVCMOS25" }
-        "flaga"         { "F19"  "LVCMOS25" }
-        "flagb"         { "D22"  "LVCMOS25" }
-        "flagc"         { "C22"  "LVCMOS25" }
-        "flagd"         { "C18"  "LVCMOS25" }
-        "mode_p[2]"     { "M15"  "LVCMOS25" }
-        "mode_p[1]"     { "H17"  "LVCMOS25" }
-        "mode_p[0]"     { "H18"  "LVCMOS25" }
+        "slwr_rdy"      { "F19"  "LVCMOS25" }
+        "slrd_rdy"      { "C22"  "LVCMOS25" }
         "fdata[0]"      { "L18"  "LVCMOS25" }
         "fdata[1]"      { "P17"  "LVCMOS25" }
         "fdata[2]"      { "P18"  "LVCMOS25" }
