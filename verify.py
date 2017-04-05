@@ -229,7 +229,7 @@ class jtag_fsm:
 
 			if addr == 3:
 				ADDR = "DRW_AHB_AP"
-			elif addr == 2:
+			elif addr == 1:
 				ADDR = "TAR_AHB_AP"
 			elif addr == 0:
 				ADDR = "CSW_AHB_AP"
