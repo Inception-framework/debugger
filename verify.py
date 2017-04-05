@@ -32,9 +32,20 @@ import subprocess
 import os
 import time
 import binascii
+import sys
+import argparse
 
 #TODO : the path should be passed as command-line argument !
-PATH = "/home/enoname/Tools/altera/13.1/modelsim_ase/linux"
+# PATH = "/home/enoname/Tools/altera/13.1/modelsim_ase/linux"
+PATH = ""
+VERBOSE = 0
+
+def LOG(lvl, category ,message):
+	if VERBOSE >= lvl :
+		if category != "":
+			print("["+category+"]\n\t"+message)
+		else:
+			print("\t"+message)
 
 def set_inputs(input):
 
@@ -49,7 +60,7 @@ def set_inputs(input):
 def read_outputs():
 
 	# f  = open(PATH+"/../bin/jtag_open_cores_test/output.txt", "r")
-	f  = open("io/output.txt", "r")
+	f  = open(PATH+"io/output.txt", "r")
 
 	lines = f.readlines()
 
@@ -84,12 +95,12 @@ def verify(State_start, outputs):
 					tdi = -1
 			i = i + 1
 
-		print("TMS :"+str(tms)+" TDI :"+str(tdi))
+		LOG(1,"JTAG_FSM", "TMS :"+str(tms)+" TDI :"+str(tdi))
 
 		fsm.run(tms, tdi)
 
-	print("SHIFT DATA REGISTER          : "+"{0:b}".format(fsm.shift_ir))
-	print("SHIFT INTRUCTION REGISTER    : "+"{0:b}".format(fsm.shift_dr))
+	LOG(0, "JTAG_FSM", "SHIFT DATA REGISTER          : "+"{0:b}".format(fsm.shift_ir))
+	LOG(0, "JTAG_FSM", "SHIFT INTRUCTION REGISTER    : "+"{0:b}".format(fsm.shift_dr))
 
 	return fsm
 
@@ -99,20 +110,20 @@ def start_simu():
 	out = None
 	pid = -1
 
-	print("[Simulator]")
-	print("	starting...")
+	LOG(0, "", "[Simulator]")
+	LOG(0, "", "	starting...")
 
 	with open(os.devnull, "w") as fnull:
 		pipe = subprocess.Popen([PATH+"/vsim", "-c", "-do", "cd "+PATH+"/../bin/jtag_open_cores_test ; do sim.do; quit"], stdout=out, stderr=err)
-	print("	simulation in progress...")
+	LOG(0, "", "	simulation in progress...")
 	time.sleep(1)
 
 	if err != None :
-		print("[ERROR] Unable to run ModelSim : \n\n"+err)
+		LOG(0, "ERROR", "Unable to run ModelSim : \n\n"+err)
 		exit(-1)
 
-	print("	simulation successfully done...")
-	print("	closing simulator...")
+	LOG(0, "", "	simulation successfully done...")
+	LOG(0, "", "	closing simulator...")
 
 class jtag_fsm:
 
@@ -186,25 +197,25 @@ class jtag_fsm:
 			self.shift_dr += (tdi << self.shift_dr_counter)
 			self.shift_dr_counter += 1
 
-		# print(self.fsm[self.current_state])
+		# LOG(self.fsm[self.current_state])
 		key, value = next(iter(self.fsm[self.current_state].items()))
-		print("Current state : "+key)
+		LOG(1, "JTAG_FSM", "Current state : "+key)
 
 		if tms == 0:
 			self.current_state = value['0']
 		elif tms == 1:
 			self.current_state = value['1']
 		else:
-			print("unknown transition ...")
+			LOG(0, "JTAG_FSM", "unknown transition ...")
 
 		if self.current_state == self.UPDATE_DR:
-			print("SHIFT DATA REGISTER          : "+"{0:b}".format(self.shift_dr))
+			LOG(0, "JTAG_FSM", "SHIFT DATA REGISTER          : "+"{0:b}".format(self.shift_dr))
 			self.shift_dr_counter = 0
 			#self.shift_dr = 0
 			self.decode_shift()
 
 		if self.current_state == self.UPDATE_IR:
-			print("SHIFT INTRUCTION REGISTER    : "+"{0:b}".format(self.shift_ir))
+			LOG(0, "JTAG_FSM", "SHIFT INTRUCTION REGISTER    : "+"{0:b}".format(self.shift_ir))
 			self.shift_ir_counter = 0
 			#self.shift_ir = 0
 
@@ -229,7 +240,7 @@ class jtag_fsm:
 
 			if addr == 3:
 				ADDR = "DRW_AHB_AP"
-			elif addr == 2:
+			elif addr == 1:
 				ADDR = "TAR_AHB_AP"
 			elif addr == 0:
 				ADDR = "CSW_AHB_AP"
@@ -239,19 +250,37 @@ class jtag_fsm:
 		else :
 			RW = "WRITE"
 
-		print("RW     : "+RW)
-		print("ADDR   : "+ADDR)
-		print("DATA   : "+hex(self.shift_dr >> 3))
-		print("OPCODE : "+OPCODE)
+		LOG(0, "", "RW     : "+RW)
+		LOG(0, "", "ADDR   : "+ADDR)
+		LOG(0, "", "DATA   : "+hex(self.shift_dr >> 3))
+		LOG(0, "", "OPCODE : "+OPCODE)
+		LOG(0, "", "\n\n")
 
 		#self.shift_ir = 0
 		self.shift_dr = 0
 
 
+def parse_args():
+
+	parser = argparse.ArgumentParser(description='Verify JTAG simulation outputs')
+	parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Increase verbosity (specify several times for more)")
+	parser.add_argument("--path", dest = "path", default = "", type = str, help = "Path to simmulation io directory")
+	#os.path.expanduser("")
+
+	args = parser.parse_args()
+
+	return args
+
 if __name__ == "__main__":
-	print("\************************************")
-	print("*  Internal Jtag Command Generator  *")
-	print("\************************************/")
+
+	args = parse_args()
+
+	PATH = args.path
+	VERBOSE = args.verbose
+
+	LOG(0, "", "\************************************")
+	LOG(0, "", "*  Internal Jtag Command Generator  *")
+	LOG(0, "", "\************************************/")
 
 	start_states_dict = {
 		'SHIFT_DR': 4,
@@ -283,14 +312,12 @@ if __name__ == "__main__":
 	# for x in combinations(items,2):
 	# 	dic={z:items[z] for z in x}
 	# 	combi.append(dic)
-	# print(combi)
+	# LOG(combi)
 
 	# for item in combi:
 	combi = itertools.product(start_states_dict, end_states_dict)
 
 	for item in combi:
-
-		print(item)
 
 		State_start_name = item[0]
 		State_start = start_states_dict[State_start_name]
@@ -316,13 +343,13 @@ if __name__ == "__main__":
 			Shift_register = (0xABABABAB >> (32-Shift_count) )
 
 
-		print("-------------------")
-		print("Start State    : "+State_start_name)
-		print("End State      : "+State_end_name)
-		print("Shift Count    : "+str(Shift_count))
-		print("Line           : "+str(line))
-		print("Output         : "+hex(intput))
-		print("-------------------")
+		LOG(0, "", "-------------------")
+		LOG(0, "", "Start State    : "+State_start_name)
+		LOG(0, "", "End State      : "+State_end_name)
+		LOG(0, "", "Shift Count    : "+str(Shift_count))
+		LOG(0, "", "Line           : "+str(line))
+		LOG(0, "", "Output         : "+hex(intput))
+		LOG(0, "", "-------------------")
 
 		# set_inputs(intput)
 
@@ -334,21 +361,21 @@ if __name__ == "__main__":
 		error = False
 
 		# if fsm.current_state != State_end:
-		# 		print("[ERROR]\n\tFinal state differs from Oracle")
-		# 		print("\n\tExpected : "+str(State_end_name))
+		# 		LOG("[ERROR]\n\tFinal state differs from Oracle")
+		# 		LOG("\n\tExpected : "+str(State_end_name))
 		# 		key, value = fsm.fsm[fsm.current_state].popitem()
-		# 		print("\n\tResult   : "+key)
+		# 		LOG("\n\tResult   : "+key)
 		# 		error = True
 		#
 		# if Shift_count > 0 :
 		# 	if fsm.shift_ir != Shift_register:
 		# 		if fsm.shift_dr != Shift_register:
-		# 			print("[ERROR]\n\tShift register value differs from Oracle")
+		# 			LOG("[ERROR]\n\tShift register value differs from Oracle")
 		# 			error = True
 		#
 		# if error == True:
 		# 	exit(0)
 
 		key, value = fsm.fsm[fsm.current_state].popitem()
-		print("[Test Done]\n\t Expected "+key+" got "+State_end_name)
+		LOG(0, "Test Done", "Expected "+key+" got "+State_end_name)
 		exit(0)
