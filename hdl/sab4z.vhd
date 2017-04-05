@@ -37,22 +37,13 @@ entity sab4z is
     -----------------------
     -- slave fifo master --
     -----------------------
-    clk_out	   : out std_logic;                               ---output clk 100 Mhz and 180 phase shift 
-    clk_original   : out std_logic;      
-    slcs 	   : out std_logic;                               ---output chip select
-    fdata          : inout std_logic_vector(31 downto 0);         
-    faddr          : out std_logic_vector(1 downto 0);            ---output fifo address
-    slrd	   : out std_logic;                               ---output read select
+    clk_out	   : out std_logic;                               ---output clk 100 Mhz and 180 phase shift
+    fdata          : inout std_logic_vector(31 downto 0);
     sloe	   : out std_logic;                               ---output output enable select
-    slwr	   : out std_logic;                               ---output write select
-        
-    flaga	   : in std_logic;                                
-    flagb	   : in std_logic;
-    flagc	   : in std_logic;
-    flagd	   : in std_logic;
+    slop	   : out std_logic;                               ---output write select
 
-    pktend	   : out std_logic;                               ---output pkt end 
-    mode_p         : in std_logic_vector(2 downto 0);  
+    slwr_rdy	   : in std_logic;
+    slrd_rdy	   : in std_logic;
 
     --------------------------------
     -- AXI lite slave port s0_axi --
@@ -157,26 +148,17 @@ architecture rtl of sab4z is
     TDI		    : out  STD_LOGIC;
     TRST            : out  STD_LOGIC;
 
-    -----------------------
+     -----------------------
     -- slave fifo master --
     -----------------------
-    clk_out	   : out std_logic;                               ---output clk 100 Mhz and 180 phase shift 
-    clk_original   : out std_logic;      
-    slcs 	   : out std_logic;                               ---output chip select
-    fdata          : inout std_logic_vector(31 downto 0);         
-    faddr          : out std_logic_vector(1 downto 0);            ---output fifo address
-    slrd	   : out std_logic;                               ---output read select
+    clk_out	   : out std_logic;                               ---output clk 100 Mhz and 180 phase shift
+    fdata          : inout std_logic_vector(31 downto 0);
     sloe	   : out std_logic;                               ---output output enable select
-    slwr	   : out std_logic;                               ---output write select
-        
-    flaga	   : in std_logic;                                
-    flagb	   : in std_logic;
-    flagc	   : in std_logic;
-    flagd	   : in std_logic;
+    slop	   : out std_logic;                               ---output write select
 
-    pktend	   : out std_logic;                               ---output pkt end 
-    mode_p    : in std_logic_vector(2 downto 0)
-    
+    slwr_rdy	   : in std_logic;
+    slrd_rdy	   : in std_logic
+   
   );
   end component;
 
@@ -207,22 +189,13 @@ begin
     -----------------------
     -- slave fifo master --
     -----------------------
-    clk_out	 => clk_out,                               ---output clk 100 Mhz and 180 phase shift 
-    clk_original => clk_original,      
-    slcs 	 => slcs,                               ---output chip select
-    fdata        => fdata,         
-    faddr        => faddr,            ---output fifo address
-    slrd	 => slrd,                               ---output read select
-    sloe	 => sloe,                               ---output output enable select
-    slwr	 => slwr,                               ---output write select
-        
-    flaga	 => flaga,                                 
-    flagb	 => flagb,
-    flagc	 => flagc,
-    flagd	 => flagd,
-    pktend	 => pktend,   
-    mode_p       => mode_p
-    
+    clk_out	=> clk_out,  
+    fdata   => fdata,       
+    sloe	   => sloe,
+    slop	   => slop,
+    slwr_rdy       => slwr_rdy,
+    slrd_rdy       => slrd_rdy
+
   );
 
 

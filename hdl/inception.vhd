@@ -19,8 +19,8 @@ use work.inception_pkg.all;
 USE std.textio.all;
 use ieee.std_logic_textio.all;
 
---library UNISIM;
---use UNISIM.vcomponents.all;
+library UNISIM;
+use UNISIM.vcomponents.all;
 
 entity inception is
   port(
@@ -48,7 +48,6 @@ entity inception is
     -- slave fifo master --
     -----------------------
     clk_out	   : out std_logic;                               ---output clk 100 Mhz and 180 phase shift
-    clk_original   : out std_logic;
     fdata          : inout std_logic_vector(31 downto 0);
     sloe	   : out std_logic;                               ---output output enable select
     slop	   : out std_logic;                               ---output write select
@@ -161,7 +160,7 @@ architecture beh of inception is
   signal fdata_in,fdata_in_d,fdata_out_d: std_logic_vector(31 downto 0);
   signal slrd_rdy_d,slwr_rdy_d:           std_logic;
   
-  type sl_state_t is (idle,read1,read2,read3,read4,write1,write2);
+  type sl_state_t is (idle,read1,read2,read3,read4,write0,write1,write2);
   signal sl_state: sl_state_t;
 
  begin
@@ -209,23 +208,23 @@ architecture beh of inception is
   -------------------------------------
 
   -- tristate buffer simulation
-  tristate_sim_gen: if(SIM_SYN_N=true)generate
-    fdata_in <= fdata;
-    fdata <= (others=>'Z') when tristate_en_n='1' else fdata_out_d;
-  end generate;
+ -- tristate_sim_gen: if(SIM_SYN_N=true)generate
+ --   fdata_in <= fdata;
+ --   fdata <= (others=>'Z') when tristate_en_n='1' else fdata_out_d;
+ -- end generate;
 
   -- tristate buffer synthesis on Xilinx Zedboard
- -- tristate_syn_gen: if(SIM_SYN_N=false)generate
- --   tristate_gen_loop: for i in 0 to 31 generate
- --     tristate_buf_i : IOBUF
- --       port map (
- --         O     => fdata_in(i),
- --         IO    => fdata(i),
- --         I     => fdata_out_d(i),
- --         T     => tristate_en_n
- --       );
- --   end generate tristate_gen_loop;
- -- end generate;
+  tristate_syn_gen: if(SIM_SYN_N=false)generate
+    tristate_gen_loop: for i in 0 to 31 generate
+      tristate_buf_i : IOBUF
+        port map (
+          O     => fdata_in(i),
+          IO    => fdata(i),
+          I     => fdata_out_d(i),
+          T     => tristate_en_n
+        );
+    end generate tristate_gen_loop;
+  end generate;
 
   -- io flops
   input_flops_proc: process(aclk)
@@ -248,7 +247,7 @@ architecture beh of inception is
   cmd_put <= '1' when (sl_state=read4) else '0';
   fdata_out_d <= data_dout;
   data_get <= '1' when (sl_state=idle and slwr_rdy_d='1' and data_empty='0') else '0'; -- MEALY!!! 
-  tristate_en_n <= '0' when (sl_state=write1) else '1';
+  --tristate_en_n <= '0' when (sl_state=write1) else '1';
   fx3_sl_master_fsm_proc: process(aclk)
   begin
     if(aclk'event and aclk='1')then
@@ -256,12 +255,13 @@ architecture beh of inception is
         sl_state <= idle;
 	slop <= '0';
 	sloe <= '0';
+	tristate_en_n <= '1';
       else
         case sl_state is
 	  when idle =>
 	    if(slwr_rdy_d='1' and data_empty='0')then
-	      sl_state <= write1;
-	      slop <= '1';
+	      sl_state <= write0;
+	      tristate_en_n <= '0';
 	    elsif(slrd_rdy_d='1' and cmd_full='0')then
 	      sl_state <= read1;
 	      slop <= '1';
@@ -277,8 +277,12 @@ architecture beh of inception is
 	    sloe <= '0';
 	  when read4 =>
 	    sl_state <= idle;
+	  when write0 =>
+	    sl_state <= write1;
+	    slop <= '1';
 	  when write1 =>
 	    sl_state <= write2;
+	    tristate_en_n <= '1';
           when write2 =>
 	    sl_state <= idle;
 	  when others =>
@@ -289,28 +293,6 @@ architecture beh of inception is
       end if;
     end if;
   end process fx3_sl_master_fsm_proc;
-
-  fifo_syn_io_gen: if SIM_SYN_N = false generate
-    fifo_syn_debug_io_gen: if SYN_DEBUG generate
-      data_get <= btn2_re;
-      status   <= std_ulogic_vector(data_dout);
-      cmd_put <= btn1_re;
-      cmd_din <= std_logic_vector(r);
-      cmd_fifo_inst : fifo_ram
-        port map(
-          aclk => aclk,
-          aresetn => aresetn,
-          empty => cmd_empty,
-          full => cmd_full,
-          put => cmd_put,
-          get => cmd_get,
-          din => cmd_din,
-          dout => cmd_dout
-      );
-
-    end generate fifo_syn_debug_io_gen;
-  end generate fifo_syn_io_gen;
-
 
   -- JTAG converter
   jtag_state_proc: process(aclk)
@@ -562,7 +544,6 @@ architecture beh of inception is
       Dout         => jtag_do
     );
 
-  clk_original <= aclk;
 
  clk_out_syn_gen: if SIM_SYN_N = false generate
    aclkn <= not aclk;

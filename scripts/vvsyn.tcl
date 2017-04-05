@@ -34,7 +34,7 @@ source $rootdir/scripts/ila.tcl
 # Create SAB4Z IP #
 ###################
 create_project -part xc7z020clg484-1 -force sab4z sab4z
-set sources { fifo slaveFIFO2b_streamOUT axi_pkg inception_pkg sab4z slaveFIFO2b_ZLP inception slaveFIFO2b_fpga_top JTAG_Ctrl_Master slaveFIFO2b_loopback debouncer slaveFIFO2b_partial fifo_ram slaveFIFO2b_streamIN }
+set sources { axi_pkg inception_pkg sab4z inception JTAG_Ctrl_Master debouncer fifo_ram }
 foreach f $sources {
 	add_files $rootdir/hdl/$f.vhd
 }
@@ -172,7 +172,6 @@ array set ios {
         "clk_out"       { "M19"  "LVCMOS25" }
         "sloe"          { "G21"  "LVCMOS25" }
         "slop"          { "G20"  "LVCMOS25" }
-        "slrd"          { "G19"  "LVCMOS25" }
         "slwr_rdy"      { "F19"  "LVCMOS25" }
         "slrd_rdy"      { "C22"  "LVCMOS25" }
         "fdata[0]"      { "L18"  "LVCMOS25" }
@@ -224,34 +223,25 @@ foreach io [ array names ios ] {
 # Timing constraints
 set clock [get_clocks]
 set_false_path -from $clock -to [get_ports {led[*]}]
+set_false_path -from $clock -to [get_ports {jtag_state_led[*]}]
 set_false_path -from [get_ports {btn1 btn2 sw[*]}] -to $clock
 
 create_generated_clock -source [get_pins -hierarchical sab4z/aclk] -master_clock [get_clocks] -add -name clk_out [get_ports clk_out] -edges {2 3 4}
 
 set clock [get_clocks clk_fpga_0]
 set_input_delay -clock $clock 2 [get_ports TDO]
-set_input_delay -clock $clock 2 [get_ports fdata]
-set_input_delay -clock $clock 2 [get_ports flaga]
-set_input_delay -clock $clock 2 [get_ports flagb]
-set_input_delay -clock $clock 2 [get_ports flagc]
-set_input_delay -clock $clock 2 [get_ports flagd]
-
-
-#set clock [get_clocks clk_out]
-
-# add timing constraints for fifo
-set_false_path -from [get_ports {mode_p sw[*]}] -to $clock
 set_output_delay -clock $clock 1 [get_ports TCK]
 set_output_delay -clock $clock 1 [get_ports TRST]
 set_output_delay -clock $clock 1 [get_ports TMS]
 set_output_delay -clock $clock 1 [get_ports TDI]
-set_output_delay -clock $clock 1 [get_ports slcs]
+set_input_delay -clock $clock 1 [get_ports fdata]
+set_input_delay -clock $clock 1 [get_ports slwr_rdy]
+set_input_delay -clock $clock 1 [get_ports slrd_rdy]
+
+#set clock [get_clocks clk_out]
 set_output_delay -clock $clock 1 [get_ports fdata]
-set_output_delay -clock $clock 1 [get_ports faddr]
-set_output_delay -clock $clock 1 [get_ports slrd]
-set_output_delay -clock $clock 1 [get_ports slwr]
+set_output_delay -clock $clock 1 [get_ports slop]
 set_output_delay -clock $clock 1 [get_ports sloe]
-set_output_delay -clock $clock 1 [get_ports pktend]
 
 
 # Implementation
