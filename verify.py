@@ -179,7 +179,7 @@ class jtag_fsm:
 			self.checkpoint_done = True
 
 		if self.current_state == self.SHIFT_IR:
-			self.shift_ir += (tdi << self.shift_ir_counter)
+			self.shift_ir |= (tdi << self.shift_ir_counter)
 			self.shift_ir_counter += 1
 
 		if self.current_state == self.SHIFT_DR:
@@ -214,7 +214,7 @@ class jtag_fsm:
 		OPCODE = "Unknown"
 		ADDR = "Unknown"
 
-		addr = (self.shift_dr >> 1) & 0xFF
+		addr = (self.shift_dr >> 1) & 0x3
 
 		if self.shift_ir == 0xA:
 			OPCODE = "DPACC"
@@ -239,20 +239,12 @@ class jtag_fsm:
 		else :
 			RW = "WRITE"
 
-		addr = (self.shift_dr >> 1) & 0xFF
-		if addr == 3:
-			ADDR = "DRW_AHB_AP"
-		elif addr == 2:
-			ADDR = "TAR_AHB_AP"
-		elif addr == 0:
-			ADDR = "CSW_AHB_AP"
-
 		print("RW     : "+RW)
 		print("ADDR   : "+ADDR)
 		print("DATA   : "+hex(self.shift_dr >> 3))
 		print("OPCODE : "+OPCODE)
 
-		self.shift_ir = 0
+		#self.shift_ir = 0
 		self.shift_dr = 0
 
 
