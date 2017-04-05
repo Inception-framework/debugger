@@ -50,25 +50,33 @@ architecture beh of inception_tb is
     -- slave fifo master --
     -----------------------
     clk_out	   : out std_logic;                               ---output clk 100 Mhz and 180 phase shift 
-    clk_original   : out std_logic;      
-    slcs 	   : out std_logic;                               ---output chip select
     fdata          : inout std_logic_vector(31 downto 0);         
-    faddr          : out std_logic_vector(1 downto 0);            ---output fifo address
-    slrd	   : out std_logic;                               ---output read select
     sloe	   : out std_logic;                               ---output output enable select
-    slwr	   : out std_logic;                               ---output write select
+    slop	   : out std_logic;                               ---output write select
         
-    flaga	   : in std_logic;                                
-    flagb	   : in std_logic;
-    flagc	   : in std_logic;
-    flagd	   : in std_logic;
+    slwr_rdy	   : in std_logic;                                
+    slrd_rdy	   : in std_logic
 
-    pktend	   : out std_logic;                               ---output pkt end 
-    mode_p    : in std_logic_vector(2 downto 0)
-    
   );
   end component;
-  
+
+  component fifo_ram is
+  generic(
+    width: natural := 32;
+    addr_size: natural := 10
+  );
+  port(
+    aclk:  in  std_logic;
+    aresetn: in std_logic;
+    empty: out std_logic;
+    full:  out std_logic;
+    put:   in  std_logic;
+    get:   in  std_logic;
+    din:   in  std_logic_vector(width-1 downto 0);
+    dout:  out std_logic_vector(width-1 downto 0)
+  );
+  end component;
+ 
     signal aclk:        std_logic;  -- Clock
     signal aresetn:     std_logic;  -- Synchronous, active low, reset
     
@@ -93,25 +101,22 @@ architecture beh of inception_tb is
     -- slave fifo master --
     -----------------------
     signal clk_out	   :  std_logic;                               ---output clk 100 Mhz and 180 phase shift 
-    signal clk_original   :  std_logic;      
-    signal slcs 	   :  std_logic;                               ---output chip select
     signal fdata          :  std_logic_vector(31 downto 0);         
-    signal faddr          :  std_logic_vector(1 downto 0);            ---output fifo address
-    signal slrd	   :  std_logic;                               ---output read select
     signal sloe	   :  std_logic;                               ---output output enable select
-    signal slwr	   :  std_logic;                               ---output write select
+    signal slop	   :  std_logic;                               ---output write select
         
-    signal flaga	   :  std_logic;                                
-    signal flagb	   :  std_logic;
-    signal flagc	   :  std_logic;
-    signal flagd	   :  std_logic;
+    signal slwr_rdy	   :  std_logic;                                
+    signal slrd_rdy	   :  std_logic;
 
-    signal pktend	   :  std_logic;                               ---output pkt end 
-    signal mode_p    :  std_logic_vector(2 downto 0); 
+    type fx3_state_t is (reset,idle,read,write);
+    signal fx3_state: fx3_state_t;
+    signal slop_d,sloe_d: std_logic;
 
+    signal snd_get,snd_put,snd_empty,snd_full : std_logic;
+    signal rcv_get,rcv_put,rcv_empty,rcv_full : std_logic;
+    signal snd_din,snd_dout,rcv_din,rcv_dout  : std_logic_vector(31 downto 0);
  begin
   
- mode_p <= "101"; --loopback
  period <= 3; -- small value for simulation, for real code chose 15 so that jtag freq ~3MHz
  dut: inception 
   port map(
@@ -140,21 +145,11 @@ architecture beh of inception_tb is
     -- slave fifo master --
     -----------------------
     clk_out	=> clk_out,  
-    clk_original => clk_original,  
-    slcs 	  => slcs,
     fdata   => fdata,       
-    faddr   => faddr,
-    slrd	   => slrd,
     sloe	   => sloe,
-    slwr	   => slwr,
-        
-    flaga	  => flaga,                               
-    flagb	  => flagb, 
-    flagc	  => flagc, 
-    flagd	  => flagd,
-
-    pktend	 => pktend,                             
-    mode_p  => mode_p  
+    slop	   => slop,
+    slwr_rdy       => slwr_rdy,
+    slrd_rdy       => slrd_rdy
     
   );
  
@@ -192,6 +187,134 @@ architecture beh of inception_tb is
     end if;
   end process;
   
+  ----------------------------
+  -- simulate the fx3 gpif2 --
+  ----------------------------
+  input_flop_proc: process(clk_out)
+  begin
+    if(clk_out'event and clk_out='1')then
+      if(aresetn='0')then
+        slop_d <= '0';
+	sloe_d <= '0';
+      else
+        slop_d <= slop;
+	sloe_d <= sloe;
+      end if;
+    end if;
+  end process input_flop_proc;
+
+  data_proc: process(aclk)
+  begin
+    if(aclk'event and aclk='1')then
+      if(aresetn='0')then
+        snd_get <= '0';
+      elsif(slop='1')then
+        snd_get <= '1';
+      else
+        snd_get <= '0';
+      end if;
+    end if;
+  end process data_proc;
+
+  fdata <= snd_dout when sloe='1' else (others=>'Z');
+
+  rcv_din <= fdata;
+  rcv_put <= '1' when (fx3_state=write) else '0';
+
+  slrd_rdy <= not snd_empty;
+  slwr_rdy <= not rcv_full;
+
+  fx3_proc: process(clk_out)
+  begin
+    if(clk_out'event and clk_out='1')then
+      if(aresetn='0')then
+        fx3_state <= reset;
+      else
+        case fx3_state is
+	  when reset =>
+	    fx3_state <= idle;
+	  when idle =>
+	    if(slop_d='1')then
+	      if(sloe_d='1')then
+	        fx3_state <= read;
+	      else
+	        fx3_state <= write;
+	      end if;
+	    end if;
+	  when read =>
+	    if(slop_d='0' or sloe_d='0')then
+	      fx3_state <= idle;
+	    end if;
+	  when write =>
+	    if(slop_d='0' and sloe_d='0')then
+	      fx3_state <= idle;
+	    end if;
+	end case;
+      end if;
+    end if;
+  end process fx3_proc;
+--------------------------------------------------------
+  -- local fifo to store commands reveived from the host --
+  --------------------------------------------------------
+  snd_fifo_inst : fifo_ram
+    generic map(
+      width => 32,
+      addr_size => 4
+    )
+    port map(
+      aclk => aclk,
+      aresetn => aresetn,
+      empty => snd_empty,
+      full => snd_full,
+      put => snd_put,
+      get => snd_get,
+      din => snd_din,
+      dout => snd_dout
+    );
+
+  -------------------------------------------------------------
+  -- local fifo to store data received from the fpga --
+  -------------------------------------------------------------
+  rcv_fifo_inst: fifo_ram
+    generic map(
+      width => 32,
+      addr_size => 4
+    )
+    port map(
+      aclk     => aclk,
+      aresetn  => aresetn,
+      empty    => rcv_empty,
+      full     => rcv_full,
+      put      => rcv_put,
+      get      => rcv_get,
+      din      => rcv_din,
+      dout     => rcv_dout
+    );
+  
+  --------------------------------------------------
+  -- simulate host by taking commands from a file --
+  --------------------------------------------------
+  stub_input_proc: process
+      file input_fp: text open read_mode is "../../io/input.txt";
+      variable input_line : line;
+      variable input_data : std_logic_vector(31 downto 0);
+    begin
+        snd_gen_loop: while(endfile(input_fp) = false) loop
+        snd_put <= '0';
+        wait for 15 ns;
+        if(snd_full='1')then
+          wait until snd_full='0';
+        end if;
+        readline(input_fp,input_line);
+        hread(input_line,input_data);
+        snd_put <= '1';
+        snd_din <= input_data;
+        wait for 10 ns;
+      end loop snd_gen_loop;
+      snd_put <='0';
+      wait;
+    end process;
+
 end architecture beh;
 
 

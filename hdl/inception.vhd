@@ -19,6 +19,9 @@ use work.inception_pkg.all;
 USE std.textio.all;
 use ieee.std_logic_textio.all;
 
+--library UNISIM;
+--use UNISIM.vcomponents.all;
+
 entity inception is
   port(
     aclk:       in std_logic;  -- Clock
@@ -46,20 +49,12 @@ entity inception is
     -----------------------
     clk_out	   : out std_logic;                               ---output clk 100 Mhz and 180 phase shift
     clk_original   : out std_logic;
-    slcs 	   : out std_logic;                               ---output chip select
     fdata          : inout std_logic_vector(31 downto 0);
-    faddr          : out std_logic_vector(1 downto 0);            ---output fifo address
-    slrd	   : out std_logic;                               ---output read select
     sloe	   : out std_logic;                               ---output output enable select
-    slwr	   : out std_logic;                               ---output write select
+    slop	   : out std_logic;                               ---output write select
 
-    flaga	   : in std_logic;
-    flagb	   : in std_logic;
-    flagc	   : in std_logic;
-    flagd	   : in std_logic;
-
-    pktend	   : out std_logic;                               ---output pkt end
-    mode_p    : in std_logic_vector(2 downto 0)
+    slwr_rdy	   : in std_logic;
+    slrd_rdy	   : in std_logic
 
   );
 end entity inception;
@@ -116,35 +111,6 @@ architecture beh of inception is
   );
   end component;
 
- component slaveFIFO2b_fpga_top is
-	port(
-		aresetn : in std_logic;                                ---input reset active low
-		aclk    : in std_logic;
-	        done                                : in std_logic;
-                cmd_dout                            : out std_logic_vector(31 downto 0);
-                cmd_get                             : in std_logic;
-                cmd_empty                           : out std_logic;
-                data_din                            : in std_logic_vector(31 downto 0);
-                data_put                            : in std_logic;
-                data_full                           : out std_logic;
-	        slcs 	   : out std_logic;                               ---output chip select
-		fdata      : inout std_logic_vector(31 downto 0);
-		faddr      : out std_logic_vector(1 downto 0);            ---output fifo address
-		slrd	   : out std_logic;                               ---output read select
-		sloe	   : out std_logic;                               ---output output enable select
-		slwr	   : out std_logic;                               ---output write select
-
-		flaga	   : in std_logic;
-		flagb	   : in std_logic;
-		flagc	   : in std_logic;
-		flagd	   : in std_logic;
-
-
-		pktend	   : out std_logic;                               ---output pkt end
-		mode_p     : in std_logic_vector(2 downto 0)              ----signals for debugging
-	    );
-end component;
-
   component fifo_ram is
   generic(
     width: natural := 32;
@@ -189,79 +155,140 @@ end component;
   signal down_cnt: natural range 0 to 31;
 
   signal cmd_done: std_logic;
+
+  -- fx3 interface
+  signal tristate_en_n:                   std_logic;
+  signal fdata_in,fdata_in_d,fdata_out_d: std_logic_vector(31 downto 0);
+  signal slrd_rdy_d,slwr_rdy_d:           std_logic;
+  
+  type sl_state_t is (idle,read1,read2,read3,read4,write1,write2);
+  signal sl_state: sl_state_t;
+
  begin
 
-  slave_fifo_syn_gen: if SIM_SYN_N = false and SYN_DEBUG = false generate
+  --------------------------------------------------------
+  -- local fifo to store commands reveived from the fx3 --
+  --------------------------------------------------------
+  cmd_fifo_inst : fifo_ram
+    generic map(
+      width => 32,
+      addr_size => 4
+    )
+    port map(
+      aclk => aclk,
+      aresetn => aresetn,
+      empty => cmd_empty,
+      full => cmd_full,
+      put => cmd_put,
+      get => cmd_get,
+      din => cmd_din,
+      dout => cmd_dout
+    );
 
-  -- Slave FIFO
-  slave_fifo_instance: slaveFIFO2b_fpga_top
-  port map(
-    aresetn => aresetn,
-    aclk    => aclk,
-    done    => cmd_done,
-    cmd_dout => cmd_dout,
-    cmd_get  => cmd_get,
-    cmd_empty => cmd_empty,
-    data_din  => data_din,
-    data_put  => data_put,
---    data_full => data_full,
+  -------------------------------------------------------------
+  -- local fifo to store data received from the jtag machine --
+  -------------------------------------------------------------
+  data_fifo_inst: fifo_ram
+    generic map(
+      width => 32,
+      addr_size => 4
+    )
+    port map(
+      aclk     => aclk,
+      aresetn  => aresetn,
+      empty    => data_empty,
+      full     => data_full,
+      put      => data_put,
+      get      => data_get,
+      din      => data_din,
+      dout     => data_dout
+    );
+ 
+  -------------------------------------
+  -- logic to interface with the fx3 --
+  -------------------------------------
 
-    slcs 	  => slcs,
-    fdata   => fdata,
-    faddr   => faddr,
-    slrd	   => slrd,
-    sloe	   => sloe,
-    slwr	   => slwr,
+  -- tristate buffer simulation
+  tristate_sim_gen: if(SIM_SYN_N=true)generate
+    fdata_in <= fdata;
+    fdata <= (others=>'Z') when tristate_en_n='1' else fdata_out_d;
+  end generate;
 
-    flaga	  => flaga,
-    flagb	  => flagb,
-    flagc	  => flagc,
-    flagd	  => flagd,
+  -- tristate buffer synthesis on Xilinx Zedboard
+ -- tristate_syn_gen: if(SIM_SYN_N=false)generate
+ --   tristate_gen_loop: for i in 0 to 31 generate
+ --     tristate_buf_i : IOBUF
+ --       port map (
+ --         O     => fdata_in(i),
+ --         IO    => fdata(i),
+ --         I     => fdata_out_d(i),
+ --         T     => tristate_en_n
+ --       );
+ --   end generate tristate_gen_loop;
+ -- end generate;
 
+  -- io flops
+  input_flops_proc: process(aclk)
+  begin
+    if(aclk'event and aclk='1')then
+      if(aresetn='0')then
+        slrd_rdy_d <= '0';
+	slwr_rdy_d <= '0';
+	fdata_in_d <= (others=>'0');
+      else
+        slrd_rdy_d <= slrd_rdy;
+	slwr_rdy_d <= slwr_rdy;
+	fdata_in_d <= fdata_in;
+      end if;
+    end if;
+  end process input_flops_proc;
 
-    pktend	 => pktend,
-    mode_p  => mode_p
-  );
-  end generate slave_fifo_syn_gen;
-
-  fifo_sim_io_gen: if SIM_SYN_N generate
-
-    stub_input_proc: process
-      file input_fp: text open read_mode is "../../io/input.txt";
-      variable input_line : line;
-      variable input_data : std_logic_vector(31 downto 0);
-    begin
-        cmd_gen_loop: while(endfile(input_fp) = false) loop
-        cmd_put <= '0';
-        wait for 15 ns;
-        if(cmd_full='1')then
-          wait until cmd_full='0';
-        end if;
-        readline(input_fp,input_line);
-        hread(input_line,input_data);
-        cmd_put <= '1';
-        cmd_din <= input_data;
-        wait for 10 ns;
-      end loop cmd_gen_loop;
-      cmd_put <='0';
-      wait;
-    end process;
-
-    data_get <= '0', '1' after 80000 ns;
-
-     cmd_fifo_inst : fifo_ram
-       port map(
-         aclk => aclk,
-         aresetn => aresetn,
-         empty => cmd_empty,
-         full => cmd_full,
-         put => cmd_put,
-         get => cmd_get,
-         din => cmd_din,
-         dout => cmd_dout
-      );
-
-  end generate fifo_sim_io_gen;
+  -- state machine
+  cmd_din <= fdata_in_d;
+  cmd_put <= '1' when (sl_state=read4) else '0';
+  fdata_out_d <= data_dout;
+  data_get <= '1' when (sl_state=idle and slwr_rdy_d='1' and data_empty='0') else '0'; -- MEALY!!! 
+  tristate_en_n <= '0' when (sl_state=write1) else '1';
+  fx3_sl_master_fsm_proc: process(aclk)
+  begin
+    if(aclk'event and aclk='1')then
+      if(aresetn='0')then
+        sl_state <= idle;
+	slop <= '0';
+	sloe <= '0';
+      else
+        case sl_state is
+	  when idle =>
+	    if(slwr_rdy_d='1' and data_empty='0')then
+	      sl_state <= write1;
+	      slop <= '1';
+	    elsif(slrd_rdy_d='1' and cmd_full='0')then
+	      sl_state <= read1;
+	      slop <= '1';
+	      sloe <= '1';
+	    end if;
+	  when read1 =>
+	    sl_state <= read2;
+	    slop <= '0';
+	  when read2 =>
+	    sl_state <= read3;
+	  when read3 =>
+	    sl_state <= read4;
+	    sloe <= '0';
+	  when read4 =>
+	    sl_state <= idle;
+	  when write1 =>
+	    sl_state <= write2;
+          when write2 =>
+	    sl_state <= idle;
+	  when others =>
+	    sl_state <= idle;
+	    slop <= '0';
+	    sloe <= '0';
+	end case;
+      end if;
+    end if;
+  end process fx3_sl_master_fsm_proc;
 
   fifo_syn_io_gen: if SIM_SYN_N = false generate
     fifo_syn_debug_io_gen: if SYN_DEBUG generate
@@ -284,22 +311,6 @@ end component;
     end generate fifo_syn_debug_io_gen;
   end generate fifo_syn_io_gen;
 
-  -- Data FIFO
-  data_fifo_inst: fifo_ram
-  generic map(
-    width => 32,
-    addr_size => 4
-  )
-  port map(
-    aclk     => aclk,
-    aresetn  => aresetn,
-    empty    => data_empty,
-    full     => data_full,
-    put      => data_put,
-    get      => data_get,
-    din      => data_din,
-    dout     => data_dout
-  );
 
   -- JTAG converter
   jtag_state_proc: process(aclk)
