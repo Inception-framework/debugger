@@ -200,12 +200,61 @@ class jtag_fsm:
 		if self.current_state == self.UPDATE_DR:
 			print("SHIFT DATA REGISTER          : "+"{0:b}".format(self.shift_dr))
 			self.shift_dr_counter = 0
-			self.shift_dr = 0
+			#self.shift_dr = 0
+			self.decode_shift()
 
 		if self.current_state == self.UPDATE_IR:
 			print("SHIFT INTRUCTION REGISTER    : "+"{0:b}".format(self.shift_ir))
 			self.shift_ir_counter = 0
-			self.shift_ir = 0
+			#self.shift_ir = 0
+
+	def decode_shift(self):
+
+		RW = "Unknown"
+		OPCODE = "Unknown"
+		ADDR = "Unknown"
+
+		addr = (self.shift_dr >> 1) & 0xFF
+
+		if self.shift_ir == 0xA:
+			OPCODE = "DPACC"
+
+			if addr == 1:
+				ADDR = "CSW_JTAG"
+			elif addr == 2:
+				ADDR = "SELECT_JTAG"
+
+		elif self.shift_ir == 0xB:
+			OPCODE = "APACC"
+
+			if addr == 3:
+				ADDR = "DRW_AHB_AP"
+			elif addr == 2:
+				ADDR = "TAR_AHB_AP"
+			elif addr == 0:
+				ADDR = "CSW_AHB_AP"
+
+		if (self.shift_dr & 1) == 1 :
+			RW = "READ"
+		else :
+			RW = "WRITE"
+
+		addr = (self.shift_dr >> 1) & 0xFF
+		if addr == 3:
+			ADDR = "DRW_AHB_AP"
+		elif addr == 2:
+			ADDR = "TAR_AHB_AP"
+		elif addr == 0:
+			ADDR = "CSW_AHB_AP"
+
+		print("RW     : "+RW)
+		print("ADDR   : "+ADDR)
+		print("DATA   : "+hex(self.shift_dr >> 3))
+		print("OPCODE : "+OPCODE)
+
+		self.shift_ir = 0
+		self.shift_dr = 0
+
 
 if __name__ == "__main__":
 	print("\************************************")
