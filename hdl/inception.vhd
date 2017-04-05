@@ -161,7 +161,7 @@ architecture beh of inception is
   signal fdata_in,fdata_in_d,fdata_out_d: std_logic_vector(31 downto 0);
   signal slrd_rdy_d,slwr_rdy_d:           std_logic;
   
-  type sl_state_t is (idle,read1,read2,read3,write);
+  type sl_state_t is (idle,read1,read2,read3,read4,write1,write2);
   signal sl_state: sl_state_t;
 
  begin
@@ -245,10 +245,10 @@ architecture beh of inception is
 
   -- state machine
   cmd_din <= fdata_in_d;
-  cmd_put <= '1' when (sl_state=read3) else '0';
+  cmd_put <= '1' when (sl_state=read4) else '0';
   fdata_out_d <= data_dout;
   data_get <= '1' when (sl_state=idle and slwr_rdy_d='1' and data_empty='0') else '0'; -- MEALY!!! 
-  tristate_en_n <= '0' when (sl_state=write) else '1';
+  tristate_en_n <= '0' when (sl_state=write1) else '1';
   fx3_sl_master_fsm_proc: process(aclk)
   begin
     if(aclk'event and aclk='1')then
@@ -260,7 +260,7 @@ architecture beh of inception is
         case sl_state is
 	  when idle =>
 	    if(slwr_rdy_d='1' and data_empty='0')then
-	      sl_state <= write;
+	      sl_state <= write1;
 	      slop <= '1';
 	    elsif(slrd_rdy_d='1' and cmd_full='0')then
 	      sl_state <= read1;
@@ -273,9 +273,13 @@ architecture beh of inception is
 	  when read2 =>
 	    sl_state <= read3;
 	  when read3 =>
-	    sl_state <= idle;
+	    sl_state <= read4;
 	    sloe <= '0';
-	  when write =>
+	  when read4 =>
+	    sl_state <= idle;
+	  when write1 =>
+	    sl_state <= write2;
+          when write2 =>
 	    sl_state <= idle;
 	  when others =>
 	    sl_state <= idle;
