@@ -160,7 +160,7 @@ architecture beh of inception is
   signal fdata_in,fdata_in_d,fdata_out_d: std_logic_vector(31 downto 0);
   signal slrd_rdy_d,slwr_rdy_d:           std_logic;
   
-  type sl_state_t is (idle,read1,read2,read3,read4,write0,write1,write2);
+  type sl_state_t is (idle,read1,read2,read3,read4,read5,read6,read7,read8,write0,write1,write2);
   signal sl_state: sl_state_t;
 
  begin
@@ -276,6 +276,14 @@ architecture beh of inception is
 	    sl_state <= read4;
 	    sloe <= '0';
 	  when read4 =>
+	    sl_state <= read5;
+	  when read5 =>
+	    sl_state <= read6;
+	  when read6 =>
+	    sl_state <= read7;
+	  when read7 =>
+	    sl_state <= read8;
+	  when read8 =>
 	    sl_state <= idle;
 	  when write0 =>
 	    sl_state <= write1;
