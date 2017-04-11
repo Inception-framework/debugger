@@ -234,17 +234,22 @@ architecture beh of inception is
         slrd_rdy_d <= '0';
 	slwr_rdy_d <= '0';
 	fdata_in_d <= (others=>'0');
+	status <= (others=>'0');
       else
         slrd_rdy_d <= slrd_rdy;
 	slwr_rdy_d <= slwr_rdy;
 	fdata_in_d <= fdata_in;
+	if(cmd_put='1')then
+	  status <= std_ulogic_vector(cmd_din);
+	end if;
       end if;
     end if;
   end process input_flops_proc;
 
+
   -- state machine
   cmd_din <= fdata_in_d;
-  cmd_put <= '1' when (sl_state=read4) else '0';
+  cmd_put <= '1' when (sl_state=read5) else '0';
   fdata_out_d <= data_dout;
   data_get <= '1' when (sl_state=idle and slwr_rdy_d='1' and data_empty='0') else '0'; -- MEALY!!! 
   --tristate_en_n <= '0' when (sl_state=write1) else '1';
@@ -274,17 +279,17 @@ architecture beh of inception is
 	    sl_state <= read3;
 	  when read3 =>
 	    sl_state <= read4;
-	    sloe <= '0';
 	  when read4 =>
 	    sl_state <= read5;
+	    sloe <= '0';
 	  when read5 =>
-	    sl_state <= read6;
-	  when read6 =>
-	    sl_state <= read7;
-	  when read7 =>
-	    sl_state <= read8;
-	  when read8 =>
 	    sl_state <= idle;
+	 -- when read6 =>
+	 --   sl_state <= read7;
+	 -- when read7 =>
+	 --   sl_state <= read8;
+	 -- when read8 =>
+	 --   sl_state <= idle;
 	  when write0 =>
 	    sl_state <= write1;
 	    slop <= '1';
