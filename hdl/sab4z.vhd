@@ -162,8 +162,10 @@ architecture rtl of sab4z is
   );
   end component;
 
+  signal period: natural range 1 to 31;
 begin
-
+  
+  period <= to_integer(unsigned(sw));
   inception_inst: inception
   port map(
     aclk => aclk,  -- Clock
@@ -179,7 +181,7 @@ begin
     ----------------------
     -- jtag ctrl master --
     ----------------------
-    period => 15, 
+    period => period, 
     TDO => TDO,	
     TCK	=> TCK,	
     TMS => TMS,		
