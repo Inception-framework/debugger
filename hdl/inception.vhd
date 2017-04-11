@@ -295,6 +295,7 @@ architecture beh of inception is
 	    slop <= '1';
 	  when write1 =>
 	    sl_state <= write2;
+	    slop <= '0';
 	    tristate_en_n <= '1';
           when write2 =>
 	    sl_state <= idle;
