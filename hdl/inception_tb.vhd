@@ -208,7 +208,7 @@ architecture beh of inception_tb is
     if(aclk'event and aclk='1')then
       if(aresetn='0')then
         snd_get <= '0';
-      elsif(slop='1')then
+      elsif(slop='1' and sloe='1')then
         snd_get <= '1';
       else
         snd_get <= '0';
