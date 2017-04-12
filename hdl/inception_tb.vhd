@@ -304,6 +304,7 @@ architecture beh of inception_tb is
         wait for 15 ns;
         if(snd_full='1')then
           wait until snd_full='0';
+	  wait for 5 ns;
         end if;
         readline(input_fp,input_line);
         hread(input_line,input_data);
