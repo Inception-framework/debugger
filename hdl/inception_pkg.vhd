@@ -30,7 +30,8 @@ package inception_pkg is
   constant UPDATE_IR	     : std_logic_vector(3 downto 0) := x"F";
 
   -- NUMEBER OF MIDDLE LEVEL JTAG COMMANDS TO PERFORM A HIGH LEVEL OP
-  constant NSTEPS_WR            : natural := 4;
-  constant NSTEPS_RD            : natural := 6;
+  constant NSTEPS_WR            : natural := 2;
+  constant NSTEPS_RD            : natural := 4;
+  constant NSTEPS_RST           : natural := 6;
 
 end package inception_pkg;
