@@ -30,6 +30,7 @@ if { $argc == 3 } {
 cd $builddir
 source $rootdir/scripts/ila.tcl
 
+
 ###################
 # Create SAB4Z IP #
 ###################
@@ -206,11 +207,11 @@ array set ios {
         "fdata[29]"     { "P20"  "LVCMOS25" }
         "fdata[30]"     { "P21"  "LVCMOS25" }
         "fdata[31]"     { "J20"  "LVCMOS25" }
-        "TCK"           { "Y11"  "LVCMOS25" }
+        "TDI"           { "Y11"  "LVCMOS25" }
         "TRST"          { "AA8"  "LVCMOS25" }
-        "TDO"           { "AA11"  "LVCMOS25" }
-        "TMS"           { "Y10"  "LVCMOS25" }
-        "TDI"           { "AA9"  "LVCMOS25" }
+        "TMS"           { "AA11"  "LVCMOS25" }
+        "TCK"           { "Y10"  "LVCMOS25" }
+        "TDO"           { "AA9"  "LVCMOS25" }
 	}
 
 foreach io [ array names ios ] {
