@@ -169,10 +169,13 @@ architecture beh of inception_tb is
 
  irq_gen_proc: process
  begin
-   irq <= '0';
-   wait for 457*10 ns;
-   irq <= '1';
-   wait until irq_ack = '1';
+   irq_loop: for i in 0 to 2 loop
+     irq <= '0';
+     wait for 457*10 ns;
+     irq <= '1';
+     wait until irq_ack = '1';
+   end loop irq_loop;
+   wait;
  end process;
 
  o_proc: process(TCK)
@@ -232,7 +235,7 @@ architecture beh of inception_tb is
   fdata <= snd_dout when sloe='1' else (others=>'Z');
 
   rcv_din <= fdata;
-  rcv_put <= '1' when (fx3_state=write) else '0';
+  rcv_put <= '1' when (slop='1' and sloe='0') else '0';
 
   slrd_rdy <= not snd_empty;
   slwr_rdy <= not rcv_full;
