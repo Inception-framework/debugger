@@ -19,8 +19,8 @@ use work.inception_pkg.all;
 USE std.textio.all;
 use ieee.std_logic_textio.all;
 
---library UNISIM;
---use UNISIM.vcomponents.all;
+library UNISIM;
+use UNISIM.vcomponents.all;
 
 entity inception is
   port(
@@ -34,7 +34,7 @@ entity inception is
     r:              in std_ulogic_vector(31 downto 0);
     status:         out std_ulogic_vector(31 downto 0);
 
-    irq:            in std_logic;
+    irq_in:         in std_logic;
     irq_ack:        out std_logic;
     ----------------------
     -- jtag ctrl master --
@@ -172,9 +172,9 @@ architecture beh of inception is
 
  begin
 
-  --------------------------
-  -- synchronize irq line --
-  --------------------------
+  -----------------------------
+  -- synchronize irq_in line --
+  -----------------------------
   irq_sync <= irq_d3;
   irq_sync_proc: process(aclk)
   begin
@@ -184,7 +184,7 @@ architecture beh of inception is
 	irq_d2 <= '0';
 	irq_d2 <= '0';
       else
-        irq_d1 <= irq;
+        irq_d1 <= irq_in;
 	irq_d2 <= irq_d1;
 	irq_d3 <= irq_d2;
       end if;
@@ -192,7 +192,7 @@ architecture beh of inception is
   end process irq_sync_proc;
 
   -----------------------
-  -- irq state machine --
+  --irq_in state machine --
   -----------------------
   irq_ack <= '1' when irq_state = done else '0';
   irq_fsm_proc: process(aclk)
@@ -265,23 +265,23 @@ architecture beh of inception is
   -------------------------------------
 
   -- tristate buffer simulation
-  tristate_sim_gen: if(SIM_SYN_N=true)generate
-    fdata_in <= fdata;
-    fdata <= (others=>'Z') when tristate_en_n='1' else fdata_out_d;
-  end generate;
+ -- tristate_sim_gen: if(SIM_SYN_N=true)generate
+ --   fdata_in <= fdata;
+ --   fdata <= (others=>'Z') when tristate_en_n='1' else fdata_out_d;
+ -- end generate;
 
   -- tristate buffer synthesis on Xilinx Zedboard
-  --tristate_syn_gen: if(SIM_SYN_N=false)generate
-  --  tristate_gen_loop: for i in 0 to 31 generate
-  --    tristate_buf_i : IOBUF
-  --      port map (
-  --        O     => fdata_in(i),
-  --        IO    => fdata(i),
-  --        I     => fdata_out_d(i),
-  --        T     => tristate_en_n
-  --      );
-  --  end generate tristate_gen_loop;
-  --end generate;
+  tristate_syn_gen: if(SIM_SYN_N=false)generate
+    tristate_gen_loop: for i in 0 to 31 generate
+      tristate_buf_i : IOBUF
+        port map (
+          O     => fdata_in(i),
+          IO    => fdata(i),
+          I     => fdata_out_d(i),
+          T     => tristate_en_n
+        );
+    end generate tristate_gen_loop;
+  end generate;
 
   -- io flops
   input_flops_proc: process(aclk)

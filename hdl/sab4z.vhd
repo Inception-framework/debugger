@@ -24,7 +24,7 @@ entity sab4z is
     sw:         in  std_logic_vector(3 downto 0); -- Slide switches
     led:        out std_logic_vector(3 downto 0); -- LEDs
     
-    irq:        in std_logic;
+    irq_in:     in std_logic;
     irq_ack:    out std_logic;
     ----------------------
     -- jtag ctrl master --
@@ -140,7 +140,7 @@ architecture rtl of sab4z is
     r:              in std_ulogic_vector(31 downto 0);
     status:         out std_ulogic_vector(31 downto 0);
     
-    irq:            in std_logic;
+    irq_in:         in std_logic;
     irq_ack:        out std_logic;
     ----------------------
     -- jtag ctrl master --
@@ -182,7 +182,7 @@ begin
     r => r,
     status => status,
     
-    irq => irq,
+    irq_in => irq_in,
     irq_ack => irq_ack,
     ----------------------
     -- jtag ctrl master --

@@ -62,8 +62,8 @@ set_property -dict [list CONFIG.PCW_M_AXI_GP0_ENABLE_STATIC_REMAP {1}] $ps7
 # Interconnections
 
 # IRQ
-create_bd_port -dir I irq
-connect_bd_net [get_bd_pins /sab4z/irq] [get_bd_ports irq]
+create_bd_port -dir I irq_in
+connect_bd_net [get_bd_pins /sab4z/irq_in] [get_bd_ports irq_in]
 create_bd_port -dir I irq_ack
 connect_bd_net [get_bd_pins /sab4z/irq_ack] [get_bd_ports irq_ack]
 
@@ -218,7 +218,7 @@ array set ios {
         "TMS"           { "AA11"  "LVCMOS25" }
         "TCK"           { "Y10"  "LVCMOS25" }
         "TDO"           { "AA9"  "LVCMOS25" }
-        "irq"           { "AB9"  "LVCMOS25" }
+        "irq_in"        { "AB9"  "LVCMOS25" }
         "irq_ack"       { "AB10"  "LVCMOS25" }
 	}
 
