@@ -19,8 +19,8 @@ use work.inception_pkg.all;
 USE std.textio.all;
 use ieee.std_logic_textio.all;
 
-library UNISIM;
-use UNISIM.vcomponents.all;
+--library UNISIM;
+--use UNISIM.vcomponents.all;
 
 entity inception is
   port(
@@ -34,6 +34,8 @@ entity inception is
     r:              in std_ulogic_vector(31 downto 0);
     status:         out std_ulogic_vector(31 downto 0);
 
+    irq:            in std_logic;
+    irq_ack:        out std_logic;
     ----------------------
     -- jtag ctrl master --
     ----------------------
@@ -129,8 +131,8 @@ architecture beh of inception is
 
 
 
-  type jtag_st_t is (idle,read_cmd,read_addr,run_cmd,wait_cmd,write_back_h,write_back_l,done_cmd,done);
-  type jtag_op_t is (read,write,reset);
+  type jtag_st_t is (idle,idle2,read_cmd,read_addr,run_cmd,wait_cmd,write_back_h,write_back_l,done_cmd,done);
+  type jtag_op_t is (read,read_irq,write,reset);
   type jtag_state_t is record
     st: jtag_st_t;
     op: jtag_op_t;
@@ -163,7 +165,62 @@ architecture beh of inception is
   type sl_state_t is (idle,read1,read2,read3,read4,read5,write0,write1,write2);
   signal sl_state: sl_state_t;
 
+  -- irq
+  signal irq_sync, irq_d1, irq_d2, irq_d3: std_logic;
+  type irq_state_t is (idle,forward_event,done);
+  signal irq_state : irq_state_t;
+
  begin
+
+  --------------------------
+  -- synchronize irq line --
+  --------------------------
+  irq_sync <= irq_d3;
+  irq_sync_proc: process(aclk)
+  begin
+    if(aclk'event and aclk='1')then
+      if(aresetn='0')then
+        irq_d1 <= '0';
+	irq_d2 <= '0';
+	irq_d2 <= '0';
+      else
+        irq_d1 <= irq;
+	irq_d2 <= irq_d1;
+	irq_d3 <= irq_d2;
+      end if;
+    end if;
+  end process irq_sync_proc;
+
+  -----------------------
+  -- irq state machine --
+  -----------------------
+  irq_ack <= '1' when irq_state = done else '0';
+  irq_fsm_proc: process(aclk)
+  begin
+    if(aclk'event and aclk='1')then
+      if(aresetn='0')then
+	irq_state <= idle;
+      else
+        case irq_state is
+	  when idle =>
+	    if(irq_sync='1')then
+	      irq_state <= forward_event;
+	    end if;
+	  when forward_event =>
+	    if(cmd_done='1')then
+	      irq_state <= done;
+	    end if;
+	  when done =>
+	    if(irq_sync='0')then
+	      irq_state <= idle;
+	    end if;
+	  when others =>
+	    irq_state <= done;
+	end case;
+      end if;
+    end if;
+  end process irq_fsm_proc;
+
 
   --------------------------------------------------------
   -- local fifo to store commands reveived from the fx3 --
@@ -208,23 +265,23 @@ architecture beh of inception is
   -------------------------------------
 
   -- tristate buffer simulation
- -- tristate_sim_gen: if(SIM_SYN_N=true)generate
- --   fdata_in <= fdata;
- --   fdata <= (others=>'Z') when tristate_en_n='1' else fdata_out_d;
- -- end generate;
+  tristate_sim_gen: if(SIM_SYN_N=true)generate
+    fdata_in <= fdata;
+    fdata <= (others=>'Z') when tristate_en_n='1' else fdata_out_d;
+  end generate;
 
   -- tristate buffer synthesis on Xilinx Zedboard
-  tristate_syn_gen: if(SIM_SYN_N=false)generate
-    tristate_gen_loop: for i in 0 to 31 generate
-      tristate_buf_i : IOBUF
-        port map (
-          O     => fdata_in(i),
-          IO    => fdata(i),
-          I     => fdata_out_d(i),
-          T     => tristate_en_n
-        );
-    end generate tristate_gen_loop;
-  end generate;
+  --tristate_syn_gen: if(SIM_SYN_N=false)generate
+  --  tristate_gen_loop: for i in 0 to 31 generate
+  --    tristate_buf_i : IOBUF
+  --      port map (
+  --        O     => fdata_in(i),
+  --        IO    => fdata(i),
+  --        I     => fdata_out_d(i),
+  --        T     => tristate_en_n
+  --      );
+  --  end generate tristate_gen_loop;
+  --end generate;
 
   -- io flops
   input_flops_proc: process(aclk)
@@ -318,9 +375,15 @@ architecture beh of inception is
       else
         case jtag_state.st is
           when idle =>
-            if(cmd_empty='0') then
-              jtag_state.st <= read_cmd;
-            end if;
+	    if(irq_state = forward_event)then
+	      jtag_state.st <= run_cmd;
+	      jtag_state.op <= read_irq;
+	      jtag_state.addr <= std_logic_vector(r);
+	    elsif(cmd_empty='0')then 
+	      jtag_state.st <= idle2;
+	    end if;
+	  when idle2 =>
+            jtag_state.st <= read_cmd;
           when read_cmd =>
             if(cmd_empty='0') then
               jtag_state.st     <= read_addr;
@@ -362,7 +425,7 @@ architecture beh of inception is
                  --   when others =>
                  --     jtag_state.st <= write_back_h;
                  -- end case;
-               when read =>
+               when read | read_irq =>
                  case jtag_state.step is
                    when 3 =>
                      jtag_state.st <= write_back_h;
@@ -393,7 +456,7 @@ architecture beh of inception is
                     jtag_state.step <= jtag_state.step + 1;
                   end if;
 		when NSTEPS_RD-1 =>
-	          if(jtag_state.op = read)then
+	          if(jtag_state.op = read or jtag_state.op = read_irq)then
                     jtag_state.st <= done;
                     jtag_state.step <= 0;
                   else
@@ -434,7 +497,9 @@ architecture beh of inception is
     cmd_done          <= '0';
 
     case jtag_state.st is
-      when idle =>
+      when idle  =>
+        jtag_state_led <= (others=> '0');
+      when idle2 =>
         jtag_state_led <= (others => '0');
         cmd_get        <= '1';
       when read_cmd =>
@@ -486,7 +551,7 @@ architecture beh of inception is
                  jtag_state_end    <= TEST_LOGIC_RESET;
                  jtag_di           <= std_logic_vector(to_unsigned(0,35));
             end case;
-           when read | write =>
+           when read | read_irq | write =>
 
              case jtag_state.step is
                when 0 =>
@@ -502,7 +567,7 @@ architecture beh of inception is
                  jtag_state_led <= "0100";
                  jtag_bit_count    <= std_logic_vector(to_unsigned(35,16));
                  jtag_state_start  <= SHIFT_DR;
-                 if(jtag_state.op = read)then jtag_di <= cmd_dout&"111"; else jtag_di <= cmd_dout&"110"; end if;
+                 if(jtag_state.op = read or jtag_state.op = read_irq)then jtag_di <= cmd_dout&"111"; else jtag_di <= cmd_dout&"110"; end if;
                  jtag_state_end    <= RUN_TEST_IDLE;
                when 2 =>
                  jtag_state_led <= "0100";
@@ -526,14 +591,16 @@ architecture beh of inception is
            when others =>
         end case;
       when write_back_h =>
-        data_din <= x"0000000"&'0'&jtag_do(2 downto 0);
+        if(jtag_state.op = read)then data_din <= x"0000000"&'0'&jtag_do(2 downto 0); else data_din <= x"fffffff"&'0'&jtag_do(2 downto 0); end if;
         data_put <= '1';
       when write_back_l =>
         data_din <= jtag_do(34 downto 3);
         data_put <= '1';
       when done =>
         jtag_state_led <= "1000";
-        cmd_done <= '1';
+	if(jtag_state.op = read_irq)then
+          cmd_done <= '1';
+	end if;
       when others =>
         jtag_state_led <= "1111";
         jtag_shift_strobe <= '0';

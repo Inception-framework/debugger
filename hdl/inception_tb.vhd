@@ -36,6 +36,8 @@ architecture beh of inception_tb is
     r:              in std_ulogic_vector(31 downto 0);
     status:         out std_ulogic_vector(31 downto 0);
     
+    irq: in std_logic;
+    irq_ack: out std_logic;
     ----------------------
     -- jtag ctrl master --
     ----------------------
@@ -87,6 +89,7 @@ architecture beh of inception_tb is
     signal r:               std_ulogic_vector(31 downto 0);
     signal status:          std_ulogic_vector(31 downto 0);
     
+    signal irq, irq_ack:    std_logic;
     ----------------------
     -- jtag ctrl master --
     ----------------------
@@ -131,6 +134,8 @@ architecture beh of inception_tb is
     r => r,
     status => status,
     
+    irq => irq,
+    irq_ack => irq_ack,
     ----------------------
     -- jtag ctrl master --
     ----------------------
@@ -160,6 +165,14 @@ architecture beh of inception_tb is
    wait for 5 ns;
    aclk <= '0';
    wait for 5 ns;
+ end process;
+
+ irq_gen_proc: process
+ begin
+   irq <= '0';
+   wait for 457*10 ns;
+   irq <= '1';
+   wait until irq_ack = '1';
  end process;
 
  o_proc: process(TCK)

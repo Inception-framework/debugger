@@ -37,9 +37,11 @@ SLOP    GPIO18   CTL1    G21    FMC_LA20_P   G20
 WRITE_READY   GPIO21   CTL4    G25    FMC_LA22_N   F19
 READ_READY   GPIO23   CTL6    G28    FMC_LA25_N   C22
 
-              fpga         old version fx3 directly 
-TDI    yellow JA1    Y11   DQ9 
-TRST          JA10   AA8
-TMS    blue   JA2    AA11  DQ8
-TCK    green  JA3    Y10   CTL0
-TDO    orange JA4    AA9   DQ0
+                fpga         old version fx3 directly 
+TDI      yellow JA1    Y11   DQ9 
+TRST            JA10   AA8
+irq      red    JA9    AB9   
+irq_ack  brown  JA8    AB10   
+TMS      blue   JA2    AA11  DQ8
+TCK      green  JA3    Y10   CTL0
+TDO      orange JA4    AA9   DQ0
