@@ -64,7 +64,7 @@ set_property -dict [list CONFIG.PCW_M_AXI_GP0_ENABLE_STATIC_REMAP {1}] $ps7
 # IRQ
 create_bd_port -dir I irq_in
 connect_bd_net [get_bd_pins /sab4z/irq_in] [get_bd_ports irq_in]
-create_bd_port -dir I irq_ack
+create_bd_port -dir O irq_ack
 connect_bd_net [get_bd_pins /sab4z/irq_ack] [get_bd_ports irq_ack]
 
 # JTAG ctlr master
