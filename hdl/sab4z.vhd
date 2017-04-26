@@ -41,6 +41,7 @@ entity sab4z is
     -----------------------
     clk_out	   : out std_logic;                               ---output clk 100 Mhz and 180 phase shift
     fdata          : inout std_logic_vector(31 downto 0);
+    sladdr         : out std_logic_vector(1 downto 0);
     sloe	   : out std_logic;                               ---output output enable select
     slop	   : out std_logic;                               ---output write select
 
@@ -157,6 +158,7 @@ architecture rtl of sab4z is
     -----------------------
     clk_out	   : out std_logic;                               ---output clk 100 Mhz and 180 phase shift
     fdata          : inout std_logic_vector(31 downto 0);
+    sladdr         : out std_logic_vector(1 downto 0);
     sloe	   : out std_logic;                               ---output output enable select
     slop	   : out std_logic;                               ---output write select
 

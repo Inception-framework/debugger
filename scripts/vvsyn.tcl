@@ -90,6 +90,9 @@ connect_bd_net [get_bd_pins /sab4z/clk_out] [get_bd_ports clk_out]
 create_bd_port -dir IO -from 31 -to 0 fdata
 connect_bd_net [get_bd_pins /sab4z/fdata] [get_bd_ports fdata]
 
+create_bd_port -dir O -from 1 -to 0 sladdr
+connect_bd_net [get_bd_pins /sab4z/sladdr] [get_bd_ports sladdr]
+
 create_bd_port -dir O sloe
 connect_bd_net [get_bd_pins /sab4z/sloe] [get_bd_ports sloe]
 
@@ -181,6 +184,8 @@ array set ios {
         "slop"          { "G20"  "LVCMOS25" }
         "slwr_rdy"      { "F19"  "LVCMOS25" }
         "slrd_rdy"      { "C22"  "LVCMOS25" }
+        "sladdr[0]"     { "B21"  "LVCMOS25" }
+        "sladdr[1]"     { "B22"  "LVCMOS25" }
         "fdata[0]"      { "L18"  "LVCMOS25" }
         "fdata[1]"      { "P17"  "LVCMOS25" }
         "fdata[2]"      { "P18"  "LVCMOS25" }
@@ -233,7 +238,7 @@ foreach io [ array names ios ] {
 set clock [get_clocks]
 set_false_path -from $clock -to [get_ports {led[*]}]
 set_false_path -from $clock -to [get_ports {jtag_state_led[*]}]
-set_false_path -from [get_ports {btn1 btn2 sw[*]}] -to $clock
+set_false_path -from [get_ports {btn1 btn2 irq_in sw[*]}] -to $clock
 
 create_generated_clock -source [get_pins -hierarchical sab4z/aclk] -master_clock [get_clocks] -add -name clk_out [get_ports clk_out] -edges {2 3 4}
 
@@ -243,6 +248,7 @@ set_output_delay -clock $clock 1 [get_ports TCK]
 set_output_delay -clock $clock 1 [get_ports TRST]
 set_output_delay -clock $clock 1 [get_ports TMS]
 set_output_delay -clock $clock 1 [get_ports TDI]
+set_output_delay -clock $clock 1 [get_ports irq_ack]
 set_input_delay -clock $clock 1 [get_ports fdata]
 set_input_delay -clock $clock 1 [get_ports slwr_rdy]
 set_input_delay -clock $clock 1 [get_ports slrd_rdy]
@@ -251,6 +257,7 @@ set_input_delay -clock $clock 1 [get_ports slrd_rdy]
 set_output_delay -clock $clock 1 [get_ports fdata]
 set_output_delay -clock $clock 1 [get_ports slop]
 set_output_delay -clock $clock 1 [get_ports sloe]
+set_output_delay -clock $clock 1 [get_ports sladdr]
 
 
 # Implementation

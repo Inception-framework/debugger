@@ -53,6 +53,7 @@ architecture beh of inception_tb is
     -----------------------
     clk_out	   : out std_logic;                               ---output clk 100 Mhz and 180 phase shift 
     fdata          : inout std_logic_vector(31 downto 0);         
+    sladdr         : out std_logic_vector(1 downto 0);
     sloe	   : out std_logic;                               ---output output enable select
     slop	   : out std_logic;                               ---output write select
         
@@ -105,6 +106,7 @@ architecture beh of inception_tb is
     -----------------------
     signal clk_out	   :  std_logic;                               ---output clk 100 Mhz and 180 phase shift 
     signal fdata          :  std_logic_vector(31 downto 0);         
+    signal sladdr         :  std_logic_vector(1 downto 0);
     signal sloe	   :  std_logic;                               ---output output enable select
     signal slop	   :  std_logic;                               ---output write select
         
@@ -116,7 +118,7 @@ architecture beh of inception_tb is
     signal slop_d,sloe_d: std_logic;
 
     signal snd_get,snd_put,snd_empty,snd_full : std_logic;
-    signal rcv_get,rcv_put,rcv_empty,rcv_full : std_logic;
+    signal rcv_get,rcv_put_00,rcv_put_01,rcv_empty,rcv_full_00,rcv_full_01 : std_logic;
     signal snd_din,snd_dout,rcv_din,rcv_dout  : std_logic_vector(31 downto 0);
  begin
   
@@ -150,7 +152,8 @@ architecture beh of inception_tb is
     -- slave fifo master --
     -----------------------
     clk_out	=> clk_out,  
-    fdata   => fdata,       
+    fdata   => fdata,
+    sladdr  => sladdr,
     sloe	   => sloe,
     slop	   => slop,
     slwr_rdy       => slwr_rdy,
@@ -232,13 +235,14 @@ architecture beh of inception_tb is
     end if;
   end process data_proc;
 
-  fdata <= snd_dout when sloe='1' else (others=>'Z');
+  fdata <= snd_dout when sloe='1' and sladdr="11" else (others=>'Z');
 
   rcv_din <= fdata;
-  rcv_put <= '1' when (slop='1' and sloe='0') else '0';
+  rcv_put_00 <= '1' when (slop='1' and sloe='0' and sladdr="00") else '0';
+  rcv_put_01 <= '1' when (slop='1' and sloe='0' and sladdr="01") else '0';
 
   slrd_rdy <= not snd_empty;
-  slwr_rdy <= not rcv_full;
+  slwr_rdy <= not rcv_full_00 when sladdr="00" else not rcv_full_01;
 
   fx3_proc: process(clk_out)
   begin
@@ -269,10 +273,12 @@ architecture beh of inception_tb is
       end if;
     end if;
   end process fx3_proc;
---------------------------------------------------------
+  
+  
+  --------------------------------------------------------
   -- local fifo to store commands reveived from the host --
   --------------------------------------------------------
-  snd_fifo_inst : fifo_ram
+  snd_fifo_inst_11 : fifo_ram
     generic map(
       width => 32,
       addr_size => 4
@@ -291,7 +297,7 @@ architecture beh of inception_tb is
   -------------------------------------------------------------
   -- local fifo to store data received from the fpga --
   -------------------------------------------------------------
-  rcv_fifo_inst: fifo_ram
+  rcv_fifo_inst_00: fifo_ram
     generic map(
       width => 32,
       addr_size => 4
@@ -300,13 +306,32 @@ architecture beh of inception_tb is
       aclk     => aclk,
       aresetn  => aresetn,
       empty    => rcv_empty,
-      full     => rcv_full,
-      put      => rcv_put,
+      full     => rcv_full_00,
+      put      => rcv_put_00,
       get      => rcv_get,
       din      => rcv_din,
       dout     => rcv_dout
     );
-  
+
+  -------------------------------------------------------------
+  -- local fifo to store irq received from the fpga --
+  -------------------------------------------------------------
+  rcv_fifo_inst_01: fifo_ram
+    generic map(
+      width => 32,
+      addr_size => 4
+    )
+    port map(
+      aclk     => aclk,
+      aresetn  => aresetn,
+      empty    => rcv_empty,
+      full     => rcv_full_01,
+      put      => rcv_put_01,
+      get      => rcv_get,
+      din      => rcv_din,
+      dout     => rcv_dout
+    );
+ 
   --------------------------------------------------
   -- simulate host by taking commands from a file --
   --------------------------------------------------

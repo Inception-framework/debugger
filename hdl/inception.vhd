@@ -51,6 +51,7 @@ entity inception is
     -----------------------
     clk_out	   : out std_logic;                               ---output clk 100 Mhz and 180 phase shift
     fdata          : inout std_logic_vector(31 downto 0);
+    sladdr         : out std_logic_vector(1 downto 0);
     sloe	   : out std_logic;                               ---output output enable select
     slop	   : out std_logic;                               ---output write select
 
@@ -144,12 +145,12 @@ architecture beh of inception is
 
   signal jtag_state : jtag_state_t;
 
-  signal cmd_empty,data_empty: std_logic;
-  signal cmd_full,data_full:   std_logic;
-  signal cmd_put,data_put:     std_logic;
-  signal cmd_get,data_get:     std_logic;
-  signal cmd_din,data_din:     std_logic_vector(31 downto 0);
-  signal cmd_dout,data_dout:   std_logic_vector(31 downto 0);
+  signal cmd_empty,data_empty,irq_empty: std_logic;
+  signal cmd_full,data_full,irq_full:   std_logic;
+  signal cmd_put,data_put,irq_put:     std_logic;
+  signal cmd_get,data_get,irq_get:     std_logic;
+  signal cmd_din,data_din,irq_din:     std_logic_vector(31 downto 0);
+  signal cmd_dout,data_dout,irq_dout:   std_logic_vector(31 downto 0);
 
   signal aclkn: std_logic;
 
@@ -161,14 +162,15 @@ architecture beh of inception is
   signal tristate_en_n:                   std_logic;
   signal fdata_in,fdata_in_d,fdata_out_d: std_logic_vector(31 downto 0);
   signal slrd_rdy_d,slwr_rdy_d:           std_logic;
-  
-  type sl_state_t is (idle,read1,read2,read3,read4,read5,write0,write1,write2);
+
+  type sl_state_t is (idle,prepare_read,prepare_write_irq,prepare_write_data,read1,read2,read3,read4,read5,write0,write1,write2);
   signal sl_state: sl_state_t;
+  signal sl_is_irq: std_logic;
 
   -- irq
   signal irq_sync, irq_d1, irq_d2, irq_d3: std_logic;
   type irq_state_t is (idle,forward_event,done);
-  signal irq_state : irq_state_t;
+  signal irq_state: irq_state_t;
 
  begin
 
@@ -259,7 +261,26 @@ architecture beh of inception is
       din      => data_din,
       dout     => data_dout
     );
- 
+
+  ------------------------------------------------------------------
+  -- local fifo to store irq id data coming from the jtag machine --
+  ------------------------------------------------------------------
+  irq_fifo_inst: fifo_ram
+    generic map(
+      width => 32,
+      addr_size => 4
+    )
+    port map(
+      aclk     => aclk,
+      aresetn  => aresetn,
+      empty    => irq_empty,
+      full     => irq_full,
+      put      => irq_put,
+      get      => irq_get,
+      din      => irq_din,
+      dout     => irq_dout
+    );
+
   -------------------------------------
   -- logic to interface with the fx3 --
   -------------------------------------
@@ -307,8 +328,9 @@ architecture beh of inception is
   -- state machine
   cmd_din <= fdata_in_d;
   cmd_put <= '1' when (sl_state=read5) else '0';
-  fdata_out_d <= data_dout;
-  data_get <= '1' when (sl_state=idle and slwr_rdy_d='1' and data_empty='0') else '0'; -- MEALY!!! 
+  fdata_out_d <= irq_dout when (sl_is_irq='1') else data_dout;
+  data_get <= '1' when (sl_state=prepare_write_data) else '0';
+  irq_get  <= '1' when (sl_state=prepare_write_irq ) else '0';
   --tristate_en_n <= '0' when (sl_state=write1) else '1';
   fx3_sl_master_fsm_proc: process(aclk)
   begin
@@ -318,17 +340,34 @@ architecture beh of inception is
 	slop <= '0';
 	sloe <= '0';
 	tristate_en_n <= '1';
+	sladdr <= "00";
+	sl_is_irq <= '0';
       else
         case sl_state is
 	  when idle =>
-	    if(slwr_rdy_d='1' and data_empty='0')then
-	      sl_state <= write0;
-	      tristate_en_n <= '0';
+	    if(slwr_rdy_d='1' and irq_empty='0')then
+              sl_state <= prepare_write_irq;
+	      sladdr <= "01";
+	      sl_is_irq <= '1';
+	    elsif(slwr_rdy_d='1' and data_empty='0')then
+	      sl_state <= prepare_write_data;
+	      sladdr <= "00";
+	      sl_is_irq <= '0';
 	    elsif(slrd_rdy_d='1' and cmd_full='0')then
-	      sl_state <= read1;
-	      slop <= '1';
-	      sloe <= '1';
+	      sl_state <= prepare_read;
+	      sladdr <= "11";
+	      sl_is_irq <= '0';
 	    end if;
+	  when prepare_read =>
+            sl_state <= read1;
+	    slop <= '1';
+	    sloe <= '1';
+          when prepare_write_data =>
+	    sl_state <= write0;
+	    tristate_en_n <= '0';
+	  when prepare_write_irq =>
+	    sl_state <= write0;
+	    tristate_en_n <= '0';
 	  when read1 =>
 	    sl_state <= read2;
 	    slop <= '0';
@@ -360,7 +399,9 @@ architecture beh of inception is
 	    sl_state <= idle;
 	    slop <= '0';
 	    sloe <= '0';
-	end case;
+	    tristate_en_n <= '1';
+	    sladdr <= "00";
+        end case;
       end if;
     end if;
   end process fx3_sl_master_fsm_proc;
@@ -437,11 +478,11 @@ architecture beh of inception is
                end case;
             end if;
           when write_back_h =>
-            if(data_full='0')then
+            if((jtag_state.op=read_irq and irq_full='0') or (jtag_state.op=read and data_full='0'))then
               jtag_state.st <= write_back_l;
             end if;
           when write_back_l =>
-            if(data_full='0')then
+            if((jtag_state.op=read_irq and irq_full='0') or (jtag_state.op=read and data_full='0'))then
               jtag_state.st <= done_cmd;
             end if;
           when done_cmd =>
@@ -493,7 +534,9 @@ architecture beh of inception is
     jtag_di           <= std_logic_vector(to_unsigned(0,35));
     cmd_get           <= '0';
     data_put          <= '0';
+    irq_put           <= '0';
     data_din          <= (others=>'0');
+    irq_din           <= (others=>'0');
     cmd_done          <= '0';
 
     case jtag_state.st is
@@ -591,11 +634,21 @@ architecture beh of inception is
            when others =>
         end case;
       when write_back_h =>
-        if(jtag_state.op = read)then data_din <= x"0000000"&'0'&jtag_do(2 downto 0); else data_din <= x"fffffff"&'0'&jtag_do(2 downto 0); end if;
-        data_put <= '1';
+        if(jtag_state.op = read)then
+	  data_din <= x"0000000"&'0'&jtag_do(2 downto 0);
+	  data_put <= '1';
+	else
+	  irq_din <= x"fffffff"&'0'&jtag_do(2 downto 0);
+	  irq_put <= '1';
+	end if;
       when write_back_l =>
-        data_din <= jtag_do(34 downto 3);
-        data_put <= '1';
+	if(jtag_state.op = read)then
+          data_din <= jtag_do(34 downto 3);
+          data_put <= '1';
+	else
+          irq_din <= jtag_do(34 downto 3);
+	  irq_put <= '1';
+	end if;
       when done =>
         jtag_state_led <= "1000";
 	if(jtag_state.op = read_irq)then
