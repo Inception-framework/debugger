@@ -1,0 +1,7 @@
+stupid hack to make irq wrork:
+use address bits as normal inputs
+
+opt1: then I can skip a state (prepare_writigng ) and oso one cycle in hte
+normal state machine, also can use only one bit of ddaddress
+
+opt2: most rprobably it was not working beacause address was asserted one cycle too late
