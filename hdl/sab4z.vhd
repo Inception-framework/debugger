@@ -46,6 +46,7 @@ entity sab4z is
     slop	   : out std_logic;                               ---output write select
 
     slwr_rdy	   : in std_logic;
+    slwrirq_rdy	   : in std_logic;
     slrd_rdy	   : in std_logic;
 
     --------------------------------
@@ -163,6 +164,7 @@ architecture rtl of sab4z is
     slop	   : out std_logic;                               ---output write select
 
     slwr_rdy	   : in std_logic;
+    slwrirq_rdy	   : in std_logic;
     slrd_rdy	   : in std_logic
    
   );
@@ -204,6 +206,7 @@ begin
     sloe	   => sloe,
     slop	   => slop,
     slwr_rdy       => slwr_rdy,
+    slwrirq_rdy    => slwrirq_rdy,
     slrd_rdy       => slrd_rdy
 
   );

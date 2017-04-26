@@ -102,6 +102,9 @@ connect_bd_net [get_bd_pins /sab4z/slop] [get_bd_ports slop]
 create_bd_port -dir I slwr_rdy
 connect_bd_net [get_bd_pins /sab4z/slwr_rdy] [get_bd_ports slwr_rdy]
 
+create_bd_port -dir I slwrirq_rdy
+connect_bd_net [get_bd_pins /sab4z/slwrirq_rdy] [get_bd_ports slwrirq_rdy]
+
 create_bd_port -dir I slrd_rdy
 connect_bd_net [get_bd_pins /sab4z/slrd_rdy] [get_bd_ports slrd_rdy]
 
@@ -183,6 +186,7 @@ array set ios {
         "sloe"          { "G21"  "LVCMOS25" }
         "slop"          { "G20"  "LVCMOS25" }
         "slwr_rdy"      { "F19"  "LVCMOS25" }
+        "slwrirq_rdy"   { "K21"  "LVCMOS25" }
         "slrd_rdy"      { "C22"  "LVCMOS25" }
         "sladdr[0]"     { "B21"  "LVCMOS25" }
         "sladdr[1]"     { "B22"  "LVCMOS25" }
@@ -251,6 +255,7 @@ set_output_delay -clock $clock 1 [get_ports TDI]
 set_output_delay -clock $clock 1 [get_ports irq_ack]
 set_input_delay -clock $clock 1 [get_ports fdata]
 set_input_delay -clock $clock 1 [get_ports slwr_rdy]
+set_input_delay -clock $clock 1 [get_ports slwrirq_rdy]
 set_input_delay -clock $clock 1 [get_ports slrd_rdy]
 
 #set clock [get_clocks clk_out]

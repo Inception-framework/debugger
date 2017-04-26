@@ -56,6 +56,7 @@ entity inception is
     slop	   : out std_logic;                               ---output write select
 
     slwr_rdy	   : in std_logic;
+    slwrirq_rdy	   : in std_logic;
     slrd_rdy	   : in std_logic
 
   );
@@ -161,7 +162,7 @@ architecture beh of inception is
   -- fx3 interface
   signal tristate_en_n:                   std_logic;
   signal fdata_in,fdata_in_d,fdata_out_d: std_logic_vector(31 downto 0);
-  signal slrd_rdy_d,slwr_rdy_d:           std_logic;
+  signal slrd_rdy_d,slwr_rdy_d,slwrirq_rdy_d:           std_logic;
 
   type sl_state_t is (idle,prepare_read,prepare_write_irq,prepare_write_data,read1,read2,read3,read4,read5,write0,write1,write2);
   signal sl_state: sl_state_t;
@@ -311,11 +312,13 @@ architecture beh of inception is
       if(aresetn='0')then
         slrd_rdy_d <= '0';
 	slwr_rdy_d <= '0';
+	slwrirq_rdy_d <= '0';
 	fdata_in_d <= (others=>'0');
 	status <= (others=>'0');
       else
         slrd_rdy_d <= slrd_rdy;
 	slwr_rdy_d <= slwr_rdy;
+	slwrirq_rdy_d <= slwrirq_rdy;
 	fdata_in_d <= fdata_in;
 	if(cmd_put='1')then
 	  status <= std_ulogic_vector(cmd_din);
@@ -345,7 +348,7 @@ architecture beh of inception is
       else
         case sl_state is
 	  when idle =>
-	    if(slwr_rdy_d='1' and irq_empty='0')then
+	    if(slwrirq_rdy_d='1' and irq_empty='0')then
               sl_state <= prepare_write_irq;
 	      sladdr <= "01";
 	      sl_is_irq <= '1';
