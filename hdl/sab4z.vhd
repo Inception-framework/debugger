@@ -202,7 +202,8 @@ begin
     -- slave fifo master --
     -----------------------
     clk_out	=> clk_out,  
-    fdata   => fdata,       
+    fdata   => fdata,
+    sladdr  => sladdr,
     sloe	   => sloe,
     slop	   => slop,
     slwr_rdy       => slwr_rdy,
