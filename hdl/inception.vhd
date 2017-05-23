@@ -172,8 +172,23 @@ architecture beh of inception is
   signal irq_sync, irq_d1, irq_d2, irq_d3: std_logic;
   type irq_state_t is (idle,forward_event,done);
   signal irq_state: irq_state_t;
+  signal irq_id_addr: std_logic_vector(31 downto 0);
 
  begin
+
+  -----------------------------
+  -- irq address --------------
+  -----------------------------
+  irq_id_addr_proc: process(aclk)
+  begin
+    if(aclk'event and aclk='1')then
+      if(aresetn='0')then
+        irq_id_addr <= IRQ_ID_ADDR_DEFAULT;
+      elsif(btn1_re='1')then
+        irq_id_addr <= std_logic_vector(r);
+      end if;
+    end if;
+  end process irq_id_addr_proc;
 
   -----------------------------
   -- synchronize irq_in line --
@@ -422,7 +437,7 @@ architecture beh of inception is
 	    if(irq_state = forward_event)then
 	      jtag_state.st <= run_cmd;
 	      jtag_state.op <= read_irq;
-	      jtag_state.addr <= std_logic_vector(r);
+	      jtag_state.addr <= irq_id_addr;
 	    elsif(cmd_empty='0')then 
 	      jtag_state.st <= idle2;
 	    end if;
