@@ -56,7 +56,7 @@ architecture beh of inception_tb is
     sladdr         : out std_logic_vector(1 downto 0);
     sloe	   : out std_logic;                               ---output output enable select
     slop	   : out std_logic;                               ---output write select
-        
+    slwrirq_rdy	   : in std_logic;
     slwr_rdy	   : in std_logic;                                
     slrd_rdy	   : in std_logic
 
@@ -110,6 +110,7 @@ architecture beh of inception_tb is
     signal sloe	   :  std_logic;                               ---output output enable select
     signal slop	   :  std_logic;                               ---output write select
         
+    signal slwrirq_rdy	   :  std_logic;                                
     signal slwr_rdy	   :  std_logic;                                
     signal slrd_rdy	   :  std_logic;
 
@@ -156,11 +157,14 @@ architecture beh of inception_tb is
     sladdr  => sladdr,
     sloe	   => sloe,
     slop	   => slop,
+    slwrirq_rdy       => slwrirq_rdy,
     slwr_rdy       => slwr_rdy,
     slrd_rdy       => slrd_rdy
     
   );
  
+ slwrirq_rdy <= '0';
+
  aresetn <= '0', '1' after 15 ns;
  clk_proc: process
  begin

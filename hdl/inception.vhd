@@ -19,8 +19,8 @@ use work.inception_pkg.all;
 USE std.textio.all;
 use ieee.std_logic_textio.all;
 
-library UNISIM;
-use UNISIM.vcomponents.all;
+--library UNISIM;
+--use UNISIM.vcomponents.all;
 
 entity inception is
   port(
@@ -302,23 +302,23 @@ architecture beh of inception is
   -------------------------------------
 
   -- tristate buffer simulation
- -- tristate_sim_gen: if(SIM_SYN_N=true)generate
- --   fdata_in <= fdata;
- --   fdata <= (others=>'Z') when tristate_en_n='1' else fdata_out_d;
- -- end generate;
+  tristate_sim_gen: if(SIM_SYN_N=true)generate
+    fdata_in <= fdata;
+    fdata <= (others=>'Z') when tristate_en_n='1' else fdata_out_d;
+  end generate;
 
   -- tristate buffer synthesis on Xilinx Zedboard
-  tristate_syn_gen: if(SIM_SYN_N=false)generate
-    tristate_gen_loop: for i in 0 to 31 generate
-      tristate_buf_i : IOBUF
-        port map (
-          O     => fdata_in(i),
-          IO    => fdata(i),
-          I     => fdata_out_d(i),
-          T     => tristate_en_n
-        );
-    end generate tristate_gen_loop;
-  end generate;
+ -- tristate_syn_gen: if(SIM_SYN_N=false)generate
+ --   tristate_gen_loop: for i in 0 to 31 generate
+ --     tristate_buf_i : IOBUF
+ --       port map (
+ --         O     => fdata_in(i),
+ --         IO    => fdata(i),
+ --         I     => fdata_out_d(i),
+ --         T     => tristate_en_n
+ --       );
+ --   end generate tristate_gen_loop;
+ -- end generate;
 
   -- io flops
   input_flops_proc: process(aclk)
