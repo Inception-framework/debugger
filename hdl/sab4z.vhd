@@ -21,7 +21,7 @@ entity sab4z is
     aclk:       in std_logic;  -- Clock
     aresetn:    in std_logic;  -- Synchronous, active low, reset
     btn1,btn2:  in std_logic;  -- Command button
-    sw:         in  std_logic_vector(3 downto 0); -- Slide switches
+    sw:         in  std_logic_vector(4 downto 0); -- Slide switches
     led:        out std_logic_vector(3 downto 0); -- LEDs
     
     irq_in:     in std_logic;
@@ -136,7 +136,6 @@ architecture rtl of sab4z is
     aresetn:    in std_logic;  -- Synchronous, active low, reset
     
     btn1_re,btn2_re:in std_logic;  -- Command button
-    sw:             in  std_logic_vector(3 downto 0); -- Slide switches
     led:            out std_logic_vector(3 downto 0); -- LEDs
     jtag_state_led: out std_logic_vector(3 downto 0);
     r:              in std_ulogic_vector(31 downto 0);
@@ -148,6 +147,7 @@ architecture rtl of sab4z is
     -- jtag ctrl master --
     ----------------------
     period          : in  natural range 1 to 31;
+    daisy_normal_n  : in  STD_LOGIC;
     TDO		    : in  STD_LOGIC;
     TCK		    : out  STD_LOGIC;
     TMS		    : out  STD_LOGIC;
@@ -171,16 +171,18 @@ architecture rtl of sab4z is
   end component;
 
   signal period: natural range 1 to 31;
+  signal daisy_normal_n:  STD_LOGIC;
+
 begin
   
-  period <= to_integer(unsigned(sw));
+  period <= to_integer(unsigned(sw(3 downto 0)));
+  daisy_normal_n <= sw(4);
   inception_inst: inception
   port map(
     aclk => aclk,  -- Clock
     aresetn => aresetn,  -- Synchronous, active low, reset
     
     btn1_re=>btn1_re,btn2_re=>btn2_re,  -- Command button
-    sw => sw,-- Slide switches
     led => led, -- LEDs
     jtag_state_led => jtag_state_led,
     r => r,
@@ -192,6 +194,7 @@ begin
     -- jtag ctrl master --
     ----------------------
     period => period, 
+    daisy_normal_n => daisy_normal_n, 
     TDO => TDO,	
     TCK	=> TCK,	
     TMS => TMS,		

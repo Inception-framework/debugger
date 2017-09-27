@@ -113,7 +113,7 @@ create_bd_port -dir O -from 3 -to 0 led
 connect_bd_net [get_bd_pins /sab4z/led] [get_bd_ports led]
 create_bd_port -dir O -from 3 -to 0 jtag_state_led
 connect_bd_net [get_bd_pins /sab4z/jtag_state_led] [get_bd_ports jtag_state_led]
-create_bd_port -dir I -from 3 -to 0 sw
+create_bd_port -dir I -from 4 -to 0 sw
 connect_bd_net [get_bd_pins /sab4z/sw] [get_bd_ports sw]
 create_bd_port -dir I btn1
 connect_bd_net [get_bd_pins /sab4z/btn1] [get_bd_ports btn1]
@@ -172,6 +172,7 @@ array set ios {
 	"sw[1]"         { "G22"  "LVCMOS25" }
 	"sw[2]"         { "H22"  "LVCMOS25" }
 	"sw[3]"         { "F21"  "LVCMOS25" }
+	"sw[4]"         { "H19"  "LVCMOS25" }
 	"led[0]"        { "T22"  "LVCMOS33" }
 	"led[1]"        { "T21"  "LVCMOS33" }
 	"led[2]"        { "U22"  "LVCMOS33" }

@@ -70,8 +70,8 @@ entity JTAG_Ctrl_Master is
 				   StateCurrent		: out	 std_logic_vector(3 downto 0);
 
 				-- Ram Part
-           Din					: in  STD_LOGIC_VECTOR (34 downto 0);
-           Dout					: out STD_LOGIC_VECTOR (34 downto 0)
+           Din					: in  STD_LOGIC_VECTOR (35 downto 0);
+           Dout					: out STD_LOGIC_VECTOR (35 downto 0)
 				);
 end JTAG_Ctrl_Master;
 
@@ -99,7 +99,7 @@ architecture Behavioral of JTAG_Ctrl_Master is
 
         signal down_cnt: natural range 0 to 31;
 
-        signal dout_shift_reg: std_logic_vector(34 downto 0);
+        signal dout_shift_reg: std_logic_vector(35 downto 0);
         signal dout_en : std_logic;
 begin
   --TRst <= '1';
@@ -135,8 +135,8 @@ begin
               dout_shift_reg <= (others=>'0');
             else
               if(((down_cnt = 0 and slow_down = '1') or slow_down = '0') and dout_en='1')then
-                dout_shift_reg(34) <= TDO;
-                shift_reg_loop: for i in 1 to 34 loop
+                dout_shift_reg(35) <= TDO;
+                shift_reg_loop: for i in 1 to 35 loop
                   dout_shift_reg(i-1) <= dout_shift_reg(i);
                 end loop shift_reg_loop;
               end if;
