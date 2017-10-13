@@ -35,5 +35,6 @@ package inception_pkg is
   constant NSTEPS_RST           : natural := 6;
 
   -- ADDRESSES
-  constant IRQ_ID_ADDR_DEFAULT  : std_logic_vector(31 downto 0) := x"10002000";
+  constant IRQ_ID_ADDR_DEFAULT_LPC1850      : std_logic_vector(31 downto 0) := x"10002000";
+  constant IRQ_ID_ADDR_DEFAULT_STM32L152RE  : std_logic_vector(31 downto 0) := x"20002000";
 end package inception_pkg;

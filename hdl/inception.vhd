@@ -184,7 +184,11 @@ architecture beh of inception is
   begin
     if(aclk'event and aclk='1')then
       if(aresetn='0')then
-        irq_id_addr <= IRQ_ID_ADDR_DEFAULT;
+        if(daisy_normal_n='1')then
+          irq_id_addr <= IRQ_ID_ADDR_DEFAULT_STM32L152RE;
+	else
+          irq_id_addr <= IRQ_ID_ADDR_DEFAULT_LPC1850;
+	end if;
       elsif(btn1_re='1')then
         irq_id_addr <= std_logic_vector(r);
       end if;
