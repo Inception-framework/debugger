@@ -56,6 +56,7 @@ entity JTAG_Ctrl_Master is
            aresetn                              : in std_logic;
 
 				-- JTAG Part
+           daisy_normal_n            : in  std_logic;
            period          : in  natural range 1 to 31;
            BitCount			: in  STD_LOGIC_VECTOR (15 downto 0);
            Shift_Strobe		: in  STD_LOGIC;								-- eins aktiv...
@@ -136,7 +137,8 @@ begin
             else
               if(((down_cnt = 0 and slow_down = '1') or slow_down = '0') and dout_en='1')then
                 dout_shift_reg(35) <= TDO;
-                shift_reg_loop: for i in 1 to 35 loop
+		dout_shift_reg(34) <= dout_shift_reg(35) when (daisy_normal_n = '1') else TDO;
+                shift_reg_loop: for i in 1 to 34 loop
                   dout_shift_reg(i-1) <= dout_shift_reg(i);
                 end loop shift_reg_loop;
               end if;

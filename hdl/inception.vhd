@@ -97,6 +97,7 @@ architecture beh of inception is
       CLK			: in  STD_LOGIC;
       aresetn                   : in  STD_LOGIC;
       -- JTAG Part
+      daisy_normal_n            : in  std_logic;
       period                    : in  natural range 1 to 31;
       BitCount			: in  STD_LOGIC_VECTOR (15 downto 0);
       Shift_Strobe		: in  STD_LOGIC;								-- eins aktiv...
@@ -712,6 +713,7 @@ architecture beh of inception is
     port map(
       CLK          => aclk,
       aresetn      => aresetn,
+      jtag_daisy_normal => jtag_daisy_normal,
       period       => period,
       BitCount     => jtag_bit_count,
       Shift_Strobe => jtag_shift_strobe,
