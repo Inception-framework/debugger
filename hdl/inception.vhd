@@ -713,7 +713,7 @@ architecture beh of inception is
     port map(
       CLK          => aclk,
       aresetn      => aresetn,
-      jtag_daisy_normal => jtag_daisy_normal,
+      daisy_normal_n => daisy_normal_n,
       period       => period,
       BitCount     => jtag_bit_count,
       Shift_Strobe => jtag_shift_strobe,

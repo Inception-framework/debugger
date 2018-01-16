@@ -137,7 +137,11 @@ begin
             else
               if(((down_cnt = 0 and slow_down = '1') or slow_down = '0') and dout_en='1')then
                 dout_shift_reg(35) <= TDO;
-		dout_shift_reg(34) <= dout_shift_reg(35) when (daisy_normal_n = '1') else TDO;
+		if(daisy_normal_n = '1') then
+		  dout_shift_reg(34) <= dout_shift_reg(35);
+		else
+		  dout_shift_reg(34) <= TDO;
+		end if;
                 shift_reg_loop: for i in 1 to 34 loop
                   dout_shift_reg(i-1) <= dout_shift_reg(i);
                 end loop shift_reg_loop;
