@@ -4,10 +4,6 @@ USB3-to-JTag is a low latency USB3-based debugger.
 It enables memory accesses for ARM processors using the Coresight design.
 It has been tested on Cortex M3/M4 processors.
 
-This project is based on sab4z, a example design for Zynq-based device.
-For more details, please visit:
-https://gitlab.telecom-paristech.fr/renaud.pacalet/sab4z
-
 # How ?
 
 ## The fastest method - Flashing the FPGA
