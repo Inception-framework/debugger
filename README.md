@@ -8,7 +8,7 @@ It has been tested on Cortex M3/M4 processors.
 
 ## The fastest method - Flashing the FPGA
 
-Use the following command to synthesis the design.
+Use the following command to synthesize the design.
 This requires Vivado (2017.x/2018.x/2019.x).
 
 ```
@@ -90,7 +90,8 @@ vsim -do scripts/sim.do
 
 # Acknowledgement
 
-Synthesis scripts are from the project sab4z.
+
+sis scripts are from the project sab4z.
 https://gitlab.telecom-paris.fr/renaud.pacalet/sab4z
 
 The JTAG state machine is based on OpenJTAG
