@@ -1,14 +1,18 @@
+--Copyright 2018 EURECOM
 --
--- Copyright (C) Telecom ParisTech
--- 
--- This file must be used under the terms of the CeCILL. This source
--- file is licensed as described in the file COPYING, which you should
--- have received as part of this distribution. The terms are also
--- available at:
--- http://www.cecill.info/licences/Licence_CeCILL_V1.1-US.txt
+--Licensed under the Apache License, Version 2.0 (the "License");
+--you may not use this file except in compliance with the License.
+--You may obtain a copy of the License at
 --
-
--- See the README.md file for a detailed description of SAB4Z
+--    http://www.apache.org/licenses/LICENSE-2.0
+--
+--Unless required by applicable law or agreed to in writing, software
+--distributed under the License is distributed on an "AS IS" BASIS,
+--WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+--See the License for the specific language governing permissions and
+--limitations under the License.
+--
+-- See the README.md file for a detailed description of the Inception debugger
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -30,7 +34,6 @@ architecture beh of inception_tb is
     aresetn:    in std_logic;  -- Synchronous, active low, reset
     
     btn1_re,btn2_re:in std_logic;  -- Command button
-    sw:             in  std_logic_vector(3 downto 0); -- Slide switches
     led:            out std_logic_vector(3 downto 0); -- LEDs
     jtag_state_led: out std_logic_vector(3 downto 0);
     r:              in std_ulogic_vector(31 downto 0);
@@ -42,6 +45,7 @@ architecture beh of inception_tb is
     -- jtag ctrl master --
     ----------------------
     period          : in  natural range 1 to 31;
+    daisy_normal_n  : in  STD_LOGIC;
     TDO		    : in  STD_LOGIC;
     TCK		    : out  STD_LOGIC;
     TMS		    : out  STD_LOGIC;
@@ -84,7 +88,6 @@ architecture beh of inception_tb is
     signal aresetn:     std_logic;  -- Synchronous, active low, reset
     
     signal btn1_re,btn2_re:          std_logic;  -- Command button
-    signal sw:              std_logic_vector(3 downto 0); -- Slide switches
     signal led:             std_logic_vector(3 downto 0); -- LEDs
     signal jtag_state_led:  std_logic_vector(3 downto 0);
     signal r:               std_ulogic_vector(31 downto 0);
@@ -95,6 +98,7 @@ architecture beh of inception_tb is
     -- jtag ctrl master --
     ----------------------
     signal period           :   natural range 1 to 31;
+    signal daisy_normal_n   :   STD_LOGIC;
     signal TDO		    :   STD_LOGIC;
     signal TCK		    :   STD_LOGIC;
     signal TMS		    :   STD_LOGIC;
@@ -123,6 +127,9 @@ architecture beh of inception_tb is
     signal snd_din,snd_dout,rcv_din,rcv_dout  : std_logic_vector(31 downto 0);
  begin
   
+    -- this testbench does not test the daisy chain option
+    daisy_normal_n <= '0';
+
  period <= 3; -- small value for simulation, for real code chose 15 so that jtag freq ~3MHz
  dut: inception 
   port map(
@@ -131,7 +138,6 @@ architecture beh of inception_tb is
     
     btn1_re => btn1_re,
     btn2_re => btn2_re,
-    sw => sw,
     led => led,
     jtag_state_led => jtag_state_led,
     r => r,
@@ -143,6 +149,7 @@ architecture beh of inception_tb is
     -- jtag ctrl master --
     ----------------------
     period        => period,
+    daisy_normal_n => daisy_normal_n,
     TDO		  => TDO,
     TCK		  => TCK, 
     TMS		  => TMS,
@@ -187,7 +194,7 @@ architecture beh of inception_tb is
 
  o_proc: process(TCK)
 
-    file output_fp: text open write_mode is "../../io/output.txt";
+    file output_fp: text open write_mode is "./io/output.txt";
     variable output_line: line;
     variable output_data: std_logic_vector(1 downto 0);
   begin
@@ -340,7 +347,7 @@ architecture beh of inception_tb is
   -- simulate host by taking commands from a file --
   --------------------------------------------------
   stub_input_proc: process
-      file input_fp: text open read_mode is "../../io/input.txt";
+      file input_fp: text open read_mode is "./io/input.txt";
       variable input_line : line;
       variable input_data : std_logic_vector(31 downto 0);
     begin

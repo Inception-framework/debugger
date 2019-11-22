@@ -1,13 +1,18 @@
--- Copyright (C) Telecom ParisTech
+--Copyright 2018 EURECOM
 --
--- This file must be used under the terms of the CeCILL. This source
--- file is licensed as described in the file COPYING, which you should
--- have received as part of this distribution. The terms are also
--- available at:
--- http://www.cecill.info/licences/Licence_CeCILL_V1.1-US.txt
+--Licensed under the Apache License, Version 2.0 (the "License");
+--you may not use this file except in compliance with the License.
+--You may obtain a copy of the License at
 --
+--    http://www.apache.org/licenses/LICENSE-2.0
+--
+--Unless required by applicable law or agreed to in writing, software
+--distributed under the License is distributed on an "AS IS" BASIS,
+--WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+--See the License for the specific language governing permissions and
+--limitations under the License.
 
--- See the README.md file for a detailed description of SAB4Z
+-- See the README.md file for a detailed description of the Inception debugger
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -18,27 +23,21 @@ use work.inception_pkg.all;
 USE std.textio.all;
 use ieee.std_logic_textio.all;
 
-library UNISIM;
-use UNISIM.vcomponents.all;
-
 entity inception is
   port(
     aclk:       in std_logic;  -- Clock
     aresetn:    in std_logic;  -- Synchronous, active low, reset
 
-    btn1_re,btn2_re:in std_logic;  -- Command button
     led:            out std_logic_vector(3 downto 0); -- LEDs
     jtag_state_led: out std_logic_vector(3 downto 0);
-    r:              in std_ulogic_vector(31 downto 0);
-    status:         out std_ulogic_vector(31 downto 0);
+
+    sw:         in  std_logic_vector(4 downto 0); -- Slide switches
 
     irq_in:         in std_logic;
     irq_ack:        out std_logic;
     ----------------------
     -- jtag ctrl master --
     ----------------------
-    period          : in  natural range 1 to 31;
-    daisy_normal_n  : in  STD_LOGIC;
     TDO		    : in  STD_LOGIC;
     TCK		    : out  STD_LOGIC;
     TMS		    : out  STD_LOGIC;
@@ -75,17 +74,21 @@ architecture beh of inception is
   signal jtag_di:            std_logic_vector(35 downto 0);
   signal jtag_do:            std_logic_vector(35 downto 0);
 
-  component ODDR2
-  port(
-          D0	: in std_logic;
-          D1	: in std_logic;
-          C0	: in std_logic;
-          C1	: in std_logic;
-          Q 	: out std_logic;
-          CE    : in std_logic;
-          S     : in std_logic;
-          R 	: in std_logic
-    );
+  component tristate is
+   port (
+     fdata_in : out std_logic_vector(31 downto 0);
+     fdata    : inout std_logic_vector(31 downto 0);
+     fdata_out_d : in std_logic_vector(31 downto 0);
+     tristate_en_n : in std_logic
+   );
+  end component;
+ 
+  component P_ODDR2 is
+   port (
+     aclk       : in std_logic;
+     clk_out    : out std_logic;
+     aresetn    : in std_logic
+   );
   end component;
 
   component JTAG_Ctrl_Master is
@@ -176,7 +179,13 @@ architecture beh of inception is
   signal irq_state: irq_state_t;
   signal irq_id_addr: std_logic_vector(31 downto 0);
 
- begin
+  signal period: natural range 1 to 31;
+  signal daisy_normal_n:  STD_LOGIC;
+
+begin
+
+  period <= to_integer(unsigned(sw(3 downto 0)));
+  daisy_normal_n <= sw(4);
 
   -----------------------------
   -- irq address --------------
@@ -190,8 +199,6 @@ architecture beh of inception is
 	else
           irq_id_addr <= IRQ_ID_ADDR_DEFAULT_LPC1850;
 	end if;
-      elsif(btn1_re='1')then
-        irq_id_addr <= std_logic_vector(r);
       end if;
     end if;
   end process irq_id_addr_proc;
@@ -307,24 +314,13 @@ architecture beh of inception is
   -- logic to interface with the fx3 --
   -------------------------------------
 
-  -- tristate buffer simulation
- -- tristate_sim_gen: if(SIM_SYN_N=true)generate
- --   fdata_in <= fdata;
- --   fdata <= (others=>'Z') when tristate_en_n='1' else fdata_out_d;
- -- end generate;
-
-  -- tristate buffer synthesis on Xilinx Zedboard
-  tristate_syn_gen: if(SIM_SYN_N=false)generate
-    tristate_gen_loop: for i in 0 to 31 generate
-      tristate_buf_i : IOBUF
-        port map (
-          O     => fdata_in(i),
-          IO    => fdata(i),
-          I     => fdata_out_d(i),
-          T     => tristate_en_n
-        );
-    end generate tristate_gen_loop;
-  end generate;
+  tristate_inst: tristate
+  port map(
+    fdata_in      => fdata_in,
+    fdata         => fdata,
+    fdata_out_d   => fdata_out_d,
+    tristate_en_n => tristate_en_n 
+  );
 
   -- io flops
   input_flops_proc: process(aclk)
@@ -335,15 +331,11 @@ architecture beh of inception is
 	slwr_rdy_d <= '0';
 	slwrirq_rdy_d <= '0';
 	fdata_in_d <= (others=>'0');
-	status <= (others=>'0');
       else
         slrd_rdy_d <= slrd_rdy;
 	slwr_rdy_d <= slwr_rdy;
 	slwrirq_rdy_d <= slwrirq_rdy;
 	fdata_in_d <= fdata_in;
-	if(cmd_put='1')then
-	  status <= std_ulogic_vector(cmd_din);
-	end if;
       end if;
     end if;
   end process input_flops_proc;
@@ -730,32 +722,12 @@ architecture beh of inception is
       Dout         => jtag_do
     );
 
-
- clk_out_syn_gen: if SIM_SYN_N = false generate
-   aclkn <= not aclk;
-   oddr_inst : ODDR2
-     port map (
-       D0     => '0',
-       D1     => '1',
-       C0     => aclk,
-       C1     => aclkn,
-       Q      => clk_out,
-       CE     => '1',
-       S      => '0',
-       R      => '0'
-     );
-  end generate clk_out_syn_gen;
-
-  clk_out_sim_gen: if SIM_SYN_N generate
-    oddr2_proc: process(aclk)
-    begin
-      if(aclk'event and aclk='1')then
-        clk_out <= '0';
-      elsif(aclk'event and aclk='0')then
-        clk_out <= '1';
-      end if;
-    end process oddr2_proc;
-  end generate clk_out_sim_gen;
+  ODDR2_inst: P_ODDR2
+  port map(
+    aclk      => aclk, 
+    clk_out   => clk_out,
+    aresetn   => aresetn
+  );
 
   -- LED outputs
   led <= jtag_state_current;

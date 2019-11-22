@@ -4,11 +4,8 @@ add wave -noupdate -divider {fpga clk}
 add wave -noupdate /inception_tb/aclk
 add wave -noupdate /inception_tb/aresetn
 add wave -noupdate -divider {fpga debug io}
-add wave -noupdate /inception_tb/sw
 add wave -noupdate /inception_tb/led
 add wave -noupdate /inception_tb/jtag_state_led
-add wave -noupdate /inception_tb/r
-add wave -noupdate /inception_tb/status
 add wave -noupdate -divider {jtag interface}
 add wave -noupdate /inception_tb/TDO
 add wave -noupdate /inception_tb/TCK
@@ -61,7 +58,7 @@ add wave -noupdate /inception_tb/dut/jtag_di
 add wave -noupdate /inception_tb/dut/jtag_do
 add wave -noupdate -childformat {{/inception_tb/dut/jtag_state.step -radix unsigned} {/inception_tb/dut/jtag_state.size -radix unsigned} {/inception_tb/dut/jtag_state.number -radix unsigned}} -expand -subitemconfig {/inception_tb/dut/jtag_state.step {-height 17 -radix unsigned -radixshowbase 0} /inception_tb/dut/jtag_state.size {-height 17 -radix unsigned -radixshowbase 0} /inception_tb/dut/jtag_state.number {-height 17 -radix unsigned -radixshowbase 0}} /inception_tb/dut/jtag_state
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {0 ns} 0}
+WaveRestoreCursors {{Cursor 1} {0 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 303
 configure wave -valuecolwidth 202
@@ -77,4 +74,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {1199500 ns} {1200027 ns}
+WaveRestoreZoom {599499350 ps} {600026350 ps}

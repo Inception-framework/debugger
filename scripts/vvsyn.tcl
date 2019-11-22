@@ -9,128 +9,121 @@
 #
 
 proc usage {} {
-	puts "usage: vivado -mode batch -source <script> -tclargs <rootdir> <builddir> \[<ila>\]"
-	puts "  <rootdir>:  absolute path of sab4z root directory"
+	puts "usage: vivado -mode batch -source <script> -tclargs <rootdir> <builddir>"
+	puts "  <rootdir>:  absolute path of inception root directory"
 	puts "  <builddir>: absolute path of build directory"
-	puts "  <ila>:      embed Integrated Logic Analyzer (0 or 1, default 0)"
 	exit -1
 }
 
-if { $argc == 3 } {
+if { $argc == 2 } {
 	set rootdir [lindex $argv 0]
 	set builddir [lindex $argv 1]
-	set ila [lindex $argv 2]
-	if { $ila != 0 && $ila != 1 } {
-		usage
-	}
 } else {
 	usage
 }
 
 cd $builddir
-source $rootdir/scripts/ila.tcl
 
 
 ###################
-# Create SAB4Z IP #
+# Create INCEPTION IP #
 ###################
-create_project -part xc7z020clg484-1 -force sab4z sab4z
-set sources { axi_pkg inception_pkg sab4z inception JTAG_Ctrl_Master debouncer fifo_ram }
+create_project -part xc7z020clg484-1 -force usb2jtag usb2jtag_ip
+set sources { inception_pkg inception JTAG_Ctrl_Master fifo_ram tristate oddr2}
 foreach f $sources {
 	add_files $rootdir/hdl/$f.vhd
 }
 import_files -force -norecurse
-ipx::package_project -root_dir sab4z -vendor www.telecom-paristech.fr -library SAB4Z -force sab4z
+ipx::package_project -root_dir usb2jtag_ip -vendor www.eurecom.fr -library USB2JTAG -force usb2jtag
 close_project
 
 ############################
 ## Create top level design #
 ############################
 set top top
+
 create_project -part xc7z020clg484-1 -force $top .
 set_property board_part em.avnet.com:zed:part0:1.3 [current_project]
-set_property ip_repo_paths { ./sab4z } [current_fileset]
+set_property ip_repo_paths { ./usb2jtag_ip } [current_fileset]
 update_ip_catalog
 create_bd_design "$top"
-set sab4z [create_bd_cell -type ip -vlnv [get_ipdefs *www.telecom-paristech.fr:SAB4Z:sab4z:*] sab4z]
-set ps7 [create_bd_cell -type ip -vlnv [get_ipdefs *xilinx.com:ip:processing_system7:*] ps7]
-apply_bd_automation -rule xilinx.com:bd_rule:processing_system7 -config {make_external "FIXED_IO, DDR" apply_board_preset "1" Master "Disable" Slave "Disable" } $ps7
-set_property -dict [list CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {100.000000}] $ps7
-set_property -dict [list CONFIG.PCW_USE_M_AXI_GP0 {1}] $ps7
-set_property -dict [list CONFIG.PCW_M_AXI_GP0_ENABLE_STATIC_REMAP {1}] $ps7
+
+create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 processing_system7_0
+apply_bd_automation -rule xilinx.com:bd_rule:processing_system7 -config {make_external "FIXED_IO, DDR" apply_board_preset "1" Master "Disable" Slave "Disable" }  [get_bd_cells processing_system7_0]
+set_property -dict [list CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {100.000000}] [get_bd_cells processing_system7_0]
+set_property -dict [list CONFIG.PCW_USE_M_AXI_GP0 {0}] [get_bd_cells processing_system7_0]
+create_bd_cell -type ip -vlnv [get_ipdefs *www.eurecom.fr:USB2JTAG:inception:*] usb2jtag_0
+apply_bd_automation -rule xilinx.com:bd_rule:clkrst -config {Clk "/processing_system7_0/FCLK_CLK0 (100 MHz)" }  [get_bd_pins /usb2jtag_0/aclk]
+
+
+#create_project -part xc7z020clg484-1 -force $top .
+#set_property board_part em.avnet.com:zed:part0:1.3 [current_project]
+#set_property ip_repo_paths { ./inception } [current_fileset]
+#update_ip_catalog
+#create_bd_design "$top"
+#set inception [create_bd_cell -type ip -vlnv [get_ipdefs *www.eurecom.fr:INCEPTION:inception:*] inception]
+#set ps7 [create_bd_cell -type ip -vlnv [get_ipdefs *xilinx.com:ip:processing_system7:*] ps7]
+#apply_bd_automation -rule xilinx.com:bd_rule:processing_system7 -config {make_external "FIXED_IO, DDR" apply_board_preset "1" Master "Disable" Slave "Disable" } $ps7
+#set_property -dict [list CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {100.000000}] $ps7
+#set_property -dict [list CONFIG.PCW_USE_M_AXI_GP0 {1}] $ps7
+#set_property -dict [list CONFIG.PCW_M_AXI_GP0_ENABLE_STATIC_REMAP {1}] $ps7
 
 # Interconnections
 
 # IRQ
 create_bd_port -dir I irq_in
-connect_bd_net [get_bd_pins /sab4z/irq_in] [get_bd_ports irq_in]
+connect_bd_net [get_bd_pins /usb2jtag_0/irq_in] [get_bd_ports irq_in]
 create_bd_port -dir O irq_ack
-connect_bd_net [get_bd_pins /sab4z/irq_ack] [get_bd_ports irq_ack]
+connect_bd_net [get_bd_pins /usb2jtag_0//irq_ack] [get_bd_ports irq_ack]
 
 # JTAG ctlr master
 create_bd_port -dir O TCK
-connect_bd_net [get_bd_pins /sab4z/TCK] [get_bd_ports TCK]
+connect_bd_net [get_bd_pins /usb2jtag_0/TCK] [get_bd_ports TCK]
 
 create_bd_port -dir O TRST
-connect_bd_net [get_bd_pins /sab4z/TRST] [get_bd_ports TRST]
+connect_bd_net [get_bd_pins /usb2jtag_0/TRST] [get_bd_ports TRST]
 
 create_bd_port -dir I TDO
-connect_bd_net [get_bd_pins /sab4z/TDO] [get_bd_ports TDO]
+connect_bd_net [get_bd_pins /usb2jtag_0/TDO] [get_bd_ports TDO]
 
 create_bd_port -dir O TMS
-connect_bd_net [get_bd_pins /sab4z/TMS] [get_bd_ports TMS]
+connect_bd_net [get_bd_pins /usb2jtag_0/TMS] [get_bd_ports TMS]
 
 create_bd_port -dir O TDI
-connect_bd_net [get_bd_pins /sab4z/TDI] [get_bd_ports TDI]
+connect_bd_net [get_bd_pins /usb2jtag_0/TDI] [get_bd_ports TDI]
 
 # Slave FIFO
 create_bd_port -dir O clk_out
-connect_bd_net [get_bd_pins /sab4z/clk_out] [get_bd_ports clk_out]
+connect_bd_net [get_bd_pins /usb2jtag_0/clk_out] [get_bd_ports clk_out]
 
 create_bd_port -dir IO -from 31 -to 0 fdata
-connect_bd_net [get_bd_pins /sab4z/fdata] [get_bd_ports fdata]
+connect_bd_net [get_bd_pins /usb2jtag_0/fdata] [get_bd_ports fdata]
 
 create_bd_port -dir O -from 1 -to 0 sladdr
-connect_bd_net [get_bd_pins /sab4z/sladdr] [get_bd_ports sladdr]
+connect_bd_net [get_bd_pins /usb2jtag_0/sladdr] [get_bd_ports sladdr]
 
 create_bd_port -dir O sloe
-connect_bd_net [get_bd_pins /sab4z/sloe] [get_bd_ports sloe]
+connect_bd_net [get_bd_pins /usb2jtag_0/sloe] [get_bd_ports sloe]
 
 create_bd_port -dir O slop
-connect_bd_net [get_bd_pins /sab4z/slop] [get_bd_ports slop]
+connect_bd_net [get_bd_pins /usb2jtag_0/slop] [get_bd_ports slop]
 
 create_bd_port -dir I slwr_rdy
-connect_bd_net [get_bd_pins /sab4z/slwr_rdy] [get_bd_ports slwr_rdy]
+connect_bd_net [get_bd_pins /usb2jtag_0/slwr_rdy] [get_bd_ports slwr_rdy]
 
 create_bd_port -dir I slwrirq_rdy
-connect_bd_net [get_bd_pins /sab4z/slwrirq_rdy] [get_bd_ports slwrirq_rdy]
+connect_bd_net [get_bd_pins /usb2jtag_0/slwrirq_rdy] [get_bd_ports slwrirq_rdy]
 
 create_bd_port -dir I slrd_rdy
-connect_bd_net [get_bd_pins /sab4z/slrd_rdy] [get_bd_ports slrd_rdy]
+connect_bd_net [get_bd_pins /usb2jtag_0/slrd_rdy] [get_bd_ports slrd_rdy]
 
 # Primary IOs
 create_bd_port -dir O -from 3 -to 0 led
-connect_bd_net [get_bd_pins /sab4z/led] [get_bd_ports led]
+connect_bd_net [get_bd_pins /usb2jtag_0/led] [get_bd_ports led]
 create_bd_port -dir O -from 3 -to 0 jtag_state_led
-connect_bd_net [get_bd_pins /sab4z/jtag_state_led] [get_bd_ports jtag_state_led]
+connect_bd_net [get_bd_pins /usb2jtag_0/jtag_state_led] [get_bd_ports jtag_state_led]
 create_bd_port -dir I -from 4 -to 0 sw
-connect_bd_net [get_bd_pins /sab4z/sw] [get_bd_ports sw]
-create_bd_port -dir I btn1
-connect_bd_net [get_bd_pins /sab4z/btn1] [get_bd_ports btn1]
-create_bd_port -dir I btn2
-connect_bd_net [get_bd_pins /sab4z/btn2] [get_bd_ports btn2]
-
-# ps7 - sab4z
-apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {Master "/ps7/M_AXI_GP0" Clk "Auto" }  [get_bd_intf_pins /sab4z/s0_axi]
-
-# Addresses ranges
-set_property offset 0x40000000 [get_bd_addr_segs -of_object [get_bd_intf_pins /ps7/M_AXI_GP0]]
-set_property range 1G [get_bd_addr_segs -of_object [get_bd_intf_pins /ps7/M_AXI_GP0]]
-
-# In-circuit debugging
-if { $ila == 1 } {
-	set_property HDL_ATTRIBUTE.MARK_DEBUG true [get_bd_intf_nets -of_objects [get_bd_intf_pins /sab4z/m_axi]]
-}
+connect_bd_net [get_bd_pins /usb2jtag_0/sw] [get_bd_ports sw]
 
 # Synthesis flow
 validate_bd_design
@@ -144,27 +137,6 @@ launch_runs $run
 wait_on_run $run
 open_run $run
 
-# In-circuit debugging
-if { $ila == 1 } {
-	set topcell [get_cells $top*]
-	set nets {}
-	set suffixes {
-		ARID ARADDR ARLEN ARSIZE ARBURST ARLOCK ARCACHE ARPROT ARQOS ARVALID
-		RREADY
-		AWID AWADDR AWLEN AWSIZE AWBURST AWLOCK AWCACHE AWPROT AWQOS AWVALID
-		WID WDATA WSTRB WLAST WVALID
-		BREADY
-		ARREADY
-		RID RDATA RRESP RLAST RVALID
-		AWREADY
-		WREADY
-		BID BRESP BVALID
-	}
-	foreach suffix $suffixes {
-		lappend nets $topcell/sab4z_m_axi_${suffix}
-	}
-	add_ila_core dc $topcell/ps7_FCLK_CLK0 $nets
-}
 
 # IOs
 array set ios {
@@ -181,8 +153,6 @@ array set ios {
 	"jtag_state_led[2]"   { "U19"  "LVCMOS33" }
 	"jtag_state_led[1]"   { "W22"  "LVCMOS33" }
 	"jtag_state_led[0]"   { "V22"  "LVCMOS33" }
-	"btn1"           { "T18"  "LVCMOS25" }
-	"btn2"           { "R16"  "LVCMOS25" }
         "clk_out"       { "M19"  "LVCMOS25" }
         "sloe"          { "G21"  "LVCMOS25" }
         "slop"          { "G20"  "LVCMOS25" }
@@ -243,9 +213,9 @@ foreach io [ array names ios ] {
 set clock [get_clocks]
 set_false_path -from $clock -to [get_ports {led[*]}]
 set_false_path -from $clock -to [get_ports {jtag_state_led[*]}]
-set_false_path -from [get_ports {btn1 btn2 irq_in sw[*]}] -to $clock
+set_false_path -from [get_ports {irq_in sw[*]}] -to $clock
 
-create_generated_clock -source [get_pins -hierarchical sab4z/aclk] -master_clock [get_clocks] -add -name clk_out [get_ports clk_out] -edges {2 3 4}
+create_generated_clock -source [get_pins -hierarchical usb2jtag_0/aclk] -master_clock [get_clocks] -add -name clk_out [get_ports clk_out] -edges {2 3 4}
 
 set clock [get_clocks clk_fpga_0]
 set_input_delay -clock $clock 2 [get_ports TDO]
