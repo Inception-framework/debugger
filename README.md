@@ -90,8 +90,7 @@ vsim -do scripts/sim.do
 
 # Acknowledgement
 
-
-sis scripts are from the project sab4z.
+Synthesis scripts are from the project sab4z.
 https://gitlab.telecom-paris.fr/renaud.pacalet/sab4z
 
 The JTAG state machine is based on OpenJTAG
