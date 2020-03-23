@@ -12,6 +12,8 @@ Use the following command to synthesize the design.
 This requires Vivado (2017.x/2018.x/2019.x).
 
 ```
+mkdir build
+
 vivado -mode tcl -source ./scripts/vvsyn.tcl -tclargs $(pwd) $(pwd)/build
 ```
 
