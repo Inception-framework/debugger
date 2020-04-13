@@ -6,7 +6,33 @@ It has been tested on Cortex M3/M4 processors.
 
 # How ?
 
-## The fastest method - Flashing the FPGA
+## The fastest method - Flashing the SD Card with the released image
+
+Due to GitHub limitation on file size, we splitted the SD card image into three pieces. 
+Use the following commands to flash the FPGA SD card.
+
+```bash
+cat sdcard.bin.tgz.aa sdcard.bin.tgz.ab  sdcard.bin.tgz.ac >> sdcard.bin.tgz
+
+tar zxvf sdcard.bin.tgz
+```
+
+Then, use dd to copy the image on your SD card. 
+Replace of value with the correct path.
+```bash
+dd if=./sdcard.bin of=/dev/SDCARD bs=4M conv=fsync
+```
+
+Required jumper configuration on Zedboard
+```
+JMP11 OFF
+JMP10 ON
+JMP9  OFF
+JMP8  OFF
+```
+
+
+## Other method - Building and Flashing the FPGA
 
 Use the following command to synthesize the design.
 This requires Vivado (2017.x/2018.x/2019.x).
@@ -57,7 +83,7 @@ Set ``Blank Check after erase``` and ```Verify after flash```.
 
 9. When the flash process finishes, power-off the FPGA.
 
-## Flashing the SD card
+## Other method - Building and Flashing the SD card
 
 To compile the design, we highly recommand you to use the dockerfile.
 As Vivado is not present inside the container, you need to provide it using Docker volume.
